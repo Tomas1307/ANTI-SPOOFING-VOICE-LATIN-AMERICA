@@ -317,21 +317,21 @@ class VoiceClonerTrainer:
             train_dataset = train_dataset.map(
                 self._prepare_example,
                 remove_columns=train_dataset.column_names,
-                num_proc=1
+                num_proc=None
             )
             
             print("Tokenizing and processing audio for test split...")
             test_dataset = test_dataset.map(
                 self._prepare_example,
                 remove_columns=test_dataset.column_names,
-                num_proc=1
+                num_proc=None
             )
             
             print("Tokenizing and processing audio for validation split...")
             val_dataset = val_dataset.map(
                 self._prepare_example,
                 remove_columns=val_dataset.column_names,
-                num_proc=1
+                num_proc=None
             )
             
             return {
@@ -355,19 +355,19 @@ class VoiceClonerTrainer:
             train_dataset = train_val_split["train"].map(
                 self._prepare_example,
                 remove_columns=train_val_split["train"].column_names,
-                num_proc=1
+                num_proc=None
             )
             
             val_dataset = train_val_split["test"].map(
                 self._prepare_example,
                 remove_columns=train_val_split["test"].column_names,
-                num_proc=1
+                num_proc=None
             )
             
             test_dataset = dataset_split["test"].map(
                 self._prepare_example,
                 remove_columns=dataset_split["test"].column_names,
-                num_proc=1
+                num_proc=None
             )
             
             return {
@@ -407,11 +407,11 @@ class VoiceClonerTrainer:
         training_args = Seq2SeqTrainingArguments(
             output_dir=self.output_dir,
             per_device_train_batch_size=batch_size,
-            gradient_accumulation_steps=2,
+            gradient_accumulation_steps=1,
             learning_rate=learning_rate,
             warmup_steps=warmup_steps,
             max_steps=max_steps,
-            gradient_checkpointing=True,
+            gradient_checkpointing=False,
             fp16=torch.cuda.is_available(),
             eval_strategy="steps",
             save_steps=save_steps,
