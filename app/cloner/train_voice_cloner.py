@@ -316,21 +316,21 @@ class VoiceClonerTrainer:
             train_dataset = train_dataset.map(
                 self._prepare_example,
                 remove_columns=train_dataset.column_names,
-                num_proc=4
+                num_proc=1
             )
             
             print("Tokenizing and processing audio for test split...")
             test_dataset = test_dataset.map(
                 self._prepare_example,
                 remove_columns=test_dataset.column_names,
-                num_proc=4
+                num_proc=1
             )
             
             print("Tokenizing and processing audio for validation split...")
             val_dataset = val_dataset.map(
                 self._prepare_example,
                 remove_columns=val_dataset.column_names,
-                num_proc=4
+                num_proc=1
             )
             
             return {
@@ -354,19 +354,19 @@ class VoiceClonerTrainer:
             train_dataset = train_val_split["train"].map(
                 self._prepare_example,
                 remove_columns=train_val_split["train"].column_names,
-                num_proc=4
+                num_proc=1
             )
             
             val_dataset = train_val_split["test"].map(
                 self._prepare_example,
                 remove_columns=train_val_split["test"].column_names,
-                num_proc=4
+                num_proc=1
             )
             
             test_dataset = dataset_split["test"].map(
                 self._prepare_example,
                 remove_columns=dataset_split["test"].column_names,
-                num_proc=4
+                num_proc=1
             )
             
             return {
