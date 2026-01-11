@@ -1,3 +1,9 @@
 venv/
 data/
 __pycache__/
+*.safetensors
+*.pt
+*.pth
+*.bin
+runs/
+
