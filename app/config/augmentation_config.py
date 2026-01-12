@@ -87,18 +87,37 @@ class AugmentationConfigManager:
         Retrieve augmentation strategy by factor.
         
         Args:
-            factor: Augmentation factor ("3x", "5x", or "10x").
+            factor: Augmentation factor (e.g., "3x", "5x", "7x", "10x", or any number).
             
         Returns:
             AugmentationStrategy configuration object.
             
         Raises:
             KeyError: If factor is not found in available strategies.
+            ValueError: If factor format is invalid.
         """
-        if factor not in self._strategies:
-            raise KeyError(f"Strategy '{factor}' not found. Available: {list(self._strategies.keys())}")
+        # Check if factor exists in pre-configured strategies
+        if factor in self._strategies:
+            return self._strategies[factor]
         
-        return self._strategies[factor]
+        # Try to parse custom factor (e.g., "7x", "15x")
+        if factor.endswith('x'):
+            try:
+                factor_num = int(factor[:-1])
+                # Create strategy on-the-fly for custom factor
+                custom_strategy = AugmentationStrategy(
+                    augmentation_factor=factor_num,
+                    type_distribution={
+                        AugmentationType.RIR_NOISE: 0.60,
+                        AugmentationType.CODEC: 0.30,
+                        AugmentationType.RAWBOOST: 0.10
+                    }
+                )
+                return custom_strategy
+            except ValueError:
+                raise ValueError(f"Invalid factor format: '{factor}'. Expected format: '3x', '5x', etc.")
+        
+        raise KeyError(f"Strategy '{factor}' not found. Available: {list(self._strategies.keys())} or custom format like '7x'")
     
     def register_strategy(self, name: str, strategy: AugmentationStrategy):
         """
@@ -189,7 +208,7 @@ def main():
     """
     config = AugmentationConfigManager.get_instance()
     
-    for factor in ["3x", "5x", "10x"]:
+    for factor in ["3x", "5x", "7x", "10x", "15x"]:
         config.print_strategy_summary(factor)
         
         sizes = config.calculate_dataset_sizes(18204, factor)

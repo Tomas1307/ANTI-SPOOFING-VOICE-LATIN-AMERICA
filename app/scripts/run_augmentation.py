@@ -6,16 +6,13 @@ Main execution script for voice anti-spoofing data augmentation.
 
 Usage:
     python run_augmentation.py --factor 3x
-    python run_augmentation.py --factor 5x --output data/augmented_custom
+    python run_augmentation.py --factor 7x --output data/augmented_custom
 """
 
 import sys
 import argparse
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent / "app" / "augmentation"))
-
-from augmentation_pipeline import AugmentationPipeline
+from app.scripts.augmentation_pipeline import AugmentationPipeline
 
 def main():
     """Execute augmentation pipeline with command-line arguments."""
@@ -29,6 +26,9 @@ Examples:
   
   Generate 5x augmented dataset:
     python run_augmentation.py --factor 5x
+  
+  Generate 7x augmented dataset (custom):
+    python run_augmentation.py --factor 7x
   
   Custom output directory:
     python run_augmentation.py --factor 3x --output data/my_augmented
@@ -65,7 +65,7 @@ Examples:
     parser.add_argument(
         "--rir",
         type=str,
-        default="data/RIR",
+        default="data/noise_dataset/RIR",
         help="Path to RIR files"
     )
     

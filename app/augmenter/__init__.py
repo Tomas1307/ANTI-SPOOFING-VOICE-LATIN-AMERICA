@@ -14,7 +14,6 @@ from app.schema import (
     Distance
 )
 
-from app.scripts.augmentation_pipeline import AugmentationPipeline
 from app.augmenter.rir_augmenter import RIRAugmenter
 from app.augmenter.codec_augmenter import CodecAugmenter
 from app.augmenter.rawboost_augmenter import RawBoostAugmenter
@@ -25,7 +24,6 @@ __version__ = "1.0.0"
 
 __all__ = [
     # Main components
-    "AugmentationPipeline",
     "AugmentationConfigManager",
     "DatasetLoader",
     
