@@ -19,69 +19,7 @@ from transformers import (
 import torch.multiprocessing as mp
 mp.set_start_method('spawn', force=True)
 
-@dataclass
-class TTSDataCollatorWithPadding:
-    """
-    Custom data collator for text-to-speech tasks that handles dynamic padding
-    for both text inputs and audio spectrograms while managing speaker embeddings.
-    
-    This collator ensures compatibility with SpeechT5's reduction factor by 
-    rounding down spectrogram lengths to valid multiples, preventing dimension
-    mismatch errors during loss computation.
-    
-    Attributes:
-        processor: SpeechT5Processor instance for tokenization and padding.
-    """
-    processor: Any
-
-    def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
-        """
-        Collate a batch of examples with proper padding and alignment.
-        
-        Args:
-            features: List of dictionaries containing input_ids, labels, and speaker_embeddings.
-            
-        Returns:
-            Dictionary containing padded and batched tensors ready for model input.
-        """
-        input_ids = [{"input_ids": feature["input_ids"]} for feature in features]
-        speaker_features = [torch.tensor(feature["speaker_embeddings"]) for feature in features]
-        label_features = [torch.tensor(feature["labels"]) for feature in features]
-
-        batch = self.processor.pad(input_ids=input_ids, return_tensors="pt")
-
-        reduction_factor = 2
-        
-        target_lengths = torch.tensor([label.shape[0] for label in label_features])
-        if reduction_factor > 1:
-            target_lengths = target_lengths.new(
-                [length - length % reduction_factor for length in target_lengths]
-            )
-        
-        label_features = [label[:target_lengths[i]] for i, label in enumerate(label_features)]
-        
-        max_label_length = max(label.shape[0] for label in label_features)
-        feature_dim = label_features[0].shape[1]
-        
-        batch_size = len(label_features)
-        padded_labels = torch.zeros(batch_size, max_label_length, feature_dim)
-        
-        labels_attention_mask = torch.zeros(batch_size, max_label_length, dtype=torch.long)
-        
-        for i, label in enumerate(label_features):
-            length = label.shape[0]
-            padded_labels[i, :length, :] = label
-            labels_attention_mask[i, :length] = 1
-        
-        labels = padded_labels.masked_fill(
-            labels_attention_mask.unsqueeze(-1).ne(1), -100
-        )
-
-        batch["labels"] = labels
-        batch["speaker_embeddings"] = torch.stack(speaker_features)
-
-        return batch
-
+from app.schema import TTSDataCollatorWithPadding
 
 
 class CheckpointResumptionCallback(TrainerCallback):
