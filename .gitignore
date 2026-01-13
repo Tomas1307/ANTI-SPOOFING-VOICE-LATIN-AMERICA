@@ -7,3 +7,4 @@ __pycache__/
 *.bin
 runs/
 
+speech_tts_finetuned/
