@@ -263,3 +263,14 @@ class TTSDataCollatorWithPadding:
         batch["speaker_embeddings"] = torch.stack(speaker_features)
 
         return batch
+    
+@dataclass
+class EvaluationResult:
+    """Results from model evaluation."""
+    text: str
+    speaker_id: str
+    audio_path: str
+    generation_time: float
+    mel_loss: float
+    audio_length: float
+    sample_rate: int

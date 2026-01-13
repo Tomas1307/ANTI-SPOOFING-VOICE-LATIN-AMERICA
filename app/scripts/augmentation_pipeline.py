@@ -51,7 +51,7 @@ class AugmentationPipeline:
         augmentation_factor: str = "3x",
         voices_root: str = "data/partition_dataset_by_speaker",
         musan_root: str = "data/noise_dataset/musan",
-        rir_root: str = "data/RIR",
+        rir_root: str = "data/noise_dataset/RIR",
         output_root: str = "data/augmented"
     ):
         """
