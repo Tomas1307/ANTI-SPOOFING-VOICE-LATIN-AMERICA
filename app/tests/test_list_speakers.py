@@ -1,24 +1,22 @@
 """
 List Available Speakers
 
-Utility script to show all available speaker IDs and their metadata.
+Utility script to show all available speaker IDs.
+Works without metadata.csv file.
 """
 
 import torch
-import pandas as pd
 from pathlib import Path
 
 
 def list_speakers(
-    embeddings_path: str = "app/embedding/speaker_embeddings.pt",
-    metadata_path: str = "app/embedding/metadata.csv"
+    embeddings_path: str = "app/embedding/speaker_embeddings.pt"
 ):
     """
-    List all available speakers with metadata.
+    List all available speakers.
     
     Args:
         embeddings_path: Path to speaker embeddings file.
-        metadata_path: Path to metadata CSV.
     """
     print(f"\n{'='*70}")
     print("AVAILABLE SPEAKERS FOR VOICE CLONING")
@@ -30,75 +28,89 @@ def list_speakers(
     
     print(f"✓ Found {len(speaker_embeddings)} speakers\n")
     
-    # Try to load metadata
-    if Path(metadata_path).exists():
-        print(f"Loading metadata from: {metadata_path}")
-        metadata = pd.read_csv(metadata_path)
-        
-        print(f"\nSpeakers by country:")
-        country_map = {
-            "ar": "Argentina",
-            "cl": "Chile",
-            "co": "Colombia",
-            "pe": "Peru",
-            "ve": "Venezuela"
-        }
-        
-        # Count by country
-        country_counts = {}
-        for speaker_id in speaker_embeddings.keys():
-            country_code = speaker_id[:2]
-            country = country_map.get(country_code, "Unknown")
-            country_counts[country] = country_counts.get(country, 0) + 1
-        
-        for country, count in sorted(country_counts.items()):
-            print(f"  {country}: {count} speakers")
-        
-        # Show sample speakers
-        print(f"\n{'='*70}")
-        print("SAMPLE SPEAKERS (first 20):")
-        print(f"{'='*70}\n")
-        
-        speaker_list = list(speaker_embeddings.keys())[:20]
-        
-        for i, speaker_id in enumerate(speaker_list, 1):
-            country_code = speaker_id[:2]
-            country = country_map.get(country_code, "Unknown")
-            embedding_shape = speaker_embeddings[speaker_id].shape
-            
-            print(f"{i:2d}. {speaker_id:20s} | {country:12s} | Embedding: {embedding_shape}")
-        
-        if len(speaker_embeddings) > 20:
-            print(f"\n... and {len(speaker_embeddings) - 20} more speakers")
-        
-        # Show how to use
-        print(f"\n{'='*70}")
-        print("USAGE EXAMPLES:")
-        print(f"{'='*70}\n")
-        
-        sample_speaker = speaker_list[0]
-        print(f"Test with a specific speaker:")
-        print(f"  python test_voice_cloning_quick.py \\")
-        print(f"    --model speech_tts_finetuned/checkpoint-5000 \\")
-        print(f"    --speaker {sample_speaker} \\")
-        print(f'    --text "Hola, esta es una prueba"')
-        
-        print(f"\nFull evaluation:")
-        print(f"  python evaluate_voice_cloning.py \\")
-        print(f"    --model speech_tts_finetuned/checkpoint-5000 \\")
-        print(f"    --speakers {sample_speaker} {speaker_list[1] if len(speaker_list) > 1 else ''}")
-        
-    else:
-        print(f"\n⚠ Metadata file not found: {metadata_path}")
-        print(f"\nAll speaker IDs:")
-        
-        for i, speaker_id in enumerate(list(speaker_embeddings.keys())[:50], 1):
-            print(f"  {i:2d}. {speaker_id}")
-        
-        if len(speaker_embeddings) > 50:
-            print(f"  ... and {len(speaker_embeddings) - 50} more")
+    # Count by country
+    country_map = {
+        "ar": "Argentina",
+        "cl": "Chile",
+        "co": "Colombia",
+        "pe": "Peru",
+        "ve": "Venezuela"
+    }
     
-    print(f"\n{'='*70}\n")
+    country_counts = {}
+    speakers_by_country = {}
+    
+    for speaker_id in speaker_embeddings.keys():
+        country_code = speaker_id[:2]
+        country = country_map.get(country_code, "Unknown")
+        
+        country_counts[country] = country_counts.get(country, 0) + 1
+        
+        if country not in speakers_by_country:
+            speakers_by_country[country] = []
+        speakers_by_country[country].append(speaker_id)
+    
+    print(f"Speakers by country:")
+    for country, count in sorted(country_counts.items()):
+        print(f"  {country}: {count} speakers")
+    
+    # Show sample speakers
+    print(f"\n{'='*70}")
+    print("SAMPLE SPEAKERS (first 30):")
+    print(f"{'='*70}\n")
+    
+    speaker_list = sorted(list(speaker_embeddings.keys()))[:30]
+    
+    for i, speaker_id in enumerate(speaker_list, 1):
+        country_code = speaker_id[:2]
+        country = country_map.get(country_code, "Unknown")
+        embedding_shape = speaker_embeddings[speaker_id].shape
+        
+        print(f"{i:2d}. {speaker_id:20s} | {country:12s} | Embedding: {embedding_shape}")
+    
+    if len(speaker_embeddings) > 30:
+        print(f"\n... and {len(speaker_embeddings) - 30} more speakers")
+    
+    # Show how to use
+    print(f"\n{'='*70}")
+    print("USAGE EXAMPLES:")
+    print(f"{'='*70}\n")
+    
+    sample_speaker = speaker_list[0]
+    print(f"Test with a specific speaker:")
+    print(f"  python test_voice_cloning_quick.py \\")
+    print(f"    --model speech_tts_finetuned \\")
+    print(f"    --speaker {sample_speaker} \\")
+    print(f'    --text "Hola, esta es una prueba"')
+    
+    print(f"\nFull evaluation:")
+    print(f"  python evaluate_voice_cloning.py \\")
+    print(f"    --model speech_tts_finetuned \\")
+    print(f"    --speakers {sample_speaker}")
+    
+    if len(speaker_list) > 1:
+        print(f" {speaker_list[1]}")
+    if len(speaker_list) > 2:
+        print(f" {speaker_list[2]}")
+    
+    print(f"\nCompare all checkpoints:")
+    print(f"  python compare_checkpoints.py \\")
+    print(f"    --speaker {sample_speaker}")
+    
+    print(f"\n{'='*70}")
+    print(f"SPEAKERS BY COUNTRY (first 5 per country):")
+    print(f"{'='*70}\n")
+    
+    for country in sorted(speakers_by_country.keys()):
+        speakers = sorted(speakers_by_country[country])[:5]
+        print(f"{country}:")
+        for speaker in speakers:
+            print(f"  - {speaker}")
+        if len(speakers_by_country[country]) > 5:
+            print(f"  ... and {len(speakers_by_country[country]) - 5} more")
+        print()
+    
+    print(f"{'='*70}\n")
 
 
 if __name__ == "__main__":
@@ -113,16 +125,6 @@ if __name__ == "__main__":
         help="Path to speaker embeddings"
     )
     
-    parser.add_argument(
-        "--metadata",
-        type=str,
-        default="app/embedding/metadata.csv",
-        help="Path to metadata CSV"
-    )
-    
     args = parser.parse_args()
     
-    list_speakers(
-        embeddings_path=args.embeddings,
-        metadata_path=args.metadata
-    )
+    list_speakers(embeddings_path=args.embeddings)
