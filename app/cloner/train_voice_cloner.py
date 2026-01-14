@@ -21,6 +21,15 @@ mp.set_start_method('spawn', force=True)
 
 from app.schema import TTSDataCollatorWithPadding
 
+# SOTA Evaluation imports
+from transformers import SpeechT5HifiGan
+try:
+    from app.cloner.sota_evaluation_callback import create_sota_callback
+    SOTA_CALLBACK_AVAILABLE = True
+except ImportError:
+    print("⚠️  SOTA callback not found. Training will continue without advanced metrics.")
+    SOTA_CALLBACK_AVAILABLE = False
+
 
 class CheckpointResumptionCallback(TrainerCallback):
     """
@@ -95,6 +104,12 @@ class VoiceClonerTrainer:
         )
         self.processor = SpeechT5Processor.from_pretrained(model_checkpoint)
         self.model = SpeechT5ForTextToSpeech.from_pretrained(model_checkpoint)
+        
+        # Load HiFi-GAN vocoder for evaluation callback
+        print("Loading HiFi-GAN vocoder for evaluation...")
+        self.vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
+        if torch.cuda.is_available():
+            self.vocoder = self.vocoder.to(self.device)
         
         self._print_dataset_stats()
         
@@ -367,6 +382,32 @@ class VoiceClonerTrainer:
 
         eval_dataset = dataset.get("validation", dataset.get("test"))
 
+        # Create callbacks list
+        callbacks = [CheckpointResumptionCallback()]
+        
+        # Add SOTA evaluation callback if available
+        if SOTA_CALLBACK_AVAILABLE:
+            print("\n" + "="*70)
+            print("INITIALIZING SOTA EVALUATION METRICS")
+            print("="*70)
+            print("Metrics: DNSMOS P.835, Speaker Similarity (ECAPA-TDNN)")
+            print(f"Evaluation frequency: Every 1000 steps")
+            print(f"Output: training_evaluation_sota/")
+            print("="*70 + "\n")
+            
+            try:
+                sota_callback = create_sota_callback(
+                    processor=self.processor,
+                    vocoder=self.vocoder,
+                    speaker_embeddings_path=self.metadata_path.replace("metadata.csv", "speaker_embeddings.pt"),
+                    eval_every_n_steps=1000
+                )
+                callbacks.append(sota_callback)
+                print("✓ SOTA evaluation callback integrated successfully\n")
+            except Exception as e:
+                print(f"⚠️  Could not initialize SOTA callback: {e}")
+                print("   Continuing with basic training...\n")
+
         trainer = Seq2SeqTrainer(
             model=self.model,
             args=training_args,
@@ -374,7 +415,7 @@ class VoiceClonerTrainer:
             eval_dataset=eval_dataset,
             tokenizer=self.processor,
             data_collator=TTSDataCollatorWithPadding(processor=self.processor),
-            callbacks=[CheckpointResumptionCallback()]
+            callbacks=callbacks
         )
 
         if self.checkpoint_path:
@@ -424,11 +465,11 @@ def main():
         trainer.train(
             processed_data, 
             batch_size=8, 
-            max_steps=5000,
+            max_steps=30000,  
             learning_rate=1e-5,
             warmup_steps=500,
-            save_steps=500,
-            eval_steps=500,
+            save_steps=1000,  
+            eval_steps=1000,  
             logging_steps=50
         )
         

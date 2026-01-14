@@ -274,3 +274,23 @@ class EvaluationResult:
     mel_loss: float
     audio_length: float
     sample_rate: int
+    
+
+@dataclass
+class SOTAEvalMetrics:
+    """State-of-the-art evaluation metrics container."""
+    # DNSMOS P.835 components
+    dnsmos_sig: float  # Signal quality (> 4.0 for human parity)
+    dnsmos_bak: float  # Background quality (detects noise cloning)
+    dnsmos_ovrl: float  # Overall quality (> 3.8 good, > 4.2 SOTA)
+    
+    speaker_similarity: float  # Cosine similarity (> 0.75 confirmed identity)
+    
+    # Full-reference (optional, requires aligned reference)
+    pesq: Optional[float] = None  # > 3.2 good, > 3.8 excellent
+    stoi: Optional[float] = None  # > 0.75 intelligible
+    
+    # Generation diagnostics
+    duration_ratio: float = 1.0  # generated_len / reference_len
+    attention_entropy: Optional[float] = None  # Detects attention collapse
+    generation_failed: bool = False  # Mumbling/silence detection

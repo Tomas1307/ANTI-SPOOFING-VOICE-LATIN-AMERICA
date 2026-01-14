@@ -77,11 +77,7 @@ def list_speakers(
     print(f"{'='*70}\n")
     
     sample_speaker = speaker_list[0]
-    print(f"Test with a specific speaker:")
-    print(f"  python test_voice_cloning_quick.py \\")
-    print(f"    --model speech_tts_finetuned \\")
-    print(f"    --speaker {sample_speaker} \\")
-    print(f'    --text "Hola, esta es una prueba"')
+
     
     print(f"\nFull evaluation:")
     print(f"  python evaluate_voice_cloning.py \\")
