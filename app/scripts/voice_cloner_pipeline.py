@@ -237,11 +237,11 @@ class VoiceCloningPipeline:
             trainer.train(
                 dataset=processed_data,
                 batch_size=8,
-                max_steps=5000,
+                max_steps=30000,
                 learning_rate=1e-5,
                 warmup_steps=500,
-                save_steps=500,
-                eval_steps=500,
+                save_steps=1000,
+                eval_steps=1000,
                 logging_steps=50
             )
             
