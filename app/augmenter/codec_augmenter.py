@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 
 from app.augmenter.base_augmenter import BaseAugmenter
 from app.schema import CodecConfig
-import app.utils as utils
+import app.utils.utils as utils
 
 
 class CodecAugmenter(BaseAugmenter):

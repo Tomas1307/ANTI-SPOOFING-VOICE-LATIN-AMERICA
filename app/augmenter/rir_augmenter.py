@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 from app.augmenter.base_augmenter import BaseAugmenter
 from app.config.augmentation_config import AugmentationConfigManager
 from app.schema import RIRNoiseConfig, RoomSize, NoiseSource, Distance
-import app.utils as utils
+import app.utils.utils as utils
 
 
 class RIRAugmenter(BaseAugmenter):
