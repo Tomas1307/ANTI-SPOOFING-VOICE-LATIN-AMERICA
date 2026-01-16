@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Run Augmentation Pipeline
+Run Augmentation Pipeline - Balanced Mode Only
 
-Main execution script for voice anti-spoofing data augmentation.
-Supports both simple and balanced augmentation modes.
+State-of-the-art augmentation for anti-spoofing with:
+- Speaker-independent splits
+- Balanced bonafide/spoof ratios
+- 25% clean data preservation in train
+- Val/Test 100% clean (no augmentation)
 
 Usage:
-    # Simple mode (uniform 3x augmentation)
-    python run_augmentation.py --mode simple --factor 3x
+    # 50/50 balance with 3x minimum
+    python run_augmentation.py --target_ratio 0.50 --min_factor 3x
     
-    # Balanced mode (50/50 ratio with minimum 3x)
-    python run_augmentation.py --mode balanced --factor 3x --target_ratio 0.50
-    
-    # Balanced mode (60/40 ratio with minimum 5x)
-    python run_augmentation.py --mode balanced --factor 5x --target_ratio 0.60
+    # 60/40 balance (more bonafide) with 5x minimum
+    python run_augmentation.py --target_ratio 0.60 --min_factor 5x
 """
 
 import sys
@@ -23,59 +23,50 @@ from app.scripts.augmentation_pipeline import AugmentationPipeline
 
 
 def main():
-    """Execute augmentation pipeline with command-line arguments."""
+    """Execute balanced augmentation pipeline."""
     parser = argparse.ArgumentParser(
-        description="Voice Anti-Spoofing Data Augmentation Pipeline",
+        description="Anti-Spoofing Augmentation Pipeline (Balanced Mode)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  Simple mode (uniform 3x augmentation for all files):
-    python run_augmentation.py --mode simple --factor 3x
+  50/50 balance with 3x minimum:
+    python run_augmentation.py --target_ratio 0.50 --min_factor 3x
   
-  Simple mode with 5x:
-    python run_augmentation.py --mode simple --factor 5x
+  60/40 balance (more bonafide) with 5x minimum:
+    python run_augmentation.py --target_ratio 0.60 --min_factor 5x
   
-  Balanced mode (50/50 bonafide/spoof with minimum 3x total):
-    python run_augmentation.py --mode balanced --factor 3x --target_ratio 0.50
-  
-  Balanced mode (60/40 with minimum 5x):
-    python run_augmentation.py --mode balanced --factor 5x --target_ratio 0.60
-  
-  Balanced mode (70/30 with minimum 3x):
-    python run_augmentation.py --mode balanced --factor 3x --target_ratio 0.70
+  70/30 balance with 3x minimum:
+    python run_augmentation.py --target_ratio 0.70 --min_factor 3x
   
   Custom paths:
-    python run_augmentation.py --mode simple --factor 3x \\
-        --voices data/my_voices \\
+    python run_augmentation.py --target_ratio 0.50 --min_factor 3x \\
+        --voices data/my_partition \\
         --musan data/my_noise \\
         --rir data/my_rir \\
-        --output data/my_augmented
+        --output data/my_output
+
+Strategy:
+  - Train: Augmented with calculated factors to achieve target ratio
+  - Val:   100% clean (no augmentation) for pure evaluation
+  - Test:  100% clean (no augmentation) for final testing
+  - Clean data in train: ~25-35% (all originals always included)
         """
     )
     
-    # Mode selection
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="simple",
-        choices=["simple", "balanced"],
-        help="Augmentation mode: 'simple' (uniform factor) or 'balanced' (calculated factors)"
-    )
-    
-    # Augmentation factor
-    parser.add_argument(
-        "--factor",
-        type=str,
-        default="3x",
-        help="Augmentation factor (e.g., 3x, 5x, 7x, 10x). In simple mode, applied uniformly. In balanced mode, used as minimum total factor."
-    )
-    
-    # Target ratio (for balanced mode)
+    # Target ratio
     parser.add_argument(
         "--target_ratio",
         type=float,
         default=0.50,
-        help="Target bonafide ratio for balanced mode (0.0-1.0). E.g., 0.50 = 50/50, 0.60 = 60/40, 0.70 = 70/30"
+        help="Target bonafide ratio (0.0-1.0). Examples: 0.50=50/50, 0.60=60/40, 0.70=70/30"
+    )
+    
+    # Minimum augmentation factor
+    parser.add_argument(
+        "--min_factor",
+        type=str,
+        default="3x",
+        help="Minimum total augmentation factor (e.g., 3x, 5x, 10x)"
     )
     
     # Data paths
@@ -83,7 +74,7 @@ Examples:
         "--voices",
         type=str,
         default="data/partition_dataset_by_speaker",
-        help="Path to partitioned voice dataset"
+        help="Path to speaker-independent partitioned dataset"
     )
     
     parser.add_argument(
@@ -118,23 +109,20 @@ Examples:
     args = parser.parse_args()
     
     # Validate target_ratio
-    if args.mode == "balanced" and not (0.0 < args.target_ratio < 1.0):
+    if not (0.0 < args.target_ratio < 1.0):
         print(f"ERROR: target_ratio must be between 0.0 and 1.0, got {args.target_ratio}")
         sys.exit(1)
     
     # Print configuration
     print("\n" + "="*70)
-    print("VOICE ANTI-SPOOFING DATA AUGMENTATION")
+    print("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
     print("="*70)
     print(f"\nConfiguration:")
-    print(f"  Mode:         {args.mode}")
-    print(f"  Factor:       {args.factor}")
     
-    if args.mode == "balanced":
-        bonafide_pct = int(args.target_ratio * 100)
-        spoof_pct = 100 - bonafide_pct
-        print(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
-    
+    bonafide_pct = int(args.target_ratio * 100)
+    spoof_pct = 100 - bonafide_pct
+    print(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
+    print(f"  Min factor:   {args.min_factor}")
     print(f"  Voices:       {args.voices}")
     print(f"  MUSAN:        {args.musan}")
     print(f"  RIR:          {args.rir}")
@@ -149,9 +137,8 @@ Examples:
             musan_root=args.musan,
             rir_root=args.rir,
             output_root=args.output,
-            mode=args.mode,
-            factor=args.factor,
             target_ratio=args.target_ratio,
+            min_factor=args.min_factor,
             seed=args.seed
         )
         
@@ -169,6 +156,8 @@ Examples:
         print(f"     head {pipeline.output_dir}/LA/ASVspoof2019_LA_train/*.txt")
         print("  3. Count generated files:")
         print(f"     find {pipeline.output_dir} -name '*.flac' | wc -l")
+        print("  4. Verify clean data ratio in train:")
+        print(f"     grep ' - bonafide' {pipeline.output_dir}/LA/ASVspoof2019_LA_train/*.txt | wc -l")
         print()
         
     except KeyboardInterrupt:

@@ -1,55 +1,94 @@
 """
 Checkpoint Management Utility
+=============================
 
-Helper script to view, resume, or clear augmentation checkpoints.
+CLI tool for checkpoint operations.
 
 Usage:
-    python checkpoint_tool.py status
-    python checkpoint_tool.py resume --factor 3x
-    python checkpoint_tool.py clear
+    python checkpoint_tool.py partition status
+    python checkpoint_tool.py partition clear
+    python checkpoint_tool.py augment status --factor 3x
+    python checkpoint_tool.py augment clear --factor 3x
 """
-import sys
+
 import argparse
-from app.utils.checkpoint_manager import CheckpointManager
+from app.utils.checkpoint_manager import PartitionCheckpointManager, AugmentationCheckpointManager
+
+
+def handle_partition(args):
+    manager = PartitionCheckpointManager(args.checkpoint_file)
+    
+    if args.subcommand == 'status':
+        if not manager.exists():
+            print(f"No checkpoint: {args.checkpoint_file}")
+            return
+        
+        data = manager.load_partition()
+        print("\nPARTITION CHECKPOINT")
+        print("="*50)
+        print(f"File: {args.checkpoint_file}")
+        print(f"Speakers: {len(data['processed_speakers'])}")
+        
+        if data.get('speaker_splits'):
+            for split, spks in data['speaker_splits'].items():
+                print(f"  {split}: {len(spks)}")
+        print("="*50)
+    
+    elif args.subcommand == 'clear':
+        if manager.exists():
+            response = input(f"Clear {args.checkpoint_file}? [y/N]: ")
+            if response.lower() in ['y', 'yes']:
+                manager.clear()
+                print("✓ Cleared")
+
+
+def handle_augment(args):
+    file = f"augmentation_{args.factor}_checkpoint.json" if args.factor else "augmentation_checkpoint.json"
+    manager = AugmentationCheckpointManager(file)
+    
+    if args.subcommand == 'status':
+        if not manager.exists():
+            print(f"No checkpoint: {file}")
+            return
+        
+        data = manager.load()
+        print("\nAUGMENTATION CHECKPOINT")
+        print("="*50)
+        print(f"File: {file}")
+        print(f"Progress: {manager.get_progress_percentage():.1f}%")
+        print("="*50)
+    
+    elif args.subcommand == 'clear':
+        if manager.exists():
+            response = input(f"Clear {file}? [y/N]: ")
+            if response.lower() in ['y', 'yes']:
+                manager.clear()
+                print("✓ Cleared")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Augmentation Checkpoint Management Tool"
-    )
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='command')
     
-    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    # Partition
+    part = subparsers.add_parser('partition')
+    part_sub = part.add_subparsers(dest='subcommand')
     
-    # Status command
-    status_parser = subparsers.add_parser('status', help='Show checkpoint status')
-    status_parser.add_argument(
-        '--factor',
-        type=str,
-        help='Augmentation factor (e.g., 3x)'
-    )
+    part_status = part_sub.add_parser('status')
+    part_status.add_argument('--checkpoint-file', default='partition_checkpoint.json')
     
-    # Clear command
-    clear_parser = subparsers.add_parser('clear', help='Clear checkpoint')
-    clear_parser.add_argument(
-        '--factor',
-        type=str,
-        help='Augmentation factor (e.g., 3x)'
-    )
+    part_clear = part_sub.add_parser('clear')
+    part_clear.add_argument('--checkpoint-file', default='partition_checkpoint.json')
     
-    # Resume command  
-    resume_parser = subparsers.add_parser('resume', help='Resume augmentation')
-    resume_parser.add_argument(
-        '--factor',
-        type=str,
-        required=True,
-        help='Augmentation factor (e.g., 3x)'
-    )
-    resume_parser.add_argument(
-        '--output',
-        type=str,
-        default='data/augmented',
-        help='Output directory'
-    )
+    # Augment
+    aug = subparsers.add_parser('augment')
+    aug_sub = aug.add_subparsers(dest='subcommand')
+    
+    aug_status = aug_sub.add_parser('status')
+    aug_status.add_argument('--factor')
+    
+    aug_clear = aug_sub.add_parser('clear')
+    aug_clear.add_argument('--factor')
     
     args = parser.parse_args()
     
@@ -57,36 +96,10 @@ def main():
         parser.print_help()
         return
     
-    # Determine checkpoint file
-    checkpoint_file = f"checkpoint_{args.factor}.json" if args.factor else "augmentation_checkpoint.json"
-    manager = CheckpointManager(checkpoint_file)
-    
-    if args.command == 'status':
-        manager.print_status()
-        progress = manager.get_progress_percentage()
-        if progress > 0:
-            print(f"Progress: {progress:.1f}% complete\n")
-    
-    elif args.command == 'clear':
-        response = input(f"Clear checkpoint {checkpoint_file}? [y/N]: ").strip().lower()
-        if response in ['y', 'yes']:
-            manager.clear_checkpoint()
-            print("✓ Checkpoint cleared")
-        else:
-            print("Cancelled")
-    
-    elif args.command == 'resume':
-        output_dir = f"{args.output}/{args.factor}"
-        
-        if not manager.should_resume(args.factor, output_dir):
-            print(f"No valid checkpoint found for {args.factor}")
-            print("Run augmentation normally to create checkpoint.")
-            sys.exit(1)
-        
-        manager.print_status()
-        print(f"\nTo resume, run:")
-        print(f"  python run_augmentation.py --factor {args.factor} --output {args.output}")
-        print("\nThe pipeline will detect the checkpoint and ask if you want to resume.")
+    if args.command == 'partition':
+        handle_partition(args)
+    elif args.command == 'augment':
+        handle_augment(args)
 
 
 if __name__ == "__main__":
