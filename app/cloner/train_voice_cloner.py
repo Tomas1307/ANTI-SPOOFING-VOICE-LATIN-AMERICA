@@ -23,12 +23,10 @@ from app.schema import TTSDataCollatorWithPadding
 
 # SOTA Evaluation imports
 from transformers import SpeechT5HifiGan
-try:
-    from app.cloner.sota_evaluation_callback import create_sota_callback
-    SOTA_CALLBACK_AVAILABLE = True
-except ImportError:
-    print("⚠️  SOTA callback not found. Training will continue without advanced metrics.")
-    SOTA_CALLBACK_AVAILABLE = False
+
+from app.cloner.sota_evaluation_callback import create_sota_callback
+SOTA_CALLBACK_AVAILABLE = True
+
 
 
 class CheckpointResumptionCallback(TrainerCallback):

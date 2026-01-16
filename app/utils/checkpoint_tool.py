@@ -8,10 +8,9 @@ Usage:
     python checkpoint_tool.py resume --factor 3x
     python checkpoint_tool.py clear
 """
-
 import sys
 import argparse
-from checkpoint_manager import CheckpointManager
+from app.utils.checkpoint_manager import CheckpointManager
 
 
 def main():

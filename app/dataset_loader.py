@@ -4,6 +4,8 @@ Dataset Loader
 Handles loading of original voice files, MUSAN noise files, and RIR files
 for the augmentation pipeline. Provides organized access to all required
 audio resources.
+
+Supports bonafide/spoof separation for balanced augmentation.
 """
 
 import os
@@ -11,15 +13,13 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 import pandas as pd
 
-import app.utils as utils
-
 
 class DatasetLoader:
     """
     Loader for voice dataset and augmentation resources.
     
     Provides methods to load:
-    - Original voice files from partition_dataset_by_speaker
+    - Original voice files from partition_dataset_by_speaker (separated by bonafide/spoof)
     - MUSAN noise files (noise, speech, music)
     - RIR files (small, medium, large rooms)
     
@@ -33,7 +33,7 @@ class DatasetLoader:
         self,
         voices_root: str = "data/partition_dataset_by_speaker",
         musan_root: str = "data/noise_dataset/musan",
-        rir_root: str = "data/RIR"
+        rir_root: str = "data/noise_dataset/RIR"
     ):
         """
         Initialize dataset loader.
@@ -60,6 +60,15 @@ class DatasetLoader:
         if not self.rir_root.exists():
             print(f"Warning: RIR root not found: {self.rir_root}")
     
+    def _get_audio_files_recursive(self, directory: str):
+        """Get all audio files recursively."""
+        audio_files = []
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                if file.lower().endswith(('.wav', '.flac')):
+                    audio_files.append(os.path.join(root, file))
+        return sorted(audio_files)
+    
     def load_train_files(self) -> List[Dict[str, str]]:
         """
         Load all training audio files from partition_dataset_by_speaker.
@@ -70,6 +79,7 @@ class DatasetLoader:
             - speaker_id: Speaker identifier
             - split: 'train'
             - filename: Original filename
+            - file_type: 'bonafide' or 'spoof'
         """
         train_files = []
         
@@ -85,19 +95,53 @@ class DatasetLoader:
                 print(f"Warning: No train directory for speaker {speaker_id}")
                 continue
             
-            audio_files = utils.get_audio_files_recursive(str(train_dir))
+            audio_files = self._get_audio_files_recursive(str(train_dir))
             
             for audio_file in audio_files:
+                filename = Path(audio_file).name
+                
+                # Determine file type from filename prefix
+                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+                
                 train_files.append({
                     "filepath": audio_file,
                     "speaker_id": speaker_id,
                     "split": "train",
-                    "filename": Path(audio_file).name
+                    "filename": filename,
+                    "file_type": file_type
                 })
         
         print(f"Loaded {len(train_files)} training files")
         
         return train_files
+    
+    def load_bonafide_train_files(self) -> List[Dict[str, str]]:
+        """
+        Load only bonafide training files.
+        
+        Returns:
+            List of bonafide file metadata dictionaries.
+        """
+        all_files = self.load_train_files()
+        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
+        
+        print(f"Filtered {len(bonafide_files)} bonafide training files")
+        
+        return bonafide_files
+    
+    def load_spoof_train_files(self) -> List[Dict[str, str]]:
+        """
+        Load only spoof training files.
+        
+        Returns:
+            List of spoof file metadata dictionaries.
+        """
+        all_files = self.load_train_files()
+        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
+        
+        print(f"Filtered {len(spoof_files)} spoof training files")
+        
+        return spoof_files
     
     def load_val_files(self) -> List[Dict[str, str]]:
         """
@@ -119,19 +163,51 @@ class DatasetLoader:
             if not val_dir.exists():
                 continue
             
-            audio_files = utils.get_audio_files_recursive(str(val_dir))
+            audio_files = self._get_audio_files_recursive(str(val_dir))
             
             for audio_file in audio_files:
+                filename = Path(audio_file).name
+                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+                
                 val_files.append({
                     "filepath": audio_file,
                     "speaker_id": speaker_id,
                     "split": "val",
-                    "filename": Path(audio_file).name
+                    "filename": filename,
+                    "file_type": file_type
                 })
         
         print(f"Loaded {len(val_files)} validation files")
         
         return val_files
+    
+    def load_bonafide_val_files(self) -> List[Dict[str, str]]:
+        """
+        Load only bonafide validation files.
+        
+        Returns:
+            List of bonafide file metadata dictionaries.
+        """
+        all_files = self.load_val_files()
+        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
+        
+        print(f"Filtered {len(bonafide_files)} bonafide validation files")
+        
+        return bonafide_files
+    
+    def load_spoof_val_files(self) -> List[Dict[str, str]]:
+        """
+        Load only spoof validation files.
+        
+        Returns:
+            List of spoof file metadata dictionaries.
+        """
+        all_files = self.load_val_files()
+        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
+        
+        print(f"Filtered {len(spoof_files)} spoof validation files")
+        
+        return spoof_files
     
     def load_test_files(self) -> List[Dict[str, str]]:
         """
@@ -153,111 +229,93 @@ class DatasetLoader:
             if not test_dir.exists():
                 continue
             
-            audio_files = utils.get_audio_files_recursive(str(test_dir))
+            audio_files = self._get_audio_files_recursive(str(test_dir))
             
             for audio_file in audio_files:
+                filename = Path(audio_file).name
+                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+                
                 test_files.append({
                     "filepath": audio_file,
                     "speaker_id": speaker_id,
                     "split": "test",
-                    "filename": Path(audio_file).name
+                    "filename": filename,
+                    "file_type": file_type
                 })
         
         print(f"Loaded {len(test_files)} test files")
         
         return test_files
     
-    def get_dataset_statistics(self) -> Dict[str, int]:
+    def load_bonafide_test_files(self) -> List[Dict[str, str]]:
         """
-        Get statistics about the loaded dataset.
+        Load only bonafide test files.
         
         Returns:
-            Dictionary with counts for each split.
+            List of bonafide file metadata dictionaries.
+        """
+        all_files = self.load_test_files()
+        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
+        
+        print(f"Filtered {len(bonafide_files)} bonafide test files")
+        
+        return bonafide_files
+    
+    def load_spoof_test_files(self) -> List[Dict[str, str]]:
+        """
+        Load only spoof test files.
+        
+        Returns:
+            List of spoof file metadata dictionaries.
+        """
+        all_files = self.load_test_files()
+        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
+        
+        print(f"Filtered {len(spoof_files)} spoof test files")
+        
+        return spoof_files
+    
+    def get_dataset_statistics(self) -> Dict[str, any]:
+        """
+        Get statistics about the loaded dataset including bonafide/spoof breakdown.
+        
+        Returns:
+            Dictionary with counts for each split and file type.
         """
         train_files = self.load_train_files()
-        val_files = self.load_val_files()
-        test_files = self.load_test_files()
+        
+        train_bonafide = len([f for f in train_files if f["file_type"] == "bonafide"])
+        train_spoof = len([f for f in train_files if f["file_type"] == "spoof"])
         
         return {
-            "train": len(train_files),
-            "val": len(val_files),
-            "test": len(test_files),
-            "total": len(train_files) + len(val_files) + len(test_files)
+            "train": {
+                "total": len(train_files),
+                "bonafide": train_bonafide,
+                "spoof": train_spoof
+            },
+            "total": len(train_files)
         }
     
-    def get_speaker_distribution(self) -> Dict[str, int]:
-        """
-        Get distribution of files per speaker in training set.
-        
-        Returns:
-            Dictionary mapping speaker_id to file count.
-        """
-        train_files = self.load_train_files()
-        
-        speaker_counts = {}
-        for file_info in train_files:
-            speaker_id = file_info["speaker_id"]
-            speaker_counts[speaker_id] = speaker_counts.get(speaker_id, 0) + 1
-        
-        return speaker_counts
-    
     def print_summary(self):
-        """Print comprehensive dataset summary."""
+        """Print comprehensive dataset summary with bonafide/spoof breakdown."""
         print("\n" + "="*70)
         print("DATASET SUMMARY")
         print("="*70)
         
         stats = self.get_dataset_statistics()
+        
         print(f"\nFile counts:")
-        print(f"  Train: {stats['train']:,}")
-        print(f"  Val:   {stats['val']:,}")
-        print(f"  Test:  {stats['test']:,}")
-        print(f"  Total: {stats['total']:,}")
-        
-        speaker_dist = self.get_speaker_distribution()
-        print(f"\nSpeaker statistics:")
-        print(f"  Total speakers: {len(speaker_dist)}")
-        print(f"  Avg files per speaker: {sum(speaker_dist.values()) / len(speaker_dist):.1f}")
-        print(f"  Min files: {min(speaker_dist.values())}")
-        print(f"  Max files: {max(speaker_dist.values())}")
-        
-        country_counts = {}
-        for speaker_id in speaker_dist.keys():
-            country_code = speaker_id[:2]
-            country_map = {
-                "ar": "Argentina",
-                "cl": "Chile",
-                "co": "Colombia",
-                "pe": "Peru",
-                "ve": "Venezuela"
-            }
-            country = country_map.get(country_code, "Unknown")
-            country_counts[country] = country_counts.get(country, 0) + 1
-        
-        print(f"\nSpeakers by country:")
-        for country, count in sorted(country_counts.items()):
-            print(f"  {country}: {count}")
-        
+        print(f"  Train:  {stats['train']['total']:,} total")
+        print(f"    - Bonafide: {stats['train']['bonafide']:,} ({stats['train']['bonafide']/stats['train']['total']*100:.1f}%)")
+        print(f"    - Spoof:    {stats['train']['spoof']:,} ({stats['train']['spoof']/stats['train']['total']*100:.1f}%)")
         print("="*70 + "\n")
 
 
-def test_dataset_loader():
-    """Test dataset loader functionality."""
+if __name__ == "__main__":
     loader = DatasetLoader(
         voices_root="data/partition_dataset_by_speaker",
         musan_root="data/noise_dataset/musan",
-        rir_root="data/RIR"
+        rir_root="data/noise_dataset/RIR"
     )
     
     loader.print_summary()
-    
-    train_files = loader.load_train_files()
-    print(f"\nSample train file:")
-    if train_files:
-        sample = train_files[0]
-        for key, value in sample.items():
-            print(f"  {key}: {value}")
-
-
-if __name__ == "__main__":
-    test_dataset_loader()
