@@ -72,7 +72,11 @@ class DatasetLoader:
     def load_train_files(self) -> List[Dict[str, str]]:
         """
         Load all training audio files from partition_dataset_by_speaker.
-        
+
+        Supports two directory structures:
+        1. Split-first: voices_root/train/speaker_id/files (preferred)
+        2. Speaker-first: voices_root/speaker_id/train/files (legacy)
+
         Returns:
             List of dictionaries containing file metadata:
             - filepath: Full path to audio file
@@ -82,37 +86,59 @@ class DatasetLoader:
             - file_type: 'bonafide' or 'spoof'
         """
         train_files = []
-        
-        speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-        
-        print(f"\nLoading train files from {len(speakers)} speakers...")
-        
-        for speaker_dir in speakers:
-            speaker_id = speaker_dir.name
-            train_dir = speaker_dir / "train"
-            
-            if not train_dir.exists():
-                print(f"Warning: No train directory for speaker {speaker_id}")
-                continue
-            
-            audio_files = self._get_audio_files_recursive(str(train_dir))
-            
-            for audio_file in audio_files:
-                filename = Path(audio_file).name
-                
-                # Determine file type from filename prefix
-                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-                
-                train_files.append({
-                    "filepath": audio_file,
-                    "speaker_id": speaker_id,
-                    "split": "train",
-                    "filename": filename,
-                    "file_type": file_type
-                })
-        
+
+        # Check for split-first structure (voices_root/train/speaker_id/)
+        train_dir = self.voices_root / "train"
+
+        if train_dir.exists() and train_dir.is_dir():
+            # Split-first structure
+            speakers = [d for d in train_dir.iterdir() if d.is_dir()]
+            print(f"\nLoading train files from {len(speakers)} speakers (split-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                audio_files = self._get_audio_files_recursive(str(speaker_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    train_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "train",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+        else:
+            # Speaker-first structure (legacy)
+            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
+            print(f"\nLoading train files from {len(speakers)} speakers (speaker-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                speaker_train_dir = speaker_dir / "train"
+
+                if not speaker_train_dir.exists():
+                    print(f"Warning: No train directory for speaker {speaker_id}")
+                    continue
+
+                audio_files = self._get_audio_files_recursive(str(speaker_train_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    train_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "train",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+
         print(f"Loaded {len(train_files)} training files")
-        
+
         return train_files
     
     def load_bonafide_train_files(self) -> List[Dict[str, str]]:
@@ -146,39 +172,67 @@ class DatasetLoader:
     def load_val_files(self) -> List[Dict[str, str]]:
         """
         Load all validation audio files.
-        
+
+        Supports two directory structures:
+        1. Split-first: voices_root/val/speaker_id/files (preferred)
+        2. Speaker-first: voices_root/speaker_id/val/files (legacy)
+
         Returns:
             List of dictionaries containing file metadata.
         """
         val_files = []
-        
-        speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-        
-        print(f"\nLoading validation files from {len(speakers)} speakers...")
-        
-        for speaker_dir in speakers:
-            speaker_id = speaker_dir.name
-            val_dir = speaker_dir / "val"
-            
-            if not val_dir.exists():
-                continue
-            
-            audio_files = self._get_audio_files_recursive(str(val_dir))
-            
-            for audio_file in audio_files:
-                filename = Path(audio_file).name
-                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-                
-                val_files.append({
-                    "filepath": audio_file,
-                    "speaker_id": speaker_id,
-                    "split": "val",
-                    "filename": filename,
-                    "file_type": file_type
-                })
-        
+
+        # Check for split-first structure (voices_root/val/speaker_id/)
+        val_dir = self.voices_root / "val"
+
+        if val_dir.exists() and val_dir.is_dir():
+            # Split-first structure
+            speakers = [d for d in val_dir.iterdir() if d.is_dir()]
+            print(f"\nLoading validation files from {len(speakers)} speakers (split-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                audio_files = self._get_audio_files_recursive(str(speaker_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    val_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "val",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+        else:
+            # Speaker-first structure (legacy)
+            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
+            print(f"\nLoading validation files from {len(speakers)} speakers (speaker-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                speaker_val_dir = speaker_dir / "val"
+
+                if not speaker_val_dir.exists():
+                    continue
+
+                audio_files = self._get_audio_files_recursive(str(speaker_val_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    val_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "val",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+
         print(f"Loaded {len(val_files)} validation files")
-        
+
         return val_files
     
     def load_bonafide_val_files(self) -> List[Dict[str, str]]:
@@ -212,39 +266,67 @@ class DatasetLoader:
     def load_test_files(self) -> List[Dict[str, str]]:
         """
         Load all test audio files.
-        
+
+        Supports two directory structures:
+        1. Split-first: voices_root/test/speaker_id/files (preferred)
+        2. Speaker-first: voices_root/speaker_id/test/files (legacy)
+
         Returns:
             List of dictionaries containing file metadata.
         """
         test_files = []
-        
-        speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-        
-        print(f"\nLoading test files from {len(speakers)} speakers...")
-        
-        for speaker_dir in speakers:
-            speaker_id = speaker_dir.name
-            test_dir = speaker_dir / "test"
-            
-            if not test_dir.exists():
-                continue
-            
-            audio_files = self._get_audio_files_recursive(str(test_dir))
-            
-            for audio_file in audio_files:
-                filename = Path(audio_file).name
-                file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-                
-                test_files.append({
-                    "filepath": audio_file,
-                    "speaker_id": speaker_id,
-                    "split": "test",
-                    "filename": filename,
-                    "file_type": file_type
-                })
-        
+
+        # Check for split-first structure (voices_root/test/speaker_id/)
+        test_dir = self.voices_root / "test"
+
+        if test_dir.exists() and test_dir.is_dir():
+            # Split-first structure
+            speakers = [d for d in test_dir.iterdir() if d.is_dir()]
+            print(f"\nLoading test files from {len(speakers)} speakers (split-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                audio_files = self._get_audio_files_recursive(str(speaker_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    test_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "test",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+        else:
+            # Speaker-first structure (legacy)
+            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
+            print(f"\nLoading test files from {len(speakers)} speakers (speaker-first structure)...")
+
+            for speaker_dir in speakers:
+                speaker_id = speaker_dir.name
+                speaker_test_dir = speaker_dir / "test"
+
+                if not speaker_test_dir.exists():
+                    continue
+
+                audio_files = self._get_audio_files_recursive(str(speaker_test_dir))
+
+                for audio_file in audio_files:
+                    filename = Path(audio_file).name
+                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+
+                    test_files.append({
+                        "filepath": audio_file,
+                        "speaker_id": speaker_id,
+                        "split": "test",
+                        "filename": filename,
+                        "file_type": file_type
+                    })
+
         print(f"Loaded {len(test_files)} test files")
-        
+
         return test_files
     
     def load_bonafide_test_files(self) -> List[Dict[str, str]]:

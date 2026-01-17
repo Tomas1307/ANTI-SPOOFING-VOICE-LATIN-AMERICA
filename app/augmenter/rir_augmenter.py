@@ -32,7 +32,7 @@ class RIRAugmenter(BaseAugmenter):
     def __init__(
         self, 
         config: RIRNoiseConfig,
-        rir_root: str = "data/RIR",
+        rir_root: str = "data/noise_dataset/RIR",
         noise_root: str = "data/noise_dataset/musan",
         sample_rate: int = 16000
     ):

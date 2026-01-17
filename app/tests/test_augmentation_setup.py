@@ -94,7 +94,7 @@ try:
     # Test RIR augmenter
     rir_aug = RIRAugmenter(
         config=strategy.rir_noise_config,
-        rir_root="data/RIR",
+        rir_root="data/noise_dataset/RIR",
         noise_root="data/noise_dataset/musan"
     )
     test_audio = np.random.randn(16000)
@@ -122,7 +122,7 @@ print("\n6. Checking data directories...")
 data_paths = {
     "Voices": "data/partition_dataset_by_speaker",
     "MUSAN": "data/noise_dataset/musan",
-    "RIR": "data/RIR"
+    "RIR": "data/noise_dataset/RIR"
 }
 
 all_exist = True
@@ -145,7 +145,7 @@ try:
     loader = DatasetLoader(
         voices_root="data/partition_dataset_by_speaker",
         musan_root="data/noise_dataset/musan",
-        rir_root="data/RIR"
+        rir_root="data/noise_dataset/RIR"
     )
     
     print(f"   ✅ Dataset loader initialized")

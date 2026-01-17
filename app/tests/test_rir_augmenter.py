@@ -11,7 +11,7 @@ def test_rir_augmenter():
     
     augmenter = RIRAugmenter(
         config=strategy.rir_noise_config,
-        rir_root="data/RIR",
+        rir_root="data/noise_dataset/RIR",
         noise_root="data/noise_dataset/musan"
     )
     

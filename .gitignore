@@ -6,5 +6,5 @@ __pycache__/
 *.pth
 *.bin
 runs/
-
+.claude/
 speech_tts_finetuned/

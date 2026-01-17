@@ -136,7 +136,7 @@ from app.utils.augmentation_calculator import AugmentationModeCalculator, Augmen
 from app.dataset_loader import DatasetLoader
 from app.config.augmentation_config import AugmentationConfigManager
 from app.schema import AugmentationType
-import app.utils as utils
+import app.utils.utils as utils
 
 
 class AugmentationPipeline:
