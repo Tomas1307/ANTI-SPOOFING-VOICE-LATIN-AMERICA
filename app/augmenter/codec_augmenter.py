@@ -43,28 +43,27 @@ class CodecAugmenter(BaseAugmenter):
         print(f"  - Target sample rates: {config.target_sample_rates}")
         print(f"  - Packet loss range: {config.packet_loss_range[0]*100:.1f}%-{config.packet_loss_range[1]*100:.1f}%")
     
-    def _apply_telephone_codec(self, audio: np.ndarray, sr: int) -> np.ndarray:
+    def _apply_telephone_codec(self, audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
         """
         Simulate telephone codec by downsampling and upsampling.
-        
+
         This creates bandwidth limitation typical of telephone networks.
-        
+
         Args:
             audio: Input audio signal.
             sr: Current sample rate.
-            
+            target_sr: Target sample rate for codec simulation.
+
         Returns:
             Audio with telephone codec simulation.
         """
-        target_sr = random.choice(self.config.target_sample_rates)
-        
         if target_sr == sr:
             return audio
-        
+
         downsampled = utils.downsample_audio(audio, sr, target_sr)
-        
+
         upsampled = utils.upsample_audio(downsampled, target_sr, sr)
-        
+
         return upsampled
     
     def _apply_packet_loss(self, audio: np.ndarray, sr: int) -> np.ndarray:
@@ -161,28 +160,33 @@ class CodecAugmenter(BaseAugmenter):
         
         original_sr = sr
         
-        augmented = self._apply_telephone_codec(audio, sr)
-        
+        codec_sr = random.choice(self.config.target_sample_rates)
+        augmented = self._apply_telephone_codec(audio, sr, codec_sr)
+
+        applied_bandpass = False
         if random.random() < 0.7:
             augmented = self._apply_bandpass_filter(augmented, sr)
-        
+            applied_bandpass = True
+
         packet_loss_rate = 0.0
         if random.random() < 0.5:
             packet_loss_rate = random.uniform(*self.config.packet_loss_range)
             augmented = self._apply_packet_loss(augmented, sr)
-        
+
+        quantization_bits = 0
         if random.random() < 0.3:
-            bits = random.choice([8, 12])
-            augmented = self._apply_quantization_noise(augmented, bits=bits)
-        
+            quantization_bits = random.choice([8, 12])
+            augmented = self._apply_quantization_noise(augmented, bits=quantization_bits)
+
         augmented = self._normalize_audio(augmented)
         augmented = self._clip_audio(augmented)
-        
+
         if return_metadata:
             metadata = {
-                "codec_sr": self.config.target_sample_rates[0] if len(self.config.target_sample_rates) > 0 else sr,
+                "codec_sr": codec_sr,
                 "packet_loss": packet_loss_rate,
-                "bandpass": True
+                "bandpass": applied_bandpass,
+                "quantization_bits": quantization_bits
             }
             return augmented, metadata
         
@@ -191,21 +195,33 @@ class CodecAugmenter(BaseAugmenter):
     def get_augmentation_label(
         self,
         codec_sr: int,
-        packet_loss: float
+        packet_loss: float,
+        bandpass: bool,
+        quantization_bits: int
     ) -> str:
         """
         Generate descriptive label for augmentation applied.
-        
+
         Args:
             codec_sr: Sample rate used for codec simulation.
             packet_loss: Packet loss rate applied.
-            
+            bandpass: Whether bandpass filter was applied.
+            quantization_bits: Quantization bit depth used (0 if not applied).
+
         Returns:
             Formatted augmentation label.
         """
         sr_khz = codec_sr // 1000
         loss_pct = int(packet_loss * 100)
-        
-        return f"CODEC_{sr_khz}K_LOSS{loss_pct}PCT"
+
+        label = f"CODEC_{sr_khz}K_LOSS{loss_pct}PCT"
+
+        if bandpass:
+            label += "_BP"
+
+        if quantization_bits > 0:
+            label += f"_Q{quantization_bits}"
+
+        return label
 
 

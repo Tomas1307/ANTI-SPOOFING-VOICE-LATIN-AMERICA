@@ -254,7 +254,8 @@ class AugmentationPipeline:
         elif aug_type == AugmentationType.CODEC:
             augmented, metadata = self.codec_augmenter.augment(audio, sr, return_metadata=True)
             system_id = self.codec_augmenter.get_augmentation_label(
-                metadata['codec_sr'], metadata['packet_loss']
+                metadata['codec_sr'], metadata['packet_loss'],
+                metadata['bandpass'], metadata['quantization_bits']
             )
         elif aug_type == AugmentationType.RAWBOOST:
             augmented, metadata = self.rawboost_augmenter.augment(audio, sr, return_metadata=True)

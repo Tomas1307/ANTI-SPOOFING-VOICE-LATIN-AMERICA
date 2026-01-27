@@ -18,7 +18,8 @@ def test_codec_augmenter():
     print(f"  Codec SR: {metadata['codec_sr']} Hz")
     print(f"  Packet loss: {metadata['packet_loss']*100:.1f}%")
     print(f"  Bandpass: {metadata['bandpass']}")
-    print(f"  Label: {augmenter.get_augmentation_label(metadata['codec_sr'], metadata['packet_loss'])}")
+    print(f"  Quantization bits: {metadata['quantization_bits']}")
+    print(f"  Label: {augmenter.get_augmentation_label(metadata['codec_sr'], metadata['packet_loss'], metadata['bandpass'], metadata['quantization_bits'])}")
 
 
 if __name__ == "__main__":
