@@ -121,6 +121,7 @@ Note: We ALWAYS include ALL originals, so clean ratio may exceed 25%
 
 import os
 import random
+import logging
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -199,27 +200,45 @@ class AugmentationPipeline:
         
         self.calculator = AugmentationModeCalculator()
         
+        # Setup logger
+        self.logger = logging.getLogger("augmentation_pipeline")
+        self.logger.setLevel(logging.INFO)
+        self.logger.handlers.clear()
+
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        self.logger.addHandler(console_handler)
+
+        # File handler (saved to output directory)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        log_path = self.output_dir / f"{min_factor}.txt"
+        file_handler = logging.FileHandler(str(log_path), encoding="utf-8")
+        file_handler.setLevel(logging.INFO)
+        self.logger.addHandler(file_handler)
+        self.log_path = log_path
+
         # Load augmentation config
         config_manager = AugmentationConfigManager.get_instance()
         self.strategy = config_manager.get_strategy(min_factor)
-        
+
         # Initialize augmenters
-        print("\nInitializing augmenters...")
-        
+        self.logger.info("\nInitializing augmenters...")
+
         self.rir_augmenter = RIRAugmenter(
             config=self.strategy.rir_noise_config,
             rir_root=str(self.rir_root),
             noise_root=str(self.musan_root)
         )
-        
+
         self.codec_augmenter = CodecAugmenter(
             config=self.strategy.codec_config
         )
-        
+
         self.rawboost_augmenter = RawBoostAugmenter(
             config=self.strategy.rawboost_config
         )
-        
+
         # Statistics
         self.stats = {
             'train': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0},
@@ -318,8 +337,8 @@ class AugmentationPipeline:
         self, split: str, bonafide_factor: int, spoof_factor: int
     ):
         """Process a complete split."""
-        print(f"\nProcessing {split} split...")
-        
+        self.logger.info(f"\nProcessing {split} split...")
+
         if split == 'train':
             bonafide_files = self.loader.load_bonafide_train_files()
             spoof_files = self.loader.load_spoof_train_files()
@@ -329,9 +348,9 @@ class AugmentationPipeline:
         elif split == 'eval':
             bonafide_files = self.loader.load_bonafide_test_files()
             spoof_files = self.loader.load_spoof_test_files()
-        
-        print(f"  Bonafide: {len(bonafide_files)} files x {bonafide_factor}")
-        print(f"  Spoof:    {len(spoof_files)} files x {spoof_factor}")
+
+        self.logger.info(f"  Bonafide: {len(bonafide_files)} files x {bonafide_factor}")
+        self.logger.info(f"  Spoof:    {len(spoof_files)} files x {spoof_factor}")
         
         for file_info in tqdm(bonafide_files, desc=f"  {split} bonafide"):
             self._process_file(file_info, split, bonafide_factor, 'bonafide')
@@ -341,89 +360,90 @@ class AugmentationPipeline:
     
     def _write_protocol_files(self):
         """Write protocol files for all splits."""
-        print("\nWriting protocol files...")
-        
+        self.logger.info("\nWriting protocol files...")
+
         protocol_map = {
             'train': 'ASVspoof2019.LA.cm.train.trn.txt',
             'dev': 'ASVspoof2019.LA.cm.dev.trl.txt',
             'eval': 'ASVspoof2019.LA.cm.eval.trl.txt'
         }
-        
+
         for split, filename in protocol_map.items():
             if self.protocol_entries[split]:
                 protocol_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}"
                 protocol_path = protocol_dir / filename
-                
+
                 with open(protocol_path, 'w') as f:
                     for entry in self.protocol_entries[split]:
                         f.write(entry + '\n')
-                
-                print(f"  Written: {filename} ({len(self.protocol_entries[split])} entries)")
+
+                self.logger.info(f"  Written: {filename} ({len(self.protocol_entries[split])} entries)")
     
     def _print_final_report(self, factors: AugmentationFactors):
-        """Print comprehensive final report."""
-        print("\n" + "="*70)
-        print("AUGMENTATION COMPLETE")
-        print("="*70)
-        
-        print(f"\nConfiguration:")
-        print(f"  Mode:         BALANCED")
-        print(f"  Target ratio: {self.target_ratio:.0%} bonafide")
-        print(f"  Min factor:   {self.min_factor}")
-        print(f"  Seed:         {self.seed}")
-        print(f"  Output:       {self.output_dir}")
-        
-        print(f"\nCalculated Factors (train only):")
-        print(f"  Bonafide: {factors.bonafide_factor}x")
-        print(f"  Spoof:    {factors.spoof_factor}x")
-        print(f"  Total:    {factors.total_factor:.2f}x")
-        
-        print(f"\nBalance Achievement:")
-        print(f"  Target:   {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
-        print(f"  Achieved: {factors.final_ratio[0]:.1f}% / {factors.final_ratio[1]:.1f}%")
+        """Print and log comprehensive final report."""
+        self.logger.info("\n" + "="*70)
+        self.logger.info("AUGMENTATION COMPLETE")
+        self.logger.info("="*70)
+
+        self.logger.info(f"\nConfiguration:")
+        self.logger.info(f"  Mode:         BALANCED")
+        self.logger.info(f"  Target ratio: {self.target_ratio:.0%} bonafide")
+        self.logger.info(f"  Min factor:   {self.min_factor}")
+        self.logger.info(f"  Seed:         {self.seed}")
+        self.logger.info(f"  Output:       {self.output_dir}")
+
+        self.logger.info(f"\nCalculated Factors (train only):")
+        self.logger.info(f"  Bonafide: {factors.bonafide_factor}x")
+        self.logger.info(f"  Spoof:    {factors.spoof_factor}x")
+        self.logger.info(f"  Total:    {factors.total_factor:.2f}x")
+
+        self.logger.info(f"\nBalance Achievement:")
+        self.logger.info(f"  Target:   {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
+        self.logger.info(f"  Achieved: {factors.final_ratio[0]:.1f}% / {factors.final_ratio[1]:.1f}%")
         deviation = abs(factors.final_ratio[0] - factors.target_ratio[0])
-        print(f"  Deviation: ±{deviation:.1f}%")
-        
-        print(f"\nFinal Dataset Statistics:")
+        self.logger.info(f"  Deviation: ±{deviation:.1f}%")
+
+        self.logger.info(f"\nFinal Dataset Statistics:")
         for split in ['train', 'dev', 'eval']:
             if self.stats[split]['total'] > 0:
                 s = self.stats[split]
                 bonafide_pct = (s['bonafide'] / s['total']) * 100
                 spoof_pct = (s['spoof'] / s['total']) * 100
                 clean_pct = (s['clean'] / s['total']) * 100
-                
-                print(f"\n  {split.upper()}:")
-                print(f"    Total:    {s['total']:,} files")
-                print(f"    Bonafide: {s['bonafide']:,} ({bonafide_pct:.1f}%)")
-                print(f"    Spoof:    {s['spoof']:,} ({spoof_pct:.1f}%)")
-                print(f"    Clean:    {s['clean']:,} ({clean_pct:.1f}%)")
-                print(f"    Augmented: {s['augmented']:,} ({100-clean_pct:.1f}%)")
-        
-        print("="*70 + "\n")
+
+                self.logger.info(f"\n  {split.upper()}:")
+                self.logger.info(f"    Total:    {s['total']:,} files")
+                self.logger.info(f"    Bonafide: {s['bonafide']:,} ({bonafide_pct:.1f}%)")
+                self.logger.info(f"    Spoof:    {s['spoof']:,} ({spoof_pct:.1f}%)")
+                self.logger.info(f"    Clean:    {s['clean']:,} ({clean_pct:.1f}%)")
+                self.logger.info(f"    Augmented: {s['augmented']:,} ({100-clean_pct:.1f}%)")
+
+        self.logger.info("="*70 + "\n")
+        self.logger.info(f"Log saved to: {self.log_path}")
     
     def run(self):
         """Execute the complete augmentation pipeline."""
-        print("\n" + "="*70)
-        print("ANTI-SPOOFING AUGMENTATION PIPELINE")
-        print("="*70)
-        
-        print(f"\nConfiguration:")
-        print(f"  Target ratio: {self.target_ratio:.0%} bonafide")
-        print(f"  Min factor:   {self.min_factor}")
-        print(f"  Seed:         {self.seed}")
-        
+        self.logger.info("\n" + "="*70)
+        self.logger.info("ANTI-SPOOFING AUGMENTATION PIPELINE")
+        self.logger.info("="*70)
+
+        self.logger.info(f"\nConfiguration:")
+        self.logger.info(f"  Target ratio: {self.target_ratio:.0%} bonafide")
+        self.logger.info(f"  Min factor:   {self.min_factor}")
+        self.logger.info(f"  Seed:         {self.seed}")
+
         # Load dataset stats
-        print("\nLoading dataset...")
+        self.logger.info("\nLoading dataset...")
         stats = self.loader.get_dataset_statistics()
-        
+
         n_bonafide = stats['train']['bonafide']
         n_spoof = stats['train']['spoof']
-        
-        print(f"  Train bonafide: {n_bonafide:,}")
-        print(f"  Train spoof:    {n_spoof:,}")
-        
+
+        self.logger.info(f"  Train bonafide: {n_bonafide:,}")
+        self.logger.info(f"  Train spoof:    {n_spoof:,}")
+
         # Calculate factors
-        print("\nCalculating balanced augmentation factors...")
+        self.logger.info("\nCalculating balanced augmentation factors...")
         factors = self.calculator.calculate_balanced_mode(
             n_bonafide=n_bonafide,
             n_spoof=n_spoof,
@@ -431,7 +451,8 @@ class AugmentationPipeline:
             min_total_factor=self.factor_num
         )
         
-        self.calculator.print_calculation_summary(n_bonafide, n_spoof, factors, "balanced")
+        summary = self.calculator.get_calculation_summary(n_bonafide, n_spoof, factors, "balanced")
+        self.logger.info(summary)
         
         # Process splits
         self._process_split('train', factors.bonafide_factor, factors.spoof_factor)

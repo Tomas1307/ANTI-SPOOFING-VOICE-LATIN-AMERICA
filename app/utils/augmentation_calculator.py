@@ -163,62 +163,88 @@ class AugmentationModeCalculator:
         )
     
     @staticmethod
+    def get_calculation_summary(
+        n_bonafide: int,
+        n_spoof: int,
+        factors: 'AugmentationFactors',
+        mode: str = "simple"
+    ) -> str:
+        """
+        Build detailed summary of augmentation calculation.
+
+        Args:
+            n_bonafide: Original number of bonafide files
+            n_spoof: Original number of spoof files
+            factors: Calculated AugmentationFactors
+            mode: Mode used ("simple" or "balanced")
+
+        Returns:
+            Formatted summary string.
+        """
+        lines = []
+        lines.append("\n" + "="*70)
+        lines.append(f"AUGMENTATION CALCULATION SUMMARY - {mode.upper()} MODE")
+        lines.append("="*70)
+
+        n_total = n_bonafide + n_spoof
+        orig_bonafide_pct = (n_bonafide / n_total) * 100
+        orig_spoof_pct = (n_spoof / n_total) * 100
+
+        lines.append(f"\nORIGINAL DATASET:")
+        lines.append(f"  Bonafide: {n_bonafide:,} files ({orig_bonafide_pct:.1f}%)")
+        lines.append(f"  Spoof:    {n_spoof:,} files ({orig_spoof_pct:.1f}%)")
+        lines.append(f"  Total:    {n_total:,} files")
+
+        if mode == "balanced":
+            lines.append(f"\nTARGET CONFIGURATION:")
+            lines.append(f"  Target ratio: {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
+
+        lines.append(f"\nCALCULATED FACTORS:")
+        lines.append(f"  Bonafide factor: {factors.bonafide_factor}x")
+        lines.append(f"  Spoof factor:    {factors.spoof_factor}x")
+        lines.append(f"  Total factor:    {factors.total_factor:.2f}x")
+
+        total_bonafide = n_bonafide * factors.bonafide_factor
+        total_spoof = n_spoof * factors.spoof_factor
+        total_files = total_bonafide + total_spoof
+
+        lines.append(f"\nAUGMENTED DATASET:")
+        lines.append(f"  Bonafide: {total_bonafide:,} files ({factors.final_ratio[0]:.1f}%) [+{total_bonafide - n_bonafide:,}]")
+        lines.append(f"  Spoof:    {total_spoof:,} files ({factors.final_ratio[1]:.1f}%) [+{total_spoof - n_spoof:,}]")
+        lines.append(f"  Total:    {total_files:,} files [+{total_files - n_total:,}]")
+
+        if mode == "balanced":
+            deviation_bonafide = abs(factors.final_ratio[0] - factors.target_ratio[0])
+            deviation_spoof = abs(factors.final_ratio[1] - factors.target_ratio[1])
+
+            lines.append(f"\nBALANCE ACHIEVED:")
+            lines.append(f"  Target:    {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
+            lines.append(f"  Achieved:  {factors.final_ratio[0]:.1f}% / {factors.final_ratio[1]:.1f}%")
+            lines.append(f"  Deviation: ±{max(deviation_bonafide, deviation_spoof):.1f}%")
+
+        lines.append("="*70 + "\n")
+
+        return "\n".join(lines)
+
+    @staticmethod
     def print_calculation_summary(
         n_bonafide: int,
         n_spoof: int,
-        factors: AugmentationFactors,
+        factors: 'AugmentationFactors',
         mode: str = "simple"
     ):
         """
         Print detailed summary of augmentation calculation.
-        
+
         Args:
             n_bonafide: Original number of bonafide files
             n_spoof: Original number of spoof files
             factors: Calculated AugmentationFactors
             mode: Mode used ("simple" or "balanced")
         """
-        print("\n" + "="*70)
-        print(f"AUGMENTATION CALCULATION SUMMARY - {mode.upper()} MODE")
-        print("="*70)
-        
-        n_total = n_bonafide + n_spoof
-        orig_bonafide_pct = (n_bonafide / n_total) * 100
-        orig_spoof_pct = (n_spoof / n_total) * 100
-        
-        print(f"\nORIGINAL DATASET:")
-        print(f"  Bonafide: {n_bonafide:,} files ({orig_bonafide_pct:.1f}%)")
-        print(f"  Spoof:    {n_spoof:,} files ({orig_spoof_pct:.1f}%)")
-        print(f"  Total:    {n_total:,} files")
-        
-        if mode == "balanced":
-            print(f"\nTARGET CONFIGURATION:")
-            print(f"  Target ratio: {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
-        
-        print(f"\nCALCULATED FACTORS:")
-        print(f"  Bonafide factor: {factors.bonafide_factor}x")
-        print(f"  Spoof factor:    {factors.spoof_factor}x")
-        print(f"  Total factor:    {factors.total_factor:.2f}x")
-        
-        total_bonafide = n_bonafide * factors.bonafide_factor
-        total_spoof = n_spoof * factors.spoof_factor
-        total_files = total_bonafide + total_spoof
-        
-        print(f"\nAUGMENTED DATASET:")
-        print(f"  Bonafide: {total_bonafide:,} files ({factors.final_ratio[0]:.1f}%) [+{total_bonafide - n_bonafide:,}]")
-        print(f"  Spoof:    {total_spoof:,} files ({factors.final_ratio[1]:.1f}%) [+{total_spoof - n_spoof:,}]")
-        print(f"  Total:    {total_files:,} files [+{total_files - n_total:,}]")
-        
-        if mode == "balanced":
-            deviation_bonafide = abs(factors.final_ratio[0] - factors.target_ratio[0])
-            deviation_spoof = abs(factors.final_ratio[1] - factors.target_ratio[1])
-            
-            print(f"\nBALANCE ACHIEVED:")
-            print(f"  Target:    {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
-            print(f"  Achieved:  {factors.final_ratio[0]:.1f}% / {factors.final_ratio[1]:.1f}%")
-            print(f"  Deviation: ±{max(deviation_bonafide, deviation_spoof):.1f}%")
-        
-        print("="*70 + "\n")
+        print(AugmentationModeCalculator.get_calculation_summary(
+            n_bonafide, n_spoof, factors, mode
+        ))
 
 
 def test_calculator():

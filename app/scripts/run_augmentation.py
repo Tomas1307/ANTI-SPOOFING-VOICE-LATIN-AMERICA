@@ -18,7 +18,6 @@ Usage:
 
 import sys
 import argparse
-from pathlib import Path
 from app.scripts.augmentation_pipeline import AugmentationPipeline
 
 
@@ -113,25 +112,8 @@ Strategy:
         print(f"ERROR: target_ratio must be between 0.0 and 1.0, got {args.target_ratio}")
         sys.exit(1)
     
-    # Print configuration
-    print("\n" + "="*70)
-    print("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
-    print("="*70)
-    print(f"\nConfiguration:")
-    
-    bonafide_pct = int(args.target_ratio * 100)
-    spoof_pct = 100 - bonafide_pct
-    print(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
-    print(f"  Min factor:   {args.min_factor}")
-    print(f"  Voices:       {args.voices}")
-    print(f"  MUSAN:        {args.musan}")
-    print(f"  RIR:          {args.rir}")
-    print(f"  Output:       {args.output}")
-    print(f"  Seed:         {args.seed}")
-    print()
-    
     try:
-        # Create pipeline
+        # Create pipeline (logger is set up inside)
         pipeline = AugmentationPipeline(
             voices_root=args.voices,
             musan_root=args.musan,
@@ -141,24 +123,34 @@ Strategy:
             min_factor=args.min_factor,
             seed=args.seed
         )
-        
+
+        # Log run configuration through the pipeline logger
+        logger = pipeline.logger
+        bonafide_pct = int(args.target_ratio * 100)
+        spoof_pct = 100 - bonafide_pct
+
+        logger.info("\n" + "="*70)
+        logger.info("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
+        logger.info("="*70)
+        logger.info(f"\nRun Configuration:")
+        logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
+        logger.info(f"  Min factor:   {args.min_factor}")
+        logger.info(f"  Voices:       {args.voices}")
+        logger.info(f"  MUSAN:        {args.musan}")
+        logger.info(f"  RIR:          {args.rir}")
+        logger.info(f"  Output:       {args.output}")
+        logger.info(f"  Seed:         {args.seed}")
+        logger.info("")
+
         # Run pipeline
         pipeline.run()
-        
-        print("\n" + "="*70)
-        print("SUCCESS: Augmentation completed!")
-        print("="*70)
-        print(f"\nOutput directory: {pipeline.output_dir}")
-        print("\nNext steps:")
-        print("  1. Verify output structure:")
-        print(f"     ls {pipeline.output_dir}/LA/")
-        print("  2. Check protocol files:")
-        print(f"     head {pipeline.output_dir}/LA/ASVspoof2019_LA_train/*.txt")
-        print("  3. Count generated files:")
-        print(f"     find {pipeline.output_dir} -name '*.flac' | wc -l")
-        print("  4. Verify clean data ratio in train:")
-        print(f"     grep ' - bonafide' {pipeline.output_dir}/LA/ASVspoof2019_LA_train/*.txt | wc -l")
-        print()
+
+        logger.info("\n" + "="*70)
+        logger.info("SUCCESS: Augmentation completed!")
+        logger.info("="*70)
+        logger.info(f"\nOutput directory: {pipeline.output_dir}")
+        logger.info(f"Log saved to: {pipeline.log_path}")
+        logger.info("")
         
     except KeyboardInterrupt:
         print("\n\nAugmentation interrupted by user.")
