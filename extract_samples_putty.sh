@@ -9,8 +9,8 @@
 #
 
 # Configuration
-N_SPEAKERS=${1:-10}  # Default 10 speakers, or use first argument
-FACTOR="10x"
+N_SPEAKERS=${1:-5}  # Default 10 speakers, or use first argument
+FACTOR="3x"
 SOURCE_DIR="data/augmented/augmented_${FACTOR}_balanced_5050/LA/ASVspoof2019_LA_train"
 OUTPUT_DIR="datos_martin"
 PROTOCOL_FILE="${SOURCE_DIR}/ASVspoof2019.LA.cm.train.trn.txt"
