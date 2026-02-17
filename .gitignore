@@ -8,4 +8,6 @@ __pycache__/
 runs/
 .claude/
 speech_tts_finetuned/
-.zip
+*.zip
+*.gz
+claude.md
