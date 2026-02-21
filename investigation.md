@@ -16,7 +16,7 @@ This document presents a comprehensive technical analysis of six modern TTS syst
 2. **Implementation Feasibility** (timeline, complexity, stability)
 3. **Research Usefulness** (attack sophistication, codec diversity)
 
-**Key Finding:** Fish Speech is the only system that meets all requirements for production deployment in this research context.
+**Key Finding:** Fish Speech ranks first across all criteria and is the recommended primary system. Every other system presents specific trade-offs, documented below — no system is discarded solely for implementation complexity; each is assessed on its actual restrictions and advantages for this research context.
 
 ---
 
@@ -220,17 +220,23 @@ pip install fish-speech
 - No specific benchmarks for Latin American Spanish variants (Mexican, Colombian, Argentine, etc.)
 - Recommendation: Validate quality with 10-20 test samples before full integration
 
-### Verdict: STRONGLY RECOMMENDED
+### Assessment: PRIMARY RECOMMENDATION
 
-**Justification:**
-- Best Spanish support among all evaluated systems
+**Advantages:**
+- Best validated Spanish support among all evaluated systems (20,000 hours)
 - Most sophisticated attack modeling (RLHF, 4B parameters)
 - Hardware requirements fully satisfied by A40 GPUs
 - Problems are either irrelevant (latency) or beneficial (cloning variability)
 - Academic license explicitly permits this research
 
+**Disadvantages / Caveats:**
+- Largest VRAM footprint (12 GB) — not an issue on A40 but worth noting
+- Voice cloning inconsistency on unusual accents — test before scaling
+- No specific Latin American Spanish sub-dialect benchmarks published
+
 **Risk Level:** LOW
-**Implementation Timeline:** 2-3 weeks
+**Actual Work Hours Estimate:** ~50–80 hours total
+**Realistic Calendar Timeline (6 hrs/week):** ~10–15 weeks with 1.5-week buffer per phase
 **Expected Quality:** HIGH
 
 ---
@@ -484,28 +490,29 @@ pip install qwen-asr      # Requires transformers==4.58.x
 
 **Verdict:** Spanish quality is MEDIOCRE - suitable for diversity but NOT as primary TTS
 
-### Verdict: CONDITIONAL - Use for Diversity Only
+### Assessment: SECONDARY — Recommended for Codec Diversity
 
-**Justification:**
-- Apache 2.0 license is excellent
-- Fast inference (0.8s per 10s audio)
-- Easy installation
+**Advantages:**
+- Apache 2.0 license — unrestricted
+- Fastest inference of all systems (0.8 s per 10 s audio)
+- Easy installation (pip install qwen-tts)
+- Different codec architecture from Fish Speech → improves detector generalisation
 
-**BUT:**
-- Spanish is explicitly second-tier quality
-- Cannot fine-tune for Latin American accents (broken)
-- Audio artifacts require extensive validation
+**Disadvantages / Hard Restrictions:**
+- Spanish is explicitly second-tier quality (paper: "competitive", not top-performing group)
+- Fine-tuning is broken — cannot adapt to Latin American accents; must use base quality as-is
+- Audio artifacts (truncation, silent failures) require a validation layer before use
+- Hard pin: transformers==4.57.3 → needs isolated conda environment
 
 **Recommended Use Case:**
-Deploy alongside Fish Speech as a **secondary TTS system** for architectural diversity:
-- Fish Speech: Primary (RLHF-trained, high Spanish quality)
-- Qwen3-TTS: Secondary (different codec approach, faster inference)
-
-This gives your detector exposure to different synthesis methods.
+Deploy alongside Fish Speech for architectural diversity:
+- Fish Speech: Primary (80% of synthetic samples, high Spanish quality)
+- Qwen3-TTS: Secondary (20% of synthetic samples, different codec approach)
 
 **Risk Level:** MEDIUM
-**Implementation Timeline:** 2-3 weeks (including validation pipeline)
-**Expected Quality:** ADEQUATE but not exceptional
+**Actual Work Hours Estimate:** ~30–50 hours (including validation pipeline)
+**Realistic Calendar Timeline (6 hrs/week):** ~7–10 weeks with 1.5-week buffer per phase
+**Expected Quality:** ADEQUATE for diversity; not suitable as sole primary TTS
 
 ---
 
@@ -771,35 +778,33 @@ This is a **blind bet**. You'd spend 1-2 days deploying CosyVoice, then discover
 
 **Verdict:** Spanish quality is COMPLETELY UNKNOWN - unacceptable for thesis research.
 
-### Verdict: DO NOT USE
+### Assessment: HIGH COMPLEXITY — Consider Only After Fish Speech is Stable
 
-**Justification:**
-Despite impressive credentials (1M hours, Apache 2.0, Alibaba backing):
+**Advantages:**
+- Largest training corpus of all systems (1 million hours)
+- Apache 2.0 license — unrestricted
+- Strong research backing (Alibaba Tongyi Lab, 19,600 GitHub stars)
+- Highest published speaker similarity score (77.4%, approaching human-level)
+- TensorRT-LLM acceleration available (4× speedup potential on A40)
+- vLLM support for production-grade serving
 
-1. **vLLM dependency hell** risks 1+ weeks of debugging
-2. **Quality regression reports** suggest v3.0 is immature
-3. **No Spanish benchmarks** means blind bet on quality
-4. **1-2 day deployment time** vs 4-8 hours for Fish Speech
+**Disadvantages / Hard Restrictions:**
+- vLLM version lock: only compatible with 0.9.0 OR 0.11.x+ (NOT 0.10.x) — dependency fragility
+- No Spanish benchmarks published — quality on Latin American Spanish is unvalidated
+- Deployment takes 1–2 days (experienced engineer); unexpected vLLM issues add unpredictable time
+- Quality regression reports from community: CosyVoice 2 may sound better than v3
+- Python 3.10 required; Matcha-TTS submodule must be initialised separately
+- Chinese-English code-switching produces garbled audio in some configurations
 
-**Counter-Argument (Why You Might Still Consider It):**
+**Path to Use:**
+- Treat as an optional Phase 2 addition after Fish Speech is fully integrated
+- If the vLLM environment installs cleanly (≤4 hours), integrate for a third synthesis method
+- If vLLM issues arise, defer indefinitely — the Spanish quality is unvalidated anyway and the risk to thesis timeline is not justified without prior validation
 
-If you had:
-- 4-6 weeks of buffer time
-- vLLM expertise on your team
-- No Spanish-specific requirements (English research)
-
-Then CosyVoice might be worth it for the 1M hours training advantage.
-
-**But you have:**
-- Limited thesis timeline
-- Spanish quality as MANDATORY requirement
-- Better alternatives (Fish Speech)
-
-**Risk Level:** HIGH
-**Implementation Timeline:** 2-4 weeks (unpredictable)
-**Expected Quality:** UNKNOWN (Spanish not validated)
-
-**Final Verdict:** REJECT - Complexity and uncertainty not justified
+**Risk Level:** HIGH (complexity, not a disqualifier — but demands a stable buffer in the calendar)
+**Actual Work Hours Estimate:** ~40–80 hours (high uncertainty due to vLLM)
+**Realistic Calendar Timeline (6 hrs/week):** ~10–18 weeks with 2-week buffer per phase (high variance)
+**Expected Quality:** UNKNOWN for Spanish — must validate before committing
 
 ---
 
@@ -1136,33 +1141,32 @@ The codebase was released too early:
 
 **Verdict:** Spanish support is UNVALIDATED - risky assumption.
 
-### Verdict: DO NOT USE
+### Assessment: USABLE — With Explicit Watermark Documentation
 
-**Justification:**
+**Advantages:**
+- Easiest installation of all systems (pip install chatterbox-tts, 2–4 hours setup)
+- MIT license — fully open, no restrictions
+- Smallest VRAM footprint (8 GB) — could run 5+ instances simultaneously on a single A40
+- Outperformed ElevenLabs Turbo in blind tests (63.75% preference)
+- Paralinguistic features ([laugh], [sigh], [hesitation]) add conversational realism
+- Fastest path to first synthetic sample for rapid prototyping
 
-Despite easy installation and MIT license:
+**Disadvantages / Hard Restrictions:**
+- **Mandatory Perth watermarking on ALL outputs — cannot be disabled.** This is a hard restriction that must be disclosed explicitly in the thesis methodology section. Risk: detector could learn to identify the watermark pattern rather than TTS synthesis artifacts (confounding variable). Mitigations: (a) use Chatterbox samples only as a separate experimental group; (b) document watermark presence and test whether removing Chatterbox from training changes results.
+- Marketing claims latency <200 ms; official docs and users report 300–600 ms on RTX 4090 — irrelevant for batch generation but indicates poor documentation culture
+- 224 open GitHub issues relative to 34 commits — high bug density; runtime errors possible
+- CPU inference crashes despite being documented as supported (trivial fix, but indicates limited testing)
+- No validated Latin American Spanish quality benchmarks
 
-1. **Latency fraud** indicates dishonest marketing culture
-2. **Mandatory watermarking** could contaminate research (confounding variable)
-3. **224 open issues** suggests quality control problems
-4. **No Latin American Spanish validation**
-5. **Better alternatives exist** (Fish Speech)
+**Path to Use:**
+- Useful for rapid prototyping and as a diversity contributor alongside Fish Speech
+- **Document watermark usage explicitly in thesis** — this is methodologically sound as long as disclosed
+- Keep as an isolated experimental group to avoid contaminating primary training data
 
-**Only scenario where Chatterbox makes sense:**
-
-If you needed:
-- Rapid prototyping (2-4 hour setup is fastest)
-- Multiple TTS systems for comparison
-- Lightweight model for resource-constrained environments
-
-**But for primary thesis research TTS:**
-Too many red flags.
-
-**Risk Level:** MEDIUM-HIGH
-**Implementation Timeline:** 1.5-2 weeks
-**Expected Quality:** UNCERTAIN
-
-**Final Verdict:** REJECT - Watermarking and quality concerns outweigh easy setup
+**Risk Level:** MEDIUM (watermark is manageable with disclosure, not a disqualifier)
+**Actual Work Hours Estimate:** ~20–35 hours (including validation and watermark analysis)
+**Realistic Calendar Timeline (6 hrs/week):** ~5–8 weeks with 1.5-week buffer per phase
+**Expected Quality:** UNCERTAIN for Spanish — rapid prototyping value is the main asset
 
 ---
 
@@ -1512,33 +1516,35 @@ repetition_window = None  # Entire context
 
 **Verdict:** Spanish support appears adequate ON PAPER, but performance disaster makes it irrelevant.
 
-### Verdict: REJECT OUTRIGHT
+### Assessment: LOW PRIORITY — Performance Severely Limits Scale
 
-**Justification:**
+**Advantages:**
+- Spanish listed in "high training data" tier (20,000–60,000 hours depending on variant)
+- llama.cpp compatibility enables CPU inference (not fast, but hardware-flexible)
+- Speaker profiles stored as JSON — easy to version-control and share
+- Apache 2.0 license (0.6B variant) — unrestricted
+- Hosted API available for small-scale experiments without local setup ($0.0006/second)
+- Unique architecture (LLM-based TTS) adds maximum codec diversity if used
 
-The performance disaster is DISQUALIFYING:
-- 3 minutes for 14 seconds on RTX 4090
-- 1.5-2.5 DAYS for 1000 samples
-- 76x slower than Fish Speech
+**Disadvantages / Hard Restrictions:**
+- **Performance: 3 minutes to generate 14 seconds on RTX 4090 (community-reported). Estimated 1.5–2.5 days to generate 1,000 samples locally on A40 — 76× slower than Fish Speech.** This is a severe practical constraint, not a technical impossibility.
+- Self-hosted batch generation at thesis scale is extremely time-consuming; each generation run must be planned as an overnight or multi-day job
+- Hosted API: $360 per 1,000 samples (10 s each) and a 100 requests/day limit → 10 days + cost to generate 1,000 samples
+- Sampling configuration fragility: repetition penalty MUST apply to exactly the last 64 tokens — misconfiguration produces garbled audio silently
+- Audio truncation mid-word (GitHub Issue #45); attention mask warnings (Issue #3)
+- DAC codec sensitive to reference audio quality — clipped or loud recordings degrade output
+- Context window limit of 8,192 tokens → maximum effective generation of ~32 seconds per call
 
-**Even if Spanish quality were perfect:**
-The time cost makes it impractical for thesis research.
+**Path to Use:**
+- Only viable if sample count requirements are small (100–200 samples, not 1,000+)
+- Or as a supplementary hosted-API experiment with a small budget (~$36 per 100 samples)
+- Do NOT plan as a primary batch generator — the time cost prohibits it at thesis scale
+- If used: schedule generation as a background overnight process; build a validation wrapper
 
-**Counter-Argument: Hosted API?**
-
-Hosted API costs:
-- $360 per 1000 samples (10s each)
-- 100 requests/day limit = 10 days to generate 1000 samples
-- "May occasionally encounter unexpected outputs" (no reliability guarantee)
-
-For comparison:
-- Fish Speech: Self-host, 33 minutes for 1000 samples, FREE
-
-**Risk Level:** EXTREME
-**Implementation Timeline:** 1-2 weeks (if using hosted API) / 4-7 days + 1.5 days generation (if self-hosting)
-**Expected Quality:** ADEQUATE (Spanish) but IRRELEVANT (performance disaster)
-
-**Final Verdict:** REJECT - Performance is catastrophically bad, making all other considerations irrelevant.
+**Risk Level:** HIGH for large-scale use; LOW for small supplementary experiments
+**Actual Work Hours Estimate:** ~15–30 hours for small-scale integration (excluding generation wait time)
+**Realistic Calendar Timeline (6 hrs/week):** ~4–7 weeks for integration; generation itself adds 1–2 days of server time per batch
+**Expected Quality:** ADEQUATE on paper — practical constraints are the main limitation
 
 ---
 
@@ -1682,29 +1688,41 @@ Even if Spanish support existed:
 
 **Verdict:** INCOMPATIBLE WITH PROJECT
 
-### Verdict: REJECT OUTRIGHT - FUNDAMENTAL INCOMPATIBILITY
+### Assessment: HARD RESTRICTION — English Only (Usable for English Baseline Experiments)
 
-**Justification:**
+**Hard Restriction:** Nari Dia generates **English language audio only**. It cannot produce Spanish or Latin American Spanish speech in its current state. This is not a complexity problem — it is a fundamental capability gap that cannot be worked around. The Nari Labs team has stated that their next language targets are Asian languages, not Spanish.
 
-This is the simplest decision in the entire evaluation:
+**What This Means for the Research:**
+- Nari Dia **cannot** contribute to the core Latin American Spanish anti-spoofing dataset
+- It **can** contribute to English-language synthetic speech experiments if the research scope includes cross-lingual comparisons
 
-**Required:** Spanish language support
-**Provided:** English only
-**Conclusion:** REJECT
+**Advantages:**
+- Ultra-realistic dialogue synthesis — ElevenLabs-level quality for English
+- Apache 2.0 license — unrestricted
+- Fast zero-shot cloning (5 seconds reference audio)
+- Active development (released April 2025, actively maintained)
+- Paralinguistic features: [laugh], [sigh], [cough], [hesitation]
+- Moderate hardware requirements (~10 GB VRAM, well within A40 capacity)
+- Multiple deployment options (Replicate, Hugging Face ZeroGPU, self-host)
 
-**No further analysis needed.**
+**Disadvantages / Hard Restrictions:**
+- **Hard restriction: English only.** No Spanish support, no timeline for Spanish.
+- Dialogue-focused design (multi-speaker [S1]/[S2] format) is not ideal for single-speaker batch augmentation
+- Integration requires adapting the [S1]/[S2] tag convention to a single-speaker pipeline
 
-**Why Include in Report:**
+**Possible Roles in This Research:**
+1. **English baseline experiments**: Generate English synthetic samples to test whether the anti-spoofing detector generalises across languages
+2. **Cross-lingual ablation**: Compare detector accuracy on English-synthetic vs Spanish-synthetic attacks to assess language sensitivity
+3. **Future expansion**: If the thesis scope expands to multilingual detection, Nari Dia would be the highest-quality English TTS available
 
-1. **Due Diligence**: Demonstrates thorough evaluation
-2. **Documentation**: Explains why this system was excluded
-3. **Future Reference**: If Nari Labs adds Spanish support later, reassessment would be needed
+**Path to Use:**
+- Integrate as a supplementary English-language experiment, clearly labelled as non-Spanish
+- Disclose in thesis: "Nari Dia was used for English-language synthetic samples only; Spanish samples were generated via Fish Speech and Qwen3-TTS"
 
-**Risk Level:** N/A (not applicable)
-**Implementation Timeline:** N/A (not applicable)
-**Expected Quality:** N/A (not applicable)
-
-**Final Verdict:** **REJECT - No Spanish support makes evaluation irrelevant**
+**Risk Level:** LOW for English experiments (no complexity barriers); N/A for Spanish (impossible)
+**Actual Work Hours Estimate:** ~15–25 hours for English-baseline integration
+**Realistic Calendar Timeline (6 hrs/week):** ~4–6 weeks with 1.5-week buffer
+**Expected Quality:** HIGH for English; N/A for Spanish
 
 ---
 
@@ -1712,14 +1730,14 @@ This is the simplest decision in the entire evaluation:
 
 ### Summary Matrix
 
-| System | Spanish Quality | Implementation Complexity | Time to Deploy | VRAM (A40: 46GB) | License | Performance | Fatal Flaws | Recommendation |
-|--------|----------------|--------------------------|----------------|------------------|---------|-------------|-------------|----------------|
-| **Fish Speech** | ⭐⭐⭐⭐ Good (20k hrs) | Moderate | 4-8 hours | 12GB ✅ | CC-BY-NC-SA-4.0 (Academic ✅) | Good (2s per 10s audio) | None | ✅ **IMPLEMENT** |
-| **Qwen3-TTS** | ⭐⭐⭐ Mediocre | Moderate-High | 2-6 hours | 4-8GB ✅ | Apache 2.0 ✅ | Excellent (0.8s per 10s) | Fine-tuning broken, Spanish second-tier | ⚠️ Conditional (diversity only) |
-| **CosyVoice 3.0** | ⭐⭐ Unknown | High | 1-2 days | 8-16GB ✅ | Apache 2.0 ✅ | Good (1.5s per 10s) | vLLM hell, no Spanish benchmarks | ❌ Skip |
-| **Chatterbox** | ⭐⭐⭐ Unvalidated | Low | 2-4 hours | 8GB ✅ | MIT ✅ | Fair (4-6s per 10s) | Latency fraud, watermarking | ❌ Skip |
-| **OuteTTS** | ⭐⭐⭐ Adequate | High | 4-7 days | 6-12GB ✅ | Apache 2.0 (0.6B) | **TERRIBLE** (2-4 min per 10s) | Performance disaster | 🚫 Reject |
-| **Nari Dia 1.6B** | 🚫 **NONE** | Medium | N/A | 10GB ✅ | Apache 2.0 ✅ | N/A | **No Spanish support** | 🚫 Reject |
+| System | Spanish Quality | Complexity | Work Hours Est. | Calendar (6 hrs/wk) | VRAM | License | Performance (per 10s) | Key Constraint | Status |
+|--------|----------------|------------|-----------------|---------------------|------|---------|----------------------|----------------|--------|
+| **Fish Speech** | ⭐⭐⭐⭐ Good (20k hrs) | Moderate | 50–80 h | 10–15 wks | 12GB ✅ | CC-BY-NC-SA-4.0 ✅ | ~2 s | No LatAm dialect benchmarks | ✅ **Primary** |
+| **Qwen3-TTS** | ⭐⭐⭐ Mediocre | Moderate | 30–50 h | 7–10 wks | 4–8GB ✅ | Apache 2.0 ✅ | ~0.8 s | Fine-tuning broken | ⚡ **Secondary** |
+| **CosyVoice 3.0** | ⭐⭐ Unknown | High | 40–80 h | 10–18 wks | 8–16GB ✅ | Apache 2.0 ✅ | ~1.5 s | vLLM version lock; no Spanish benchmarks | ⚠️ Phase 2 if stable |
+| **Chatterbox** | ⭐⭐⭐ Unvalidated | Low | 20–35 h | 5–8 wks | 8GB ✅ | MIT ✅ | ~4–6 s | Mandatory watermark — must disclose in thesis | 📝 Disclose & use |
+| **OuteTTS** | ⭐⭐⭐ Adequate | High | 15–30 h | 4–7 wks (+gen time) | 6–12GB ✅ | Apache 2.0 ✅ | **2–4 min** | Batch gen = 1.5–2.5 days per 1000 samples | 🐌 Small-scale only |
+| **Nari Dia 1.6B** | 🔴 **English only** | Low–Medium | 15–25 h | 4–6 wks | 10GB ✅ | Apache 2.0 ✅ | N/A for Spanish | **Hard restriction: English only** | 🇬🇧 English baseline |
 
 ### Batch Generation Performance Comparison
 
@@ -1764,99 +1782,124 @@ This is the simplest decision in the entire evaluation:
 
 ## Final Recommendations
 
-### Primary Recommendation: IMPLEMENT FISH SPEECH
+### Tiered Integration Strategy
 
-**Justification:**
+No system is discarded. Each is assigned a role based on its actual constraints and the realistic working schedule of 6 hours/week with biweekly stakeholder meetings.
 
-Fish Speech is the **ONLY** system that satisfies all critical requirements:
+---
 
-1. ✅ **Spanish Quality: GOOD** (20,000 hours training, explicit support)
-2. ✅ **Implementation Feasible** (4-8 hours setup, Docker available)
-3. ✅ **Hardware Compatible** (12GB VRAM easily handled by 46GB A40)
-4. ✅ **Academic License** (CC-BY-NC-SA-4.0 explicitly permits thesis research)
-5. ✅ **Attack Sophistication** (4B parameters, RLHF training)
-6. ✅ **Cross-Lingual Cloning** (Can adapt to Latin American accents)
-7. ✅ **Stable Codebase** (24.9k stars, active maintenance)
+### Tier 1 — Implement First: Fish Speech (Primary Spanish TTS)
 
-**Implementation Plan:**
+**Why first:** Best validated Spanish quality, stable codebase, Docker deployment, hardware trivially satisfied.
 
-**Week 1: Setup & Validation**
-- Day 1-2: Deploy Fish Speech on ml-server03 (Docker recommended)
-- Day 3-4: Test Spanish synthesis quality with 10-20 sample sentences
-- Day 5: Create speaker profiles from Latin American Spanish reference audio
-- Day 6-7: Validate voice cloning quality, document baseline performance
+**Realistic Calendar Plan (6 hrs/week, biweekly meetings as checkpoints):**
 
-**Week 2: Integration**
-- Day 8-10: Develop `FishSpeechAugmenter` class (inherits from `BaseAugmenter`)
-- Day 11-12: Create Pydantic schemas for Fish Speech parameters
-- Day 13-14: Integrate into augmentation pipeline, test end-to-end
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 6–10 h | Docker deployed, first Spanish samples generated |
+| Cycle 2 | Weeks 3–4 | 6–10 h | Speaker profiles from Latin American audio, quality validated |
+| Cycle 3 | Weeks 5–6 | 6–8 h | FishSpeechAugmenter class complete |
+| Cycle 4 | Weeks 7–8 | 6–8 h | Pipeline integrated, end-to-end tests passing |
+| **Buffer** | Weeks 9–10 | — | 1.5-week buffer (unexpected issues, voice cloning tuning) |
+| Cycle 5 | Weeks 11–12 | 6–8 h | 1,000+ samples generated and validated |
+| Cycle 6 | Weeks 13–14 | 4–6 h | Methodology documented for thesis |
 
-**Week 3: Production**
-- Day 15-17: Generate synthetic Latin American Spanish samples (bonafide + spoof)
-- Day 18-19: Validate sample quality, filter artifacts
-- Day 20-21: Document methodology for thesis, prepare augmentation protocols
+**Total:** ~14 weeks calendar time (~50–60 work hours)
 
-**Total Timeline:** 3 weeks
+---
 
-**Expected Output:**
-- High-quality Spanish synthetic voices
-- Challenging attack samples (RLHF-trained sophistication)
-- Reproducible pipeline (Docker + configuration files)
-- Publishable methodology (academic standards)
+### Tier 2 — Implement Second: Qwen3-TTS (Codec Diversity)
 
-### Secondary Recommendation (Optional): Add Qwen3-TTS for Diversity
+**Why second:** Fast inference, easy install, different codec architecture from Fish Speech improves detector robustness. Start only after Fish Speech is stable.
 
-**IF** you want maximum attack diversity:
+**Realistic Calendar Plan:**
 
-Deploy Qwen3-TTS **alongside** Fish Speech as a secondary TTS system.
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 4–6 h | Isolated conda environment, first Spanish samples |
+| Cycle 2 | Weeks 3–4 | 6–8 h | Artifact validation pipeline (detect truncated audio) |
+| **Buffer** | Weeks 5–6 | — | 1.5-week buffer for artifact edge cases |
+| Cycle 3 | Weeks 7–8 | 4–6 h | 200–300 Qwen3-TTS diversity samples generated |
 
-**Rationale:**
-- Different codec architecture (architectural diversity)
-- Fast inference (20-30 min for 1000 samples)
-- Apache 2.0 license (no restrictions)
+**Total:** ~8 weeks calendar time (~20–30 work hours), run in parallel with Fish Speech if bandwidth allows
 
-**Use Case:**
-```
-Primary TTS: Fish Speech (80% of synthetic samples)
-  └─ High Spanish quality, RLHF sophistication
+**Sample split:** Fish Speech 80% · Qwen3-TTS 20%
 
-Secondary TTS: Qwen3-TTS (20% of synthetic samples)
-  └─ Different synthesis method, faster generation
-```
+---
 
-**Benefits:**
-- Detector trains on multiple TTS architectures (better generalization)
-- Ablation study possible (compare detector performance on Fish vs Qwen samples)
-- Research contribution: "Evaluated robustness across multiple TTS systems"
+### Tier 3 — Consider If Calendar Allows: Chatterbox (Fast Prototyping + Disclosure)
 
-**Caveats:**
-- Qwen3 Spanish is mediocre (acceptable for diversity, not primary)
-- Cannot fine-tune (broken), stuck with base quality
-- Requires validation pipeline (detect audio artifacts)
+**When to consider:** After Tier 1 and 2 are stable. Easiest to install of all systems.
 
-**Implementation Effort:** +1 week
-**Risk Level:** MEDIUM
-**Expected Benefit:** Marginal improvement in detector robustness
+**Hard restriction:** Mandatory Perth watermarking on all outputs. This is not a disqualifier — it becomes a methodological note: Chatterbox samples form an isolated experimental group and their watermark status is explicitly disclosed in the thesis.
 
-**Recommendation:** **OPTIONAL** - Only if 3-4 weeks timeline is acceptable. If time-constrained, Fish Speech alone is sufficient.
+**Realistic Calendar Plan:**
 
-### Systems to REJECT
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 4–6 h | Integrated, first samples, watermark impact assessed |
+| **Buffer** | Weeks 3–4 | — | 1.5-week buffer for bug hunting (224 open issues) |
+| Cycle 2 | Weeks 5–6 | 4–6 h | Samples validated, watermark group separated |
 
-**REJECT: CosyVoice 3.0**
-- **Reason:** vLLM dependency hell, no Spanish validation, 1-2 day deployment risk
-- **Verdict:** Complexity not justified by uncertain benefits
+**Total:** ~6 weeks calendar time (~20–25 work hours)
 
-**REJECT: Chatterbox**
-- **Reason:** Latency fraud, mandatory watermarking (confounding variable), 224 open issues
-- **Verdict:** Quality control concerns outweigh easy installation
+---
 
-**REJECT: OuteTTS**
-- **Reason:** CATASTROPHIC performance (3 min for 14s audio), 1.5-2.5 days for 1000 samples
-- **Verdict:** Performance disaster makes all other considerations irrelevant
+### Tier 4 — Background / Overnight Use: OuteTTS (Small Supplementary Batch)
 
-**REJECT: Nari Dia 1.6B**
-- **Reason:** NO SPANISH SUPPORT (English only)
-- **Verdict:** Fundamental incompatibility with project requirements
+**When to consider:** Not a primary generator. Use for a small supplementary dataset (100–200 samples) where generation time is not a constraint.
+
+**Hard constraint:** 2–4 minutes per 10-second sample on A40. Plan generation as an overnight or weekend server job — do not block any sprint on it.
+
+**Realistic Calendar Plan:**
+
+| Activity | Calendar Weeks | Work Hours |
+|----------|---------------|------------|
+| Integration + speaker profile pipeline | Weeks 1–3 | 10–15 h |
+| **Buffer** | Weeks 4–5 | 1.5-week buffer for sampling config issues |
+| Schedule generation (overnight run, 100 samples) | Week 6 | 2 h setup + ~4 h server time |
+
+**Total:** ~6 calendar weeks, ~15–20 work hours (generation runs unattended)
+
+---
+
+### Tier 5 — English Baseline: Nari Dia 1.6B
+
+**Hard restriction:** English only — cannot produce Spanish. This tier is for cross-lingual experiments only.
+
+**When to consider:** If the thesis includes a section comparing detector performance across languages (English-synthetic vs Spanish-synthetic attacks).
+
+**Realistic Calendar Plan:**
+
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 4–6 h | English samples generated (Replicate/ZeroGPU) |
+| **Buffer** | Weeks 3–4 | — | 1.5-week buffer |
+| Cycle 2 | Weeks 5–6 | 4–6 h | Cross-lingual comparison integrated into thesis |
+
+**Total:** ~6 calendar weeks (~15–20 work hours)
+
+**Thesis framing:** "Nari Dia 1.6B was used exclusively for English-language synthetic speech to establish a cross-lingual baseline. Spanish synthesis was handled by Fish Speech and Qwen3-TTS."
+
+---
+
+### Tier 6 — Deferred: CosyVoice 3.0 (After Tiers 1–2 Are Stable)
+
+**When to consider:** Only if significant calendar buffer exists after completing Tiers 1 and 2 and the vLLM environment installs cleanly (≤4 hours).
+
+**Hard constraint:** Zero Spanish quality benchmarks available. Any integration must begin with a Spanish validation experiment before committing further time.
+
+**Realistic Calendar Plan (if pursued):**
+
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 6–10 h | vLLM environment tested; go/no-go decision |
+| **Buffer** | Weeks 3–5 | — | 2-week buffer (vLLM uncertainty is high) |
+| Cycle 2 | Weeks 6–8 | 6–10 h | Spanish quality validated; integration if quality acceptable |
+
+**Go/No-Go rule:** If vLLM installation exceeds 4 hours, defer CosyVoice indefinitely.
+
+**Total:** ~8–18 calendar weeks (high variance), ~40–80 work hours
 
 ---
 
@@ -1936,6 +1979,56 @@ This is negligible compared to our existing augmentation processing time."
 ### Closing Statement
 
 "My recommendation balances research ambition with timeline protection. Fish Speech represents the current state-of-the-art in TTS-based attacks, and our hardware infrastructure makes deployment feasible. However, I've designed the implementation plan with clear validation gates: if Spanish quality doesn't meet standards in Week 1, we have the existing augmentation pipeline as a scientifically valid fallback. This de-risks the decision while positioning our research at the cutting edge of anti-spoofing defense."
+
+---
+
+---
+
+## Appendix: Realistic Timeline — 6 Hours/Week Schedule
+
+### Working Constraints
+
+| Parameter | Value |
+|-----------|-------|
+| Available hours/week | 6 hours |
+| Stakeholder meeting cadence | Every 2 weeks |
+| Minimum buffer per phase | 1.5 weeks (scales to 2–3 weeks for high-complexity phases) |
+| Planning unit | 2-week sprint (= 12 hours of work) |
+
+### Master Calendar Overview (All Tiers, Sequential Worst-Case)
+
+```
+Weeks 1–14   │ Tier 1: Fish Speech (primary Spanish TTS)
+Weeks 9–16   │ Tier 2: Qwen3-TTS (can overlap with Fish Speech Tier 1 later phases)
+Weeks 17–22  │ Tier 3: Chatterbox (if calendar allows)
+Weeks 23–28  │ Tier 4: OuteTTS small batch (background overnight generation)
+Weeks 25–30  │ Tier 5: Nari Dia English baseline (overlaps Tier 4)
+Weeks 31–48  │ Tier 6: CosyVoice (deferred, high-variance buffer)
+```
+
+> All tiers can overlap where work is independent. The above is worst-case sequential.
+> In practice, Tiers 1 + 2 overlap starting Week 9; Tiers 3–5 can run concurrently after Week 17.
+
+### Per-Phase Buffer Rationale
+
+| Complexity Level | Buffer | Reason |
+|-----------------|--------|--------|
+| Low (easy install, no deps) | 1.5 weeks | Bug hunting in high-issue-count projects |
+| Moderate (Docker, conda envs) | 1.5 weeks | First-time environment issues, CUDA quirks |
+| High (vLLM, submodules) | 2–3 weeks | Dependency conflicts, version incompatibility |
+| Very High (novel architecture) | 3+ weeks | Fundamental unknowns (CosyVoice Spanish quality) |
+
+### Biweekly Meeting Deliverables (Tier 1 + 2 Combined)
+
+| Meeting | Week | Expected Deliverable |
+|---------|------|----------------------|
+| M1 | 2 | Fish Speech Docker running, 5 Spanish test samples |
+| M2 | 4 | Speaker profiles from LatAm audio, quality score documented |
+| M3 | 6 | FishSpeechAugmenter class draft, Qwen3-TTS environment ready |
+| M4 | 8 | End-to-end pipeline integration complete |
+| M5 | 10 | Buffer / issue resolution; Qwen3-TTS first samples |
+| M6 | 12 | 1,000+ Fish Speech samples + 200 Qwen3-TTS samples generated |
+| M7 | 14 | Methodology documented, thesis section drafted |
 
 ---
 
