@@ -62,10 +62,16 @@ def extract_archive():
         return
 
     print(f"Extracting {CV_ARCHIVE}...")
-    print("This may take several minutes...")
+    print("Reading archive contents...")
     with tarfile.open(CV_ARCHIVE, "r:gz") as tar:
-        tar.extractall(path=CV_EXTRACTED_DIR.parent)
-    print("Extraction complete!")
+        members = tar.getmembers()
+        print(f"Found {len(members):,} files in archive")
+        print("Extracting files (this will take several minutes)...")
+
+        for member in tqdm(members, desc="Extracting", unit="files"):
+            tar.extract(member, path=CV_EXTRACTED_DIR.parent)
+
+    print("✓ Extraction complete!")
 
 
 def is_valid_sample(accent: str, gender: str, age: str) -> tuple:
