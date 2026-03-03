@@ -33,7 +33,7 @@ from tqdm import tqdm
 
 
 INPUT_DIR = Path("data/mozilla_speaker_selection")
-CV_METADATA_DIR = Path("data/cv_metadata")
+CV_METADATA_DIR = Path("data/cv-corpus-24.0-2025-12-05/es")
 
 FILTERED_SPEAKERS = INPUT_DIR / "filtered_speakers.json"
 CV_SPEAKER_METADATA = INPUT_DIR / "cv_speaker_metadata.json"
