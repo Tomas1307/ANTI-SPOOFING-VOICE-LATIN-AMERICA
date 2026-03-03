@@ -211,7 +211,7 @@ def sample_balanced(samples: List[Dict], target: int) -> List[Dict]:
 
 def compute_statistics(selected_samples: List[Dict], cv_metadata: dict) -> dict:
     """Compute demographic statistics for selected samples."""
-    accents = [normalize_accent(s.get("accent", "")) for s in selected_samples]
+    accents = [get_accent_category(s) for s in selected_samples]
     genders = [normalize_gender(s.get("gender", "")) for s in selected_samples]
     ages = [normalize_age(s.get("age", "")) for s in selected_samples]
     speakers = [s["client_id"] for s in selected_samples]

@@ -8,7 +8,7 @@ This script runs all 4 pipeline steps sequentially:
 4. Balanced sampling
 
 Usage:
-    python pipeline/select_mozilla_speakers/run_pipeline.py
+    python app/select_mozilla_speakers/run_pipeline.py
 """
 import subprocess
 import sys
