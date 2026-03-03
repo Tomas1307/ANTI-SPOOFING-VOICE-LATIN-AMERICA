@@ -142,13 +142,15 @@ def stratified_sample(
         else:
             # For Spain, prioritize females
             if accent == "Spain":
+                print(f"  {accent:12s}: sampling {target:,} with female priority...")
                 selected = sample_with_female_priority(available, target)
             else:
                 # For others, balance gender and age
+                print(f"  {accent:12s}: sampling {target:,} with gender/age balance...")
                 selected = sample_balanced(available, target)
 
         selected_samples.extend(selected)
-        print(f"  {accent:12s}: selected {len(selected):,} samples")
+        print(f"  {accent:12s}: ✓ selected {len(selected):,} samples")
 
     print()
     print(f"Total selected: {len(selected_samples):,}")

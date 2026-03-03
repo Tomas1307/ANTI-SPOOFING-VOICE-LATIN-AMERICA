@@ -134,7 +134,7 @@ def main():
     embeddings = []
 
     # Process each speaker
-    for speaker_dir in tqdm(speaker_dirs, desc="Extracting embeddings"):
+    for idx, speaker_dir in enumerate(speaker_dirs, 1):
         speaker_id = speaker_dir.name
         speaker_ids.append(speaker_id)
 
@@ -152,10 +152,12 @@ def main():
 
         # Extract and average embeddings
         try:
+            print(f"[{idx}/{len(speaker_dirs)}] Processing {speaker_id}: {len(audio_files)} audio files (using up to 20)")
             avg_embedding = extract_speaker_embedding(model, audio_files)
             embeddings.append(avg_embedding)
+            print(f"  ✓ Completed {speaker_id}")
         except Exception as e:
-            print(f"Error processing {speaker_id}: {e}")
+            print(f"  ✗ Error processing {speaker_id}: {e}")
             speaker_ids.pop()  # Remove this speaker ID
             continue
 

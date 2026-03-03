@@ -206,11 +206,16 @@ def extract_cv_embeddings(
     print(f"Audio clips directory: {clips_dir}")
     print()
 
-    for client_id, samples in tqdm(speakers.items(), desc="Extracting CV embeddings"):
+    total_speakers = len(speakers)
+    for idx, (client_id, samples) in enumerate(speakers.items(), 1):
         # Select representative sample (longest or first)
         selected_sample = samples[0]
         audio_filename = selected_sample["path"]
         audio_path = clips_dir / audio_filename
+
+        accent_cat = get_accent_category(selected_sample)
+        if idx % 100 == 0 or idx <= 10:  # Show progress every 100 speakers + first 10
+            print(f"[{idx}/{total_speakers}] Processing {client_id}: {accent_cat}, {selected_sample.get('gender', 'unknown')}")
 
         if not audio_path.exists():
             failed_speakers.append(client_id)
@@ -232,6 +237,7 @@ def extract_cv_embeddings(
                 "gender": selected_sample["gender"],
                 "age": selected_sample["age"],
                 "embedding_from": audio_filename,
+                "accent_category": accent_cat,
             }
 
         except Exception as e:

@@ -77,7 +77,9 @@ def filter_speakers_by_similarity(
     print()
 
     # Compute pairwise similarity: (N_cv, N_habla)
+    print(f"Computing cosine similarity matrix ({cv_embeddings.shape[0]:,} × {habla_embeddings.shape[0]} = {cv_embeddings.shape[0] * habla_embeddings.shape[0]:,} comparisons)...")
     similarity_matrix = compute_cosine_similarity(cv_embeddings, habla_embeddings)
+    print("✓ Similarity computation complete")
 
     print(f"Similarity matrix shape: {similarity_matrix.shape}")
     print(f"Similarity range: [{similarity_matrix.min():.4f}, {similarity_matrix.max():.4f}]")
