@@ -32,8 +32,8 @@ from tqdm import tqdm
 
 
 CV_ARCHIVE = Path("data/cv-corpus-24.0-2025-12-05-es.tar.gz")
-CV_EXTRACTED_DIR = Path("data/cv_extracted")
-CV_METADATA_TSV = Path("data/cv_metadata/validated.tsv")
+CV_EXTRACTED_DIR = Path("data/cv-corpus-24.0-2025-12-05")
+CV_METADATA_TSV = CV_EXTRACTED_DIR / "es" / "validated.tsv"
 OUTPUT_DIR = Path("data/mozilla_speaker_selection")
 EMBEDDINGS_OUTPUT = OUTPUT_DIR / "cv_speaker_embeddings.npy"
 METADATA_OUTPUT = OUTPUT_DIR / "cv_speaker_metadata.json"
