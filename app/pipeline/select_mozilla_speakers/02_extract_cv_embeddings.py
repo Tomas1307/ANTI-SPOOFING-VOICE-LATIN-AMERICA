@@ -20,7 +20,7 @@ import csv
 import json
 import os
 import tarfile
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List
 
@@ -219,7 +219,7 @@ def extract_cv_embeddings(
         audio_filename = selected_sample["path"]
         audio_path = clips_dir / audio_filename
 
-        accent_cat = get_accent_category(selected_sample)
+        accent_cat = selected_sample.get("accent_category", "unknown")
         if idx % 100 == 0 or idx <= 10:  # Show progress every 100 speakers + first 10
             print(f"[{idx}/{total_speakers}] Processing {client_id}: {accent_cat}, {selected_sample.get('gender', 'unknown')}")
 
