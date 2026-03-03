@@ -117,13 +117,14 @@ def stratified_sample(
     Returns:
         List of selected sample dicts
     """
-    # Group samples by accent
+    # Group samples by accent using cv_metadata (which has accent_category from step 2)
     samples_by_accent = defaultdict(list)
 
     for client_id, samples in samples_by_speaker.items():
-        for sample in samples:
-            accent = get_accent_category(sample)
-            if accent in ACCENT_TARGETS:
+        accent = cv_metadata.get(client_id, {}).get("accent_category", "Unknown")
+        if accent in ACCENT_TARGETS:
+            for sample in samples:
+                sample["accent_category"] = accent
                 samples_by_accent[accent].append(sample)
 
     print(f"Available samples by accent:")
