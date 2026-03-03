@@ -43,7 +43,7 @@ def run_step(script_name: str, description: str):
 
     result = subprocess.run(
         [sys.executable, str(script_path)],
-        cwd=Path(__file__).parent.parent.parent,
+        cwd=Path(__file__).parent.parent.parent.parent,
         check=False
     )
 
