@@ -250,14 +250,14 @@ def integrate_cv_speakers():
         splits = split_samples(samples)
 
         # Copy audio files to respective splits
-        for split_name, split_samples in splits.items():
-            if not split_samples:
+        for split_name, samples_in_split in splits.items():
+            if not samples_in_split:
                 continue
 
             split_dir = speaker_dir / split_name
             split_dir.mkdir(exist_ok=True)
 
-            for sample in split_samples:
+            for sample in samples_in_split:
                 audio_filename = sample["path"]
                 src_path = CV_CLIPS_DIR / audio_filename
 
