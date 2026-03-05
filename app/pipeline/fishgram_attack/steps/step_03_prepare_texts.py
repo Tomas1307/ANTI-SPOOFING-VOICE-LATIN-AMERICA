@@ -95,17 +95,18 @@ class TextPromptPreparator:
                     replace=False
                 ).tolist()
 
-            # Store prompts
-            prompts[speaker_id] = [
-                {
+            # Store prompts with unique text IDs
+            speaker_prompts = []
+            for text in speaker_texts:
+                speaker_prompts.append({
                     "text_id": f"FISHGRAM_TEXT_{text_counter:05d}",
                     "text": text,
                     "length_words": len(str(text).split()),
                     "source": settings.TEXT_SOURCE
-                }
-                for text in speaker_texts
-            ]
-            text_counter += len(speaker_texts)
+                })
+                text_counter += 1  # Increment for each text, not after all
+
+            prompts[speaker_id] = speaker_prompts
 
         # Save prompts metadata
         prompts_path = self.output_dir / "text_prompts.json"
