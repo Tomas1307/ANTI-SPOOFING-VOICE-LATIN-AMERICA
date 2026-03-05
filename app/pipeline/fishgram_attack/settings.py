@@ -49,8 +49,8 @@ class FishGramAttackSettings(BaseModel):
         description="Validation mode: True=3 speakers, False=all 162 speakers"
     )
     VALIDATION_SPEAKERS: List[str] = Field(
-        default=["arf_00295", "cof_12345", "clm_67890"],
-        description="Speakers for validation mode (Argentina, Colombia, Chile)"
+        default=["arf_00295", "arf_00610", "arf_01523"],
+        description="Speakers for validation mode (3 Argentina Female speakers)"
     )
 
     # === Directory Paths ===
