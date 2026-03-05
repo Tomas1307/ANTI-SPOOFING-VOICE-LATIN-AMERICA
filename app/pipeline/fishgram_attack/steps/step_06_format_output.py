@@ -45,10 +45,26 @@ class OutputFormatter:
         """
         logger.info("Formatting output to ASVspoof2019 LA...")
 
-        # Load validated samples
+        # Load validated samples (or all generated if validation skipped)
         validated_path = self.output_dir / "validated_samples.json"
-        with open(validated_path, "r", encoding="utf-8") as f:
-            validated = json.load(f)
+        generation_path = self.output_dir / "generation_metadata.json"
+
+        if validated_path.exists():
+            logger.info(f"Loading validated samples from {validated_path}")
+            with open(validated_path, "r", encoding="utf-8") as f:
+                samples = json.load(f)
+        elif generation_path.exists():
+            logger.warning(f"Validation skipped - using all generated samples from {generation_path}")
+            with open(generation_path, "r", encoding="utf-8") as f:
+                samples = json.load(f)
+        else:
+            logger.error("No samples to format (neither validated_samples.json nor generation_metadata.json found)")
+            raise FileNotFoundError(
+                f"Cannot format output: neither {validated_path} nor {generation_path} exist. "
+                "Run Step 4 (generation) before Step 6."
+            )
+
+        validated = samples
 
         # Create LA directory structure
         la_dir = self.output_dir / "LA"
