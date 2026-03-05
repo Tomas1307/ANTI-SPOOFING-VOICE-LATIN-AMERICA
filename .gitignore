@@ -1,5 +1,7 @@
 venv/
+envs/
 data/
+pretrained_models/
 __pycache__/
 *.safetensors
 *.pt
