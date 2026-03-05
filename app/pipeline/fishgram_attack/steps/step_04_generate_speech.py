@@ -90,29 +90,37 @@ class SpeechGenerator:
                     sample_id = f"{speaker_id}_{text_id}"
 
                     try:
-                        # Generate speech
+                        # Generate speech using Fish Speech TTS
                         start_time = time.time()
+                        output_path = gen_dir / f"FISHGRAM_{speaker_id}_{text_id}.wav"
 
-                        # TODO: Replace with actual Fish Speech API
-                        # synthetic_audio = self.model.generate(
-                        #     reference_audio=ref_audio,
-                        #     text=text,
-                        #     sample_rate=settings.SAMPLE_RATE,
-                        #     language="es"
-                        # )
+                        # Use Fish Speech Python API
+                        from fish_speech import FishSpeechTTS
 
-                        # Placeholder: Return silence
-                        import numpy as np
-                        synthetic_audio = np.zeros(int(5.0 * settings.SAMPLE_RATE))  # 5 seconds
+                        # Initialize TTS if not already done (cached in self.model)
+                        if not hasattr(self, '_tts_model') or self._tts_model is None:
+                            logger.info("Initializing Fish Speech TTS model...")
+                            self._tts_model = FishSpeechTTS(
+                                device=settings.DEVICE,
+                                compile=False  # Disable torch.compile for faster startup
+                            )
+
+                        # Generate speech with reference audio
+                        self._tts_model.generate(
+                            text=text,
+                            reference_audio=str(ref_path),
+                            output_path=str(output_path),
+                            language="es",
+                            sample_rate=settings.SAMPLE_RATE
+                        )
 
                         generation_time = time.time() - start_time
+
+                        # Load generated audio to get duration
+                        synthetic_audio, _ = librosa.load(output_path, sr=settings.SAMPLE_RATE)
                         audio_duration = len(synthetic_audio) / settings.SAMPLE_RATE
                         rtf = generation_time / audio_duration if audio_duration > 0 else 0.0
                         rtf_values.append(rtf)
-
-                        # Save synthetic audio
-                        output_path = gen_dir / f"FISHGRAM_{speaker_id}_{text_id}.wav"
-                        sf.write(output_path, synthetic_audio, settings.SAMPLE_RATE)
 
                         # Store metadata
                         generated[sample_id] = {
