@@ -1,0 +1,33 @@
+# FishGram Attack Pipeline Dependencies
+# Install in separate venv: envs/fishgram_env/
+#
+# Setup:
+#   python -m venv envs/fishgram_env
+#   source envs/fishgram_env/bin/activate  # Linux/Mac
+#   envs\fishgram_env\Scripts\activate     # Windows
+#   pip install torch==2.1.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+#   pip install -r envs/fishgram_requirements.txt
+
+# === Core TTS ===
+# fish-speech>=0.1.0  # NOTE: Install manually from GitHub (not on PyPI yet)
+transformers>=4.35.0
+accelerate>=0.24.0
+
+# === Audio Processing ===
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.11.0
+
+# === Quality Validation ===
+speechbrain>=1.0.3
+
+# === Utilities ===
+pydantic>=2.5.0
+loguru>=0.7.0
+tqdm>=4.66.0
+pandas>=2.1.0
+numpy<2.0.0  # SpeechBrain compatibility - requires NumPy 1.x
+
+# === Optional (for manual testing) ===
+# jupyter>=1.0.0
+# matplotlib>=3.7.0
