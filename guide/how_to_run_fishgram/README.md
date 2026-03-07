@@ -173,26 +173,69 @@ data/fishgram_output/
 
 If setting up from scratch on a new machine:
 
+### Option A: Install from requirements.txt (Recommended)
+
+The frozen requirements file captures the exact working environment:
+
 ```bash
 # 1. Create virtual environment
 cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
 python3.10 -m venv envs/fishgram_env
 source envs/fishgram_env/bin/activate
 
-# 2. Install dependencies
-sudo apt-get install portaudio19-dev  # System dependency for PyAudio
-pip install fish-speech
-pip install --upgrade --force-reinstall torch torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install --upgrade torchvision --index-url https://download.pytorch.org/whl/cu124
+# 2. Install system dependency (needed for PyAudio)
+sudo apt-get install portaudio19-dev
 
-# 3. Clone Fish Speech repo
+# 3. Clone Fish Speech repo (must exist before pip install)
+cd ~
+git clone https://github.com/fishaudio/fish-speech.git
+cd fish-speech
+
+# 4. Install all dependencies from frozen requirements
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+pip install -r envs/fishgram_requirements.txt
+
+# 5. Force-install correct PyTorch for CUDA 12.4
+pip install --upgrade --force-reinstall torch torchaudio torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# 6. Download model weights (requires HuggingFace login)
+huggingface-cli login
+# Accept terms at: https://huggingface.co/fishaudio/s1-mini
+cd ~/fish-speech
+huggingface-cli download fishaudio/s1-mini --local-dir checkpoints/s1-mini
+```
+
+### Option B: Install from Scratch
+
+If the requirements file is outdated or you need a fresh setup:
+
+```bash
+# 1. Create virtual environment
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+python3.10 -m venv envs/fishgram_env
+source envs/fishgram_env/bin/activate
+
+# 2. Install system dependency
+sudo apt-get install portaudio19-dev
+
+# 3. Clone Fish Speech repo and install
 cd ~
 git clone https://github.com/fishaudio/fish-speech.git
 cd fish-speech
 pip install -e .
 
-# 4. Download model weights (requires HuggingFace login)
+# 4. Install PyTorch with CUDA 12.4 (Fish Speech needs >= 2.4)
+pip install --upgrade --force-reinstall torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+pip install --upgrade torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# 5. Download model weights (requires HuggingFace login)
 huggingface-cli login
 # Accept terms at: https://huggingface.co/fishaudio/s1-mini
 huggingface-cli download fishaudio/s1-mini --local-dir checkpoints/s1-mini
+
+# 6. (Optional) Freeze requirements for future use
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+pip freeze > envs/fishgram_requirements.txt
 ```
+
+**Note:** The `fishgram_requirements.txt` includes a `-e git+...` line for Fish Speech. This means the Fish Speech repo must be cloned at `~/fish-speech` before running `pip install -r`.
