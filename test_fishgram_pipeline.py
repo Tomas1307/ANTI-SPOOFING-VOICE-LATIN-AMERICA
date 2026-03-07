@@ -1,7 +1,7 @@
 """
 Test script for FishGram Attack Pipeline (Validation Mode)
 
-Runs the full 6-step pipeline on 3 speakers with 2 samples each (6 total).
+Runs the full 5-step pipeline on 3 speakers with 2 samples each (6 total).
 """
 from app.pipeline.fishgram_attack import FishGramAttackPipeline, settings
 

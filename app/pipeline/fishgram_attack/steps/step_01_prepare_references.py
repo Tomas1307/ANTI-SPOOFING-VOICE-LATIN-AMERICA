@@ -1,5 +1,5 @@
 """
-Step 2: Prepare Reference Audio
+Step 1: Prepare Reference Audio
 
 Creates 15-second reference audio clips for each speaker by concatenating training samples.
 """
@@ -115,7 +115,7 @@ class ReferenceAudioPreparator:
         with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(references, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"✓ Prepared {len(references)} reference clips")
+        logger.info(f"Prepared {len(references)} reference clips")
         logger.info(f"  Split breakdown: train={split_counts['train']}, val={split_counts['val']}, test={split_counts['test']}")
         logger.info(f"  Metadata saved to: {metadata_path}")
 

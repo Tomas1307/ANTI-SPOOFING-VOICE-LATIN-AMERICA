@@ -6,9 +6,6 @@ All data structures use Pydantic BaseModel as per CLAUDE.md guidelines.
 from app.pipeline.fishgram_attack.schemas.pipeline_config import (
     FishGramPipelineConfig
 )
-from app.pipeline.fishgram_attack.schemas.model_load_result import (
-    ModelLoadResult
-)
 from app.pipeline.fishgram_attack.schemas.reference_result import (
     ReferenceResult
 )
@@ -27,7 +24,6 @@ from app.pipeline.fishgram_attack.schemas.formatting_result import (
 
 __all__ = [
     "FishGramPipelineConfig",
-    "ModelLoadResult",
     "ReferenceResult",
     "TextPromptsResult",
     "GenerationResult",

@@ -25,21 +25,19 @@ app/pipeline/fishgram_attack/
 ├── schemas/                       # Pydantic data models
 │   ├── __init__.py
 │   ├── pipeline_config.py         # Runtime configuration
-│   ├── model_load_result.py       # Step 1 output
-│   ├── reference_result.py        # Step 2 output
-│   ├── text_prompts_result.py     # Step 3 output
-│   ├── generation_result.py       # Step 4 output
-│   ├── validation_result.py       # Step 5 output
-│   └── formatting_result.py       # Step 6 output
+│   ├── reference_result.py        # Step 1 output
+│   ├── text_prompts_result.py     # Step 2 output
+│   ├── generation_result.py       # Step 3 output
+│   ├── validation_result.py       # Step 4 output
+│   └── formatting_result.py       # Step 5 output
 │
 ├── steps/                         # Strategy implementations
 │   ├── __init__.py
-│   ├── step_01_load_model.py      # FishGramModelLoader
-│   ├── step_02_prepare_references.py  # ReferenceAudioPreparator
-│   ├── step_03_prepare_texts.py       # TextPromptPreparator
-│   ├── step_04_generate_speech.py     # SpeechGenerator
-│   ├── step_05_validate_quality.py    # QualityValidator
-│   └── step_06_format_output.py       # OutputFormatter
+│   ├── step_01_prepare_references.py  # ReferenceAudioPreparator
+│   ├── step_02_prepare_texts.py       # TextPromptPreparator
+│   ├── step_03_generate_speech.py     # SpeechGenerator
+│   ├── step_04_validate_quality.py    # QualityValidator
+│   └── step_05_format_output.py       # OutputFormatter
 │
 └── utils/                         # Utility functions
     ├── __init__.py
@@ -61,7 +59,7 @@ output_dir = pipeline.run()
 ```
 
 **Responsibilities**:
-- Instantiate and orchestrate all 6 steps
+- Instantiate and orchestrate all 5 steps
 - Handle configuration overrides
 - Manage sequential execution
 - Aggregate and log results
@@ -122,38 +120,52 @@ class ReferenceResult(BaseModel):
 │              FishGramAttackPipeline (Facade)                │
 └─────────────────────────────────────────────────────────────┘
                           │
-          ┌───────────────┴───────────────┐
-          │                               │
-          ▼                               ▼
-┌──────────────────────┐        ┌──────────────────────┐
-│ Step 1: Load Model   │        │ Step 2: References   │
-│ FishGramModelLoader  │───────▶│ ReferenceAudioPrep   │
-│ Output: ModelLoad    │        │ Output: ReferenceRes │
-└──────────────────────┘        └──────────────────────┘
-                                         │
-                                         ▼
-                                ┌──────────────────────┐
-                                │ Step 3: Texts        │
-                                │ TextPromptPreparator │
-                                │ Output: TextPrompts  │
-                                └──────────────────────┘
-                                         │
-          ┌──────────────────────────────┘
-          │
-          ▼
-┌──────────────────────┐        ┌──────────────────────┐
-│ Step 4: Generate     │        │ Step 5: Validate     │
-│ SpeechGenerator      │───────▶│ QualityValidator     │
-│ Output: Generation   │        │ Output: Validation   │
-└──────────────────────┘        └──────────────────────┘
-                                         │
-                                         ▼
-                                ┌──────────────────────┐
-                                │ Step 6: Format       │
-                                │ OutputFormatter      │
-                                │ Output: Formatting   │
-                                └──────────────────────┘
+                          ▼
+                ┌──────────────────────┐
+                │ Step 1: References   │
+                │ ReferenceAudioPrep   │
+                │ Output: ReferenceRes │
+                └──────────────────────┘
+                          │
+                          ▼
+                ┌──────────────────────┐
+                │ Step 2: Texts        │
+                │ TextPromptPreparator │
+                │ Output: TextPrompts  │
+                └──────────────────────┘
+                          │
+                          ▼
+                ┌──────────────────────┐
+                │ Step 3: Generate     │
+                │ SpeechGenerator      │
+                │ (Fish Speech API)    │
+                │ Output: Generation   │
+                └──────────────────────┘
+                          │
+                          ▼
+                ┌──────────────────────┐
+                │ Step 4: Validate     │
+                │ QualityValidator     │
+                │ Output: Validation   │
+                └──────────────────────┘
+                          │
+                          ▼
+                ┌──────────────────────┐
+                │ Step 5: Format       │
+                │ OutputFormatter      │
+                │ Output: Formatting   │
+                └──────────────────────┘
 ```
+
+## Fish Speech API Integration
+
+The Fish Speech TTS model runs as an **external HTTP API server** on ml-server03, separate from the pipeline process. Step 3 (SpeechGenerator) communicates with it via HTTP:
+
+- **Health check**: `GET /` (verifies server is running)
+- **Generation**: `POST /v1/tts` (sends text + base64-encoded reference audio)
+- **Server startup**: See `guide/how_to_run_fishgram/README.md`
+
+This design decouples the TTS model lifecycle from the pipeline, allowing the server to persist across multiple pipeline runs and avoiding GPU memory allocation/deallocation overhead.
 
 ## Configuration Management
 
@@ -180,53 +192,31 @@ pipeline = FishGramAttackPipeline(config)
 ### Validation Mode Toggle
 
 **Validation Mode** (`VALIDATION_MODE=True`):
-- 3 speakers (Argentina, Colombia, Chile)
+- 3 speakers (Argentina Female)
 - 2 samples per speaker = 6 total
-- Runtime: ~5 minutes
+- Runtime: ~4 minutes
 - Purpose: Quality validation
 
 **Production Mode** (`VALIDATION_MODE=False`):
 - 162 speakers (all HABLA bonafide)
 - 5 samples per speaker = 810 total
-- Runtime: ~60 minutes
+- Runtime: ~61 minutes
 - Purpose: Full dataset generation
 
 ## Virtual Environment Isolation
 
 **Why Separate Venv**:
-- Fish Speech has specific PyTorch version requirements
+- Fish Speech has specific PyTorch version requirements (>= 2.4)
 - Prevents conflicts with other augmenters (RIR, Codec, RawBoost)
-- Isolates 4B model dependencies
+- Isolates dependencies from other researchers on ml-server03
 
 **Location**: `envs/fishgram_env/`
 
-**Setup**:
-```bash
-python -m venv envs/fishgram_env
-source envs/fishgram_env/bin/activate
-pip install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu121
-pip install -r envs/fishgram_requirements.txt
-```
+**Setup**: See `guide/how_to_run_fishgram/README.md` for full installation instructions.
 
 ## Step Details
 
-### Step 1: FishGramModelLoader
-
-**Purpose**: Load and validate Fish Speech model
-
-**Inputs**:
-- `model_path`: Fish Speech checkpoint directory
-- `device`: CUDA device
-- `dtype`: Model precision (bfloat16/float16)
-
-**Outputs**: `ModelLoadResult`
-- `model`: Fish Speech instance
-- `vram_usage_mb`: Peak VRAM
-- `warmup_rtf`: Real-time factor
-
-**Implementation Note**: Placeholder for actual Fish Speech API (to be integrated).
-
-### Step 2: ReferenceAudioPreparator
+### Step 1: ReferenceAudioPreparator
 
 **Purpose**: Create 15-second reference clips
 
@@ -239,7 +229,7 @@ pip install -r envs/fishgram_requirements.txt
 
 **Determinism**: Alphabetical file sorting ensures reproducibility.
 
-### Step 3: TextPromptPreparator
+### Step 2: TextPromptPreparator
 
 **Purpose**: Assign Spanish text prompts
 
@@ -251,35 +241,35 @@ pip install -r envs/fishgram_requirements.txt
 
 **Reproducibility**: `np.random.seed(settings.RANDOM_SEED)` ensures deterministic assignment.
 
-### Step 4: SpeechGenerator
+### Step 3: SpeechGenerator
 
-**Purpose**: Generate synthetic speech
+**Purpose**: Generate synthetic speech via Fish Speech HTTP API
 
 **Process**:
-1. Load reference audio + text prompt
-2. Call Fish Speech TTS API
-3. Save generated audio
-4. Track RTF (generation_time / audio_duration)
+1. Verify server health (`GET /`)
+2. For each speaker-text pair:
+   a. Read reference audio as bytes
+   b. Base64-encode and send `POST /v1/tts`
+   c. Save returned audio to WAV
+   d. Track RTF (generation_time / audio_duration)
 
-**Implementation Note**: Placeholder for actual Fish Speech TTS call.
-
-### Step 5: QualityValidator
+### Step 4: QualityValidator
 
 **Purpose**: Filter low-quality samples
 
 **Metrics**:
-- **DNSMOS Overall** ≥ 3.5 (perceptual quality)
-- **Speaker Similarity** ≥ 0.65 (voice cloning accuracy)
+- **DNSMOS Overall** >= 3.5 (perceptual quality)
+- **Speaker Similarity** >= 0.65 (voice cloning accuracy)
 - **Silence Detection**: Reject if >1s consecutive silence
 
 **Expected Pass Rate**: 85-95%
 
-### Step 6: OutputFormatter
+### Step 5: OutputFormatter
 
 **Purpose**: Convert to ASVspoof2019 LA format
 
 **Process**:
-1. Convert WAV → FLAC (16kHz, 16-bit)
+1. Convert WAV -> FLAC (16kHz, 16-bit)
 2. Generate audio IDs (LA_T_9000001, LA_D_9000001, etc.)
 3. Create protocol files (SPEAKER_ID AUDIO_ID SYSTEM_ID KEY)
 4. Organize into train/dev/eval splits
@@ -288,7 +278,7 @@ pip install -r envs/fishgram_requirements.txt
 
 ### Adding a New Step
 
-1. Create `step_07_new_feature.py` in `steps/`
+1. Create `step_06_new_feature.py` in `steps/`
 2. Implement class with `execute()` method
 3. Define output schema in `schemas/new_feature_result.py`
 4. Update `steps/__init__.py` exports
@@ -304,7 +294,7 @@ def compute_pesq(audio_path: Path) -> float:
     # Alternative implementation
     ...
 
-# In step_05_validate_quality.py
+# In step_04_validate_quality.py
 quality_score = compute_pesq(audio_path)  # Instead of compute_dnsmos
 ```
 
@@ -343,25 +333,23 @@ def test_full_pipeline():
 
 | Step | Time | Bottleneck |
 |------|------|------------|
-| 1 | 2 min | Model loading |
-| 2 | 1 min | Audio I/O |
-| 3 | <1 min | TSV parsing |
-| 4 | 1 min | TTS inference |
-| 5 | <1 min | Quality metrics |
-| 6 | <1 min | FLAC conversion |
-| **Total** | **~5 min** | - |
+| 1 | 1 min | Audio I/O |
+| 2 | <1 min | TSV parsing |
+| 3 | 1 min | TTS inference |
+| 4 | <1 min | Quality metrics |
+| 5 | <1 min | FLAC conversion |
+| **Total** | **~4 min** | - |
 
 ### Production Mode (810 samples)
 
 | Step | Time | Bottleneck |
 |------|------|------------|
-| 1 | 2 min | Model loading |
-| 2 | 5 min | Audio I/O (162 speakers) |
-| 3 | 1 min | TSV parsing |
-| 4 | 40 min | TTS inference (810 samples) |
-| 5 | 10 min | Quality metrics (810 samples) |
-| 6 | 5 min | FLAC conversion |
-| **Total** | **~63 min** | Step 4 (TTS) |
+| 1 | 5 min | Audio I/O (162 speakers) |
+| 2 | 1 min | TSV parsing |
+| 3 | 40 min | TTS inference (810 samples) |
+| 4 | 10 min | Quality metrics (810 samples) |
+| 5 | 5 min | FLAC conversion |
+| **Total** | **~61 min** | Step 3 (TTS) |
 
 **Hardware**: NVIDIA A40 (46GB VRAM)
 
@@ -370,4 +358,4 @@ def test_full_pipeline():
 - **General Pipeline Architecture**: `app/pipeline/ARCHITECTURE.md`
 - **Mozilla Pipeline** (template): `app/pipeline/select_mozilla_speakers/`
 - **CLAUDE.md**: Project coding standards
-- **Hayward Architecture**: Original architecture pattern inspiration
+- **How to Run Guide**: `guide/how_to_run_fishgram/README.md`

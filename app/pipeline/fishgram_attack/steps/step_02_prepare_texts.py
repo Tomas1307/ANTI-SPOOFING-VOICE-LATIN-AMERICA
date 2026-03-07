@@ -1,5 +1,5 @@
 """
-Step 3: Prepare Text Prompts
+Step 2: Prepare Text Prompts
 
 Assigns Spanish text prompts to each speaker from Mozilla Common Voice transcripts.
 """
@@ -115,7 +115,7 @@ class TextPromptPreparator:
 
         total_prompts = sum(len(texts) for texts in prompts.values())
 
-        logger.info(f"✓ Assigned {total_prompts} text prompts")
+        logger.info(f"Assigned {total_prompts} text prompts")
         logger.info(f"  Prompts saved to: {prompts_path}")
 
         return TextPromptsResult(

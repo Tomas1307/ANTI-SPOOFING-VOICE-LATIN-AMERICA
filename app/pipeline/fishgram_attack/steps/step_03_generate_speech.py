@@ -1,10 +1,10 @@
 """
-Step 4: Generate Synthetic Speech
+Step 3: Generate Synthetic Speech
 
 Generates synthetic Spanish speech using Fish Speech HTTP API server.
 The Fish Speech server must be running on ml-server03 before executing this step.
 """
-import io
+import base64
 import json
 import time
 import requests
@@ -14,7 +14,6 @@ import numpy as np
 from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
-from typing import Any
 from app.pipeline.fishgram_attack.settings import settings
 from app.pipeline.fishgram_attack.schemas.generation_result import GenerationResult
 
@@ -27,25 +26,22 @@ class SpeechGenerator:
     and returns synthesized audio bytes.
 
     The Fish Speech server must be started separately before running
-    this step. See CLAUDE.md for server startup instructions.
+    this step. See guide/how_to_run_fishgram/README.md for server startup instructions.
 
     Attributes:
-        model: Unused legacy parameter (kept for pipeline interface compatibility).
         output_dir: Directory where generated audio files are saved.
+        api_url: URL of the Fish Speech HTTP API server.
     """
 
     def __init__(
         self,
-        model: Any,
         output_dir: Path | None = None
     ):
         """Initialize speech generator.
 
         Args:
-            model: Unused (Fish Speech runs as external HTTP server).
             output_dir: Output directory (default: from settings).
         """
-        self.model = model
         self.output_dir = output_dir or settings.OUTPUT_DIR
         self.api_url = settings.FISH_SPEECH_API_URL
 
@@ -93,11 +89,6 @@ class SpeechGenerator:
         # Read reference audio bytes
         with open(reference_audio_path, "rb") as f:
             ref_audio_bytes = f.read()
-
-        # Build the request payload using MessagePack-compatible format
-        # Fish Speech API expects multipart form or msgpack
-        # Using the /v1/tts endpoint with JSON + base64 reference audio
-        import base64
 
         payload = {
             "text": text,

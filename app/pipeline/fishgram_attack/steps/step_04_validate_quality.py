@@ -1,5 +1,5 @@
 """
-Step 5: Validate Quality
+Step 4: Validate Quality
 
 Validates synthetic speech quality using DNSMOS and speaker similarity metrics.
 """
@@ -151,7 +151,7 @@ class QualityValidator:
         avg_dnsmos = np.mean(dnsmos_scores) if dnsmos_scores else 0.0
         avg_similarity = np.mean(similarity_scores) if similarity_scores else 0.0
 
-        logger.info(f"✓ Validation complete")
+        logger.info(f"Validation complete")
         pass_rate = (100 * len(validated) / len(generated)) if len(generated) > 0 else 0.0
         logger.info(f"  Passed: {len(validated)}/{len(generated)} ({pass_rate:.1f}%)")
         logger.info(f"  Rejected: {len(rejected)}")

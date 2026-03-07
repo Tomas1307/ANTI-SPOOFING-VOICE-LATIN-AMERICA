@@ -1,5 +1,5 @@
 """
-Step 6: Format Output to ASVspoof2019 LA
+Step 5: Format Output to ASVspoof2019 LA
 
 Converts validated samples to ASVspoof2019 LA format with protocol files.
 """
@@ -61,7 +61,7 @@ class OutputFormatter:
             logger.error("No samples to format (neither validated_samples.json nor generation_metadata.json found)")
             raise FileNotFoundError(
                 f"Cannot format output: neither {validated_path} nor {generation_path} exist. "
-                "Run Step 4 (generation) before Step 6."
+                "Run Step 3 (generation) before Step 5."
             )
 
         validated = samples
@@ -88,7 +88,7 @@ class OutputFormatter:
             audio_path = Path(sample_data["audio_path"])
             split = sample_data["split"]
 
-            # Map val → dev, keep others
+            # Map val -> dev, keep others
             if split == "val":
                 split = "dev"
 
@@ -123,7 +123,7 @@ class OutputFormatter:
 
             protocol_files[split] = protocol_path
 
-        logger.info(f"✓ Output formatted to ASVspoof2019 LA")
+        logger.info(f"Output formatted to ASVspoof2019 LA")
         logger.info(f"  Output directory: {la_dir}")
         logger.info(f"  Train samples: {counts['train']}")
         logger.info(f"  Dev samples: {counts['dev']}")

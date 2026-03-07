@@ -102,16 +102,15 @@ Useful tmux commands:
 
 ## Pipeline Steps
 
-The pipeline runs 6 steps automatically:
+The pipeline runs 5 steps automatically:
 
 | Step | Name | Description |
 |------|------|-------------|
-| 1 | Load Model | Placeholder (model runs as external API server) |
-| 2 | Prepare References | Extracts 10-30s reference clips from HABLA bonafide speakers |
-| 3 | Prepare Texts | Samples Spanish text prompts from Mozilla Common Voice |
-| 4 | Generate Speech | Sends HTTP requests to Fish Speech API for voice cloning |
-| 5 | Validate Quality | Checks DNSMOS and speaker similarity thresholds |
-| 6 | Format Output | Converts to ASVspoof2019 LA format with protocol files |
+| 1 | Prepare References | Extracts 10-30s reference clips from HABLA bonafide speakers |
+| 2 | Prepare Texts | Samples Spanish text prompts from Mozilla Common Voice |
+| 3 | Generate Speech | Sends HTTP requests to Fish Speech API for voice cloning |
+| 4 | Validate Quality | Checks DNSMOS and speaker similarity thresholds |
+| 5 | Format Output | Converts to ASVspoof2019 LA format with protocol files |
 
 ## Configuration
 

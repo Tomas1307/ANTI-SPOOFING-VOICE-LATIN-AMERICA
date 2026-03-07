@@ -13,12 +13,11 @@ class FishGramPipelineConfig(BaseModel):
     Most defaults are defined in settings.py and can be overridden here.
 
     Attributes:
-        run_step_1: Whether to run Step 1 (load FishGram model)
-        run_step_2: Whether to run Step 2 (prepare reference audio)
-        run_step_3: Whether to run Step 3 (prepare text prompts)
-        run_step_4: Whether to run Step 4 (generate synthetic speech)
-        run_step_5: Whether to run Step 5 (validate quality)
-        run_step_6: Whether to run Step 6 (format output to ASVspoof2019 LA)
+        run_step_1: Whether to run Step 1 (prepare reference audio)
+        run_step_2: Whether to run Step 2 (prepare text prompts)
+        run_step_3: Whether to run Step 3 (generate synthetic speech)
+        run_step_4: Whether to run Step 4 (validate quality)
+        run_step_5: Whether to run Step 5 (format output to ASVspoof2019 LA)
 
         samples_per_speaker_override: Optional override for samples per speaker
         random_seed_override: Optional override for random seed
@@ -28,27 +27,23 @@ class FishGramPipelineConfig(BaseModel):
 
     run_step_1: bool = Field(
         default=True,
-        description="Run Step 1: Load FishGram model"
+        description="Run Step 1: Prepare reference audio"
     )
     run_step_2: bool = Field(
         default=True,
-        description="Run Step 2: Prepare reference audio"
+        description="Run Step 2: Prepare text prompts"
     )
     run_step_3: bool = Field(
         default=True,
-        description="Run Step 3: Prepare text prompts"
+        description="Run Step 3: Generate synthetic speech"
     )
     run_step_4: bool = Field(
         default=True,
-        description="Run Step 4: Generate synthetic speech"
+        description="Run Step 4: Validate quality"
     )
     run_step_5: bool = Field(
         default=True,
-        description="Run Step 5: Validate quality"
-    )
-    run_step_6: bool = Field(
-        default=True,
-        description="Run Step 6: Format output to ASVspoof2019 LA"
+        description="Run Step 5: Format output to ASVspoof2019 LA"
     )
 
     samples_per_speaker_override: Optional[int] = Field(
