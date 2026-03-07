@@ -71,6 +71,28 @@ class FishGramAttackSettings(BaseModel):
         description="Path to Mozilla Common Voice validated.tsv for text prompts"
     )
 
+    # === Fish Speech API Server ===
+    FISH_SPEECH_API_URL: str = Field(
+        default="http://localhost:8080",
+        description="URL of the Fish Speech HTTP API server running on ml-server03"
+    )
+    FISH_SPEECH_FORMAT: str = Field(
+        default="wav",
+        description="Audio format for Fish Speech output (wav, mp3, pcm)"
+    )
+    FISH_SPEECH_TOP_P: float = Field(
+        default=0.8,
+        description="Top-p sampling for Fish Speech generation (0.1-1.0)"
+    )
+    FISH_SPEECH_TEMPERATURE: float = Field(
+        default=0.8,
+        description="Temperature for Fish Speech generation (0.1-1.0)"
+    )
+    FISH_SPEECH_REPETITION_PENALTY: float = Field(
+        default=1.1,
+        description="Repetition penalty for Fish Speech (0.9-2.0)"
+    )
+
     # === Audio Processing ===
     SAMPLE_RATE: int = Field(
         default=16000,
