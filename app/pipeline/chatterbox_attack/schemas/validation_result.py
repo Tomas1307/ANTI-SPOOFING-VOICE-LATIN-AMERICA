@@ -9,8 +9,8 @@ from typing import Any, Dict, List
 class ValidationResult(BaseModel):
     """Result from quality validation (Step 4).
 
-    Includes Qwen-specific artifact detection results and Parakeet-based
-    WER/CER transcription accuracy metrics.
+    Includes silence/duration detection results and Parakeet-based WER/CER
+    transcription accuracy metrics.
 
     Attributes:
         validated_samples_path: Path to JSON file with validated samples only.

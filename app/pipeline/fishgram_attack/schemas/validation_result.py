@@ -1,20 +1,24 @@
 """
-Schema for quality validation result.
+Schema for quality validation result from Step 4.
 """
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class ValidationResult(BaseModel):
-    """Result from quality validation (Step 5).
+    """Result from quality validation (Step 4).
+
+    Includes silence detection results and Parakeet-based WER/CER
+    transcription accuracy metrics.
 
     Attributes:
-        validated_samples_path: Path to JSON file with validated samples only
-        validation_stats: Pass/fail counts by metric
-        rejected_samples: List of rejected sample IDs with reasons and scores
-        avg_dnsmos: Average DNSMOS score across validated samples
-        avg_similarity: Average speaker similarity across validated samples
+        validated_samples_path: Path to JSON file with validated samples only.
+        validation_stats: Pass/fail counts and totals.
+        rejected_samples: List of rejected sample metadata with reasons.
+        avg_wer: Average Word Error Rate across validated samples.
+        avg_cer: Average Character Error Rate across validated samples.
+        prefix_trim_count: Number of samples that had a spurious prefix trimmed.
     """
 
     validated_samples_path: Path = Field(
@@ -23,19 +27,23 @@ class ValidationResult(BaseModel):
     )
     validation_stats: Dict[str, int] = Field(
         ...,
-        description="Pass/fail counts (e.g., {'passed': 5, 'rejected': 1})"
+        description="Pass/fail counts (e.g., {'passed': 5, 'rejected': 1, 'total': 6})"
     )
     rejected_samples: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="List of rejected samples with IDs, scores (floats), and rejection reasons (strings)"
+        description="List of rejected samples with IDs, scores, and rejection reasons"
     )
-    avg_dnsmos: float = Field(
+    avg_wer: float = Field(
         default=0.0,
-        description="Average DNSMOS overall score across validated samples"
+        description="Average Word Error Rate across validated samples (0.0 = perfect)"
     )
-    avg_similarity: float = Field(
+    avg_cer: float = Field(
         default=0.0,
-        description="Average speaker similarity score across validated samples"
+        description="Average Character Error Rate across validated samples (0.0 = perfect)"
+    )
+    prefix_trim_count: int = Field(
+        default=0,
+        description="Number of samples where a spurious prefix was detected and trimmed"
     )
 
     class Config:

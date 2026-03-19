@@ -34,8 +34,11 @@ class FishGramAttackSettings(BaseModel):
         RANDOM_SEED: Random seed for reproducible text sampling
 
         TEXT_LENGTH_RANGE: Min and max words for text prompts
-        DNSMOS_THRESHOLD_OVRL: Minimum DNSMOS overall score for validation
-        SPEAKER_SIM_THRESHOLD: Minimum speaker similarity for validation
+        PARAKEET_MODEL_ID: Parakeet TDT model identifier for STT transcription
+        WER_MAX_ACCEPTABLE: Hard WER rejection ceiling (samples above this are rejected)
+        CER_MAX_ACCEPTABLE: Hard CER rejection ceiling (samples above this are rejected)
+        MIN_AUDIO_DURATION: Minimum acceptable audio duration in seconds
+        MAX_AUDIO_DURATION: Maximum acceptable audio duration in seconds
 
         FISHGRAM_SYSTEM_ID: Attack identifier for protocol files
         AUDIO_ID_START_TRAIN: Starting ID for train samples
@@ -135,24 +138,26 @@ class FishGramAttackSettings(BaseModel):
         description="Min and max words for text prompts"
     )
 
-    # === Quality Validation Thresholds ===
-    DNSMOS_THRESHOLD_OVRL: float = Field(
-        default=3.5,
-        description="Minimum DNSMOS overall score (3.5=good, 3.8=excellent)"
+    # === Parakeet STT Validation ===
+    PARAKEET_MODEL_ID: str = Field(
+        default="nvidia/parakeet-tdt-1.1b",
+        description="NVIDIA Parakeet TDT model ID for transcription-based quality validation"
     )
-    SPEAKER_SIM_THRESHOLD: float = Field(
-        default=0.65,
-        description="Minimum speaker similarity (0.65=successful, 0.75=high confidence)"
+    WER_MAX_ACCEPTABLE: float = Field(
+        default=0.15,
+        description="Hard WER rejection ceiling; samples above this threshold are rejected"
     )
-
-    # === Model Configuration ===
-    MODEL_SOURCE: str = Field(
-        default="speechbrain/spkrec-ecapa-voxceleb",
-        description="SpeechBrain ECAPA-TDNN model for speaker verification"
+    CER_MAX_ACCEPTABLE: float = Field(
+        default=0.10,
+        description="Hard CER rejection ceiling; samples above this threshold are rejected"
     )
-    MODEL_SAVE_DIR: Path = Field(
-        default=Path("pretrained_models/spkrec-ecapa-voxceleb"),
-        description="Directory to save/cache ECAPA-TDNN model"
+    MIN_AUDIO_DURATION: float = Field(
+        default=0.5,
+        description="Minimum acceptable audio duration in seconds; shorter clips are rejected"
+    )
+    MAX_AUDIO_DURATION: float = Field(
+        default=30.0,
+        description="Maximum acceptable audio duration in seconds; longer clips are rejected"
     )
 
     # === Split Configuration ===

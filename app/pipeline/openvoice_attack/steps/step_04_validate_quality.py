@@ -1,43 +1,38 @@
 """
-Step 4: Validate Quality with Artifact Detection and Transcription Accuracy.
+Step 4: Validate Quality with Silence Detection and Transcription Accuracy.
 
 Validates synthetic speech using:
-  1. Qwen-specific artifact checks: duration anomaly, low energy, truncation.
-  2. Parakeet TDT transcription with word-level timestamps.
-  3. Spurious prefix trimming: detects and removes extra words hallucinated
-     at the beginning of the audio by Qwen3-TTS, then re-transcribes.
-  4. WER/CER computation against the original text. Target is 0.0 for both.
+  1. Duration range check: rejects clips outside MIN_AUDIO_DURATION / MAX_AUDIO_DURATION.
+  2. Silence detection: rejects near-silent output from OpenVoice V2.
+  3. Parakeet TDT transcription with word-level timestamps.
+  4. Spurious prefix trimming: detects and removes extra words hallucinated
+     at the beginning of the audio, then re-transcribes.
+  5. WER/CER computation against the original text. Target is 0.0 for both.
      Samples exceeding WER_MAX_ACCEPTABLE or CER_MAX_ACCEPTABLE are rejected.
 """
 import json
-import numpy as np
 import librosa
+import numpy as np
 from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from app.pipeline.qwen_attack.settings import settings
-from app.pipeline.qwen_attack.schemas.validation_result import ValidationResult
-from app.pipeline.qwen_attack.utils.artifact_detector import (
-    detect_duration_anomaly,
-    detect_low_energy,
-    detect_truncation,
-)
+from app.pipeline.openvoice_attack.settings import settings
+from app.pipeline.openvoice_attack.schemas.validation_result import ValidationResult
 from app.utils.parakeet_transcriber import ParakeetTranscriber
 from app.utils.prefix_trimmer import detect_prefix_trim_point, trim_audio_prefix
 from app.utils.wer_cer import compute_cer, compute_wer
 
 
+_SILENCE_THRESHOLD = 0.01
+_SILENCE_MIN_DURATION = 1.0
+
+
 class QualityValidator:
-    """Validates quality of generated Qwen3-TTS synthetic speech.
+    """Validates quality of generated OpenVoice V2 synthetic speech.
 
-    Applies Qwen-specific artifact detection, spurious prefix trimming via
+    Applies silence/duration checks, spurious prefix trimming via
     Parakeet TDT word timestamps, and WER/CER transcription accuracy checks.
-
-    The spurious prefix trimmer handles the known Qwen3-TTS failure mode
-    where an extra word is hallucinated at the start of the audio before
-    the intended content begins. After trimming, audio is re-transcribed
-    and WER/CER is recomputed on the corrected content.
 
     Attributes:
         output_dir: Directory containing generation metadata and audio files.
@@ -63,11 +58,11 @@ class QualityValidator:
         self.cer_max = cer_max if cer_max is not None else settings.CER_MAX_ACCEPTABLE
 
     def execute(self) -> ValidationResult:
-        """Validate quality of all generated Qwen samples.
+        """Validate quality of all generated OpenVoice V2 samples.
 
         Validation sequence per sample:
             1. Check audio file exists.
-            2. Load audio; run Qwen artifact checks (duration, energy, truncation).
+            2. Load audio; run duration range check and silence detection.
             3. Transcribe with Parakeet TDT (word-level timestamps enabled).
             4. Detect and trim spurious prefix if present; re-transcribe trimmed audio.
             5. Compute WER and CER against original text.
@@ -112,46 +107,40 @@ class QualityValidator:
             audio, sr = librosa.load(audio_path, sr=settings.SAMPLE_RATE)
             audio_duration = len(audio) / sr
 
-            has_duration_anomaly = detect_duration_anomaly(
-                audio_duration,
-                min_duration=settings.MIN_AUDIO_DURATION,
-                max_duration=settings.MAX_AUDIO_DURATION,
-            )
-            has_low_energy = detect_low_energy(
-                audio, threshold=settings.LOW_ENERGY_THRESHOLD
-            )
-            is_truncated = detect_truncation(
-                audio,
-                text,
-                sample_rate=settings.SAMPLE_RATE,
-                min_words_per_second=settings.MIN_WORDS_PER_SECOND,
-            )
-
-            if has_duration_anomaly or has_low_energy or is_truncated:
-                reasons = []
-                if has_duration_anomaly:
-                    reasons.append(f"Duration anomaly: {audio_duration:.1f}s")
-                if has_low_energy:
-                    reasons.append("Near-silent output")
-                if is_truncated:
-                    reasons.append("Truncated audio")
+            if audio_duration < settings.MIN_AUDIO_DURATION or audio_duration > settings.MAX_AUDIO_DURATION:
                 rejected.append({
                     "sample_id": sample_id,
                     "audio_duration": float(audio_duration),
-                    "reason": "; ".join(reasons),
+                    "reason": f"Duration anomaly: {audio_duration:.1f}s",
                 })
                 continue
 
-            transcription, word_timestamps = transcriber.transcribe_with_timestamps(
-                audio_path
-            )
+            frame_length = int(0.025 * sr)
+            hop_length = int(0.010 * sr)
+            rms = librosa.feature.rms(y=audio, frame_length=frame_length, hop_length=hop_length)[0]
+            silent_frames = rms < _SILENCE_THRESHOLD
+            max_consecutive = current = 0
+            for is_silent in silent_frames:
+                if is_silent:
+                    current += 1
+                else:
+                    max_consecutive = max(max_consecutive, current)
+                    current = 0
+            max_consecutive = max(max_consecutive, current)
+            if (max_consecutive * hop_length / sr) >= _SILENCE_MIN_DURATION:
+                rejected.append({
+                    "sample_id": sample_id,
+                    "audio_duration": float(audio_duration),
+                    "reason": "Near-silent output",
+                })
+                continue
+
+            transcription, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
 
             trim_seconds = detect_prefix_trim_point(word_timestamps, text)
             if trim_seconds > 0.0:
                 trim_audio_prefix(audio_path, trim_seconds, audio_path)
-                transcription, word_timestamps = transcriber.transcribe_with_timestamps(
-                    audio_path
-                )
+                transcription, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
                 prefix_trim_count += 1
 
             sample_wer = compute_wer(text, transcription)

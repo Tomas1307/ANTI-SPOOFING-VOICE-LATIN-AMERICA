@@ -180,14 +180,26 @@ class QwenAttackSettings(BaseModel):
         description="Hard ceiling on text length to prevent Qwen silent truncation artifacts"
     )
 
-    # === Quality Validation Thresholds ===
-    DNSMOS_THRESHOLD_OVRL: float = Field(
-        default=3.5,
-        description="Minimum DNSMOS overall score (3.5=good, 3.8=excellent)"
+    # === Parakeet STT Validation ===
+    PARAKEET_MODEL_ID: str = Field(
+        default="nvidia/parakeet-tdt-1.1b",
+        description="HuggingFace model ID for NVIDIA Parakeet TDT ASR"
     )
-    SPEAKER_SIM_THRESHOLD: float = Field(
-        default=0.65,
-        description="Minimum speaker similarity (0.65=successful, 0.75=high confidence)"
+    WER_THRESHOLD: float = Field(
+        default=0.0,
+        description="Target Word Error Rate (0.0 = perfect match). Logged but not used for rejection."
+    )
+    CER_THRESHOLD: float = Field(
+        default=0.0,
+        description="Target Character Error Rate (0.0 = perfect match). Logged but not used for rejection."
+    )
+    WER_MAX_ACCEPTABLE: float = Field(
+        default=0.15,
+        description="Hard rejection ceiling for WER after prefix trimming (0.15 = 15% of words wrong)"
+    )
+    CER_MAX_ACCEPTABLE: float = Field(
+        default=0.10,
+        description="Hard rejection ceiling for CER after prefix trimming (0.10 = 10% of chars wrong)"
     )
 
     # === Artifact Detection Thresholds ===
@@ -206,16 +218,6 @@ class QwenAttackSettings(BaseModel):
     MIN_WORDS_PER_SECOND: float = Field(
         default=1.5,
         description="Minimum expected speaking rate for truncation detection"
-    )
-
-    # === Model Configuration (Speaker Verification) ===
-    MODEL_SOURCE: str = Field(
-        default="speechbrain/spkrec-ecapa-voxceleb",
-        description="SpeechBrain ECAPA-TDNN model for speaker verification"
-    )
-    MODEL_SAVE_DIR: Path = Field(
-        default=Path("pretrained_models/spkrec-ecapa-voxceleb"),
-        description="Directory to save/cache ECAPA-TDNN model"
     )
 
     # === Split Configuration ===

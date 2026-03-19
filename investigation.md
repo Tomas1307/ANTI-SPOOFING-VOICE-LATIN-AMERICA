@@ -28,8 +28,9 @@ This document presents a comprehensive technical analysis of six modern TTS syst
 4. [Chatterbox (Resemble.ai)](#4-chatterbox-resembleai)
 5. [OuteTTS](#5-outetts)
 6. [Nari Dia 1.6B](#6-nari-dia-16b)
-7. [Comparative Analysis](#comparative-analysis)
-8. [Final Recommendations](#final-recommendations)
+7. [OpenVoice V2 (MyShell AI)](#7-openvoice-v2-myshell-ai)
+8. [Comparative Analysis](#comparative-analysis)
+9. [Final Recommendations](#final-recommendations)
 
 ---
 
@@ -1726,6 +1727,162 @@ Even if Spanish support existed:
 
 ---
 
+## 7. OpenVoice V2 (MyShell AI)
+
+### Context & Overview
+
+**What is it?**
+OpenVoice is an open-source zero-shot voice cloning system developed by MyShell AI, first released in December 2023 (V1) and significantly updated in April 2024 (V2). It is notable for its decoupled two-component design: a base multilingual TTS model generates speech in a target language, and a separate tone color converter transplants the reference speaker's voice characteristics onto that output. This architectural separation is the core insight — it allows style (emotion, accent, prosody) and timbre (voice identity) to be controlled independently.
+
+**Why does it exist?**
+MyShell AI operates a voice AI platform and released OpenVoice as an open-source showcase of their zero-shot cloning capability. The V2 release replaced the V1 base TTS with MeloTTS, a separate MyShell project providing native multilingual support, substantially improving non-English language quality.
+
+**Architecture (V2):**
+- **Base TTS — MeloTTS**: Multilingual TTS with native support for English, Spanish, French, Chinese, Japanese, and Korean. Generates speech in the target language with a base speaker profile.
+- **Tone Color Extractor**: 2D CNN operating on the mel-spectrogram of the reference audio. Outputs a single feature vector encoding the speaker's timbre.
+- **Encoder + Normalizing Flow**: 1D CNN encoder processes the STFT spectrum; normalizing flow layers strip tone color from the encoded representation while preserving emotion, accent, and style. Alignment is achieved via dynamic time warping against IPA phonemes.
+- **Vocoder — HiFi-GAN**: Reconstructs the waveform from the flow-transformed feature maps via transposed 1D convolutions. **This is a GAN-based mel-spectrogram vocoder — architecturally distinct from both VQGAN (FishGram) and Dual-Track codec (Qwen).**
+
+Paper: arXiv:2312.01479 — "OpenVoice: Versatile Instant Voice Cloning"
+
+**Research Value for This Project:**
+OpenVoice V2 introduces a **third distinct codec/vocoder architecture** — HiFi-GAN — not present in either existing attack pipeline. A countermeasure detector trained on FishGram (VQGAN artifacts), Qwen (Dual-Track codec artifacts), and OpenVoice (HiFi-GAN artifacts) must learn genuinely general anti-spoofing features rather than signatures specific to any single synthesis method. This is the primary academic justification for inclusion.
+
+---
+
+### Benefits & Strengths
+
+1. **Third Distinct Vocoder Architecture**
+   - HiFi-GAN leaves a fundamentally different spectral fingerprint than VQGAN (FishGram) or Dual-Track (Qwen)
+   - Maximises codec diversity across the three attack pipelines
+   - Directly hardens detector generalisation against novel synthesis methods
+
+2. **Native Spanish Support (V2)**
+   - MeloTTS natively supports Spanish — not cross-lingual transfer, but a dedicated language model
+   - V1 handled Spanish via zero-shot cross-lingual transfer only; V2 corrects this
+
+3. **Minimal VRAM Footprint**
+   - ~4–8 GB VRAM observed across GPU generations
+   - Leaves the A40 (46 GB) almost entirely free — can run concurrently with other jobs
+   - Model total size: ~150–200M parameters (tone color converter ~50M, MeloTTS base ~80–100M)
+
+4. **Local Python Inference — No Server Required**
+   - Runs as a standard PyTorch model loaded from checkpoint files
+   - No HTTP server infrastructure needed (unlike FishGram)
+   - Consistent with the Qwen pipeline's local model pattern
+
+5. **Fast Inference**
+   - Reported ~12x real-time on A10G; expected faster on A40
+   - Comparable to or faster than Qwen RTF (~1.75x)
+
+6. **MIT License**
+   - Fully open source, no restrictions on academic research or redistribution
+   - More permissive than Fish Speech (CC-BY-NC-SA-4.0) and equivalent to Qwen (Apache 2.0)
+
+7. **Active Community**
+   - GitHub: myshell-ai/OpenVoice (well-maintained as of 2025–2026)
+   - HuggingFace: `myshell-ai/OpenVoiceV2`
+
+---
+
+### Problems & Red Flags
+
+1. **Systematic Accent Flattening (CRITICAL FOR LATIN AMERICAN SPANISH)**
+   - The tone color converter training data (~300,000 samples) consists of: ~60% English, ~20% Chinese, ~20% Japanese. **Zero Latin American Spanish speakers.**
+   - Cross-lingual tone transfer for Spanish is genuinely zero-shot — the model has never seen Argentine, Colombian, Venezuelan, or Mexican phonetic patterns during training.
+   - Confirmed behaviour: regional accents (Latin American, British, Australian) converge toward a neutral, American-adjacent output after tone color conversion.
+   - **Implication for this thesis:** The generated spoof audio will likely reproduce the speaker's voice timbre but flatten their regional Latin American accent characteristics. The attacks may sound plausibly Spanish but not convincingly accent-specific. This is a limitation to document in the thesis methodology — it does not disqualify the pipeline, but it must be disclosed.
+
+2. **No Single pip Install**
+   - Requires `git clone` and editable install: `pip install -e .`
+   - MeloTTS must be installed separately: `pip install git+https://github.com/myshell-ai/MeloTTS.git`
+   - `python -m unidic download` required for MeloTTS Japanese tokeniser (downloads even when using Spanish)
+   - Adds ~30 minutes of setup time vs a simple pip install
+
+3. **Older Architecture**
+   - VITS + HiFi-GAN stack (2021-era technology) vs the 2024–2025 codec architectures of Fish Speech and Qwen3-TTS
+   - Audio naturalness ceiling is lower than state-of-the-art codec models
+   - For anti-spoofing research, this is acceptable — older GAN vocoder artifacts are a valid and distinct attack surface
+
+4. **No Latin American Spanish Benchmarks**
+   - No published WER, CER, or speaker similarity scores for Spanish, let alone Latin American Spanish variants
+   - Quality must be empirically validated in a test run before committing to full production
+
+5. **Online vs Open-Source Quality Gap**
+   - MyShell's hosted version applies proprietary post-processing not present in the open-source release
+   - Open-source output quality may be noticeably lower than MyShell's commercial demos
+
+---
+
+### Installation (on ml-server03)
+
+```bash
+# Create isolated environment
+python -m venv envs/openvoice_env
+source envs/openvoice_env/bin/activate
+
+# Install OpenVoice V2
+git clone https://github.com/myshell-ai/OpenVoice.git
+cd OpenVoice
+pip install -e .
+
+# Install MeloTTS (V2 base TTS)
+pip install git+https://github.com/myshell-ai/MeloTTS.git
+python -m unidic download
+
+# Download checkpoints from HuggingFace
+# Model: myshell-ai/OpenVoiceV2
+# Place in: checkpoints_v2/converter/ and checkpoints_v2/base_speakers/melo/
+```
+
+**HuggingFace model IDs:**
+- Tone color converter: `myshell-ai/OpenVoiceV2` (converter checkpoint)
+- MeloTTS base: loaded automatically by the MeloTTS library
+
+---
+
+### Spanish Language Assessment
+
+**Training Data (MeloTTS base):** Multilingual with native Spanish support; training corpus size not publicly disclosed
+**Training Data (Tone Color Converter):** ~300K samples — 0% Latin American Spanish
+**Benchmarks published:** None for Spanish
+**Dialect Coverage:** Single `es` language label — no sub-dialect conditioning
+**Accent fidelity for Latin American Spanish:** LOW — systematic convergence toward neutral accent confirmed
+
+**Risk Assessment:**
+- Spanish intelligibility: likely acceptable (MeloTTS is purpose-built for multilingual TTS)
+- Latin American accent preservation: LOW — this is a documented architectural limitation
+- Must validate empirically before full production run
+
+**Verdict:** Acceptable for thesis use with explicit methodological disclosure of accent flattening limitation.
+
+---
+
+### Assessment: IMPLEMENT AS THIRD ATTACK PIPELINE
+
+**Advantages:**
+- Third distinct HiFi-GAN vocoder architecture — maximises detector generalisation
+- Minimal VRAM, local inference, MIT license — no infrastructure or legal friction
+- Fast to integrate given experience with the Qwen local-model pattern
+
+**Disadvantages / Hard Restrictions:**
+- Systematic Latin American accent flattening — must be disclosed as a methodological limitation
+- Older architecture (lower naturalness ceiling) — acceptable for anti-spoofing research
+- No pip install (git clone + editable install + MeloTTS dep)
+- Zero published Spanish benchmarks — quality requires empirical validation
+
+**Path to Use:**
+- Follow the same isolated venv pattern: `envs/openvoice_env/`
+- Validate Spanish quality with 3–5 test speakers from HABLA before committing to full 162-speaker run
+- Document accent flattening limitation explicitly in thesis methodology section
+
+**Risk Level:** LOW-MEDIUM (known limitations, not blocking surprises)
+**Actual Work Hours Estimate:** 20–35 hours
+**Realistic Calendar Timeline (6 hrs/week):** 4–7 weeks
+**Expected Quality:** MODERATE for Spanish intelligibility; LOW for Latin American accent fidelity
+
+---
+
 ## Comparative Analysis
 
 ### Summary Matrix
@@ -1734,6 +1891,7 @@ Even if Spanish support existed:
 |--------|----------------|------------|-----------------|---------------------|------|---------|----------------------|----------------|--------|
 | **Fish Speech** | ⭐⭐⭐⭐ Good (20k hrs) | Moderate | 50–80 h | 10–15 wks | 12GB ✅ | CC-BY-NC-SA-4.0 ✅ | ~2 s | No LatAm dialect benchmarks | ✅ **Primary** |
 | **Qwen3-TTS** | ⭐⭐⭐ Mediocre | Moderate | 30–50 h | 7–10 wks | 4–8GB ✅ | Apache 2.0 ✅ | ~0.8 s | Fine-tuning broken | ⚡ **Secondary** |
+| **OpenVoice V2** | ⭐⭐⭐ Moderate (accent flattening) | Low–Moderate | 20–35 h | 4–7 wks | 4–8GB ✅ | MIT ✅ | ~0.5–1 s | Accent flattening for LatAm Spanish — must disclose | 🆕 **Third Pipeline** |
 | **CosyVoice 3.0** | ⭐⭐ Unknown | High | 40–80 h | 10–18 wks | 8–16GB ✅ | Apache 2.0 ✅ | ~1.5 s | vLLM version lock; no Spanish benchmarks | ⚠️ Phase 2 if stable |
 | **Chatterbox** | ⭐⭐⭐ Unvalidated | Low | 20–35 h | 5–8 wks | 8GB ✅ | MIT ✅ | ~4–6 s | Mandatory watermark — must disclose in thesis | 📝 Disclose & use |
 | **OuteTTS** | ⭐⭐⭐ Adequate | High | 15–30 h | 4–7 wks (+gen time) | 6–12GB ✅ | Apache 2.0 ✅ | **2–4 min** | Batch gen = 1.5–2.5 days per 1000 samples | 🐌 Small-scale only |
@@ -1773,10 +1931,11 @@ Even if Spanish support existed:
 |------|--------|----------------|----------|------------------|
 | 🥇 1st | **Fish Speech** | ⭐⭐⭐⭐ Good | 20k hours, high training tier, explicit support | HIGH |
 | 🥈 2nd | **Qwen3-TTS** | ⭐⭐⭐ Mediocre | Paper admits "not top-tier", user reports of accent issues | MEDIUM |
-| 🥉 3rd | **OuteTTS** | ⭐⭐⭐ Adequate | 20k-60k hours, high training tier (but performance disaster negates) | MEDIUM |
-| 4th | **Chatterbox** | ⭐⭐⭐ Unvalidated | Listed in 23 languages, zero validation | LOW |
-| 5th | **CosyVoice 3.0** | ⭐⭐ Unknown | No benchmarks, no samples, unclear training allocation | VERY LOW |
-| ❌ 6th | **Nari Dia** | 🚫 **NONE** | English only, no Spanish support | N/A |
+| 🥉 3rd | **OpenVoice V2** | ⭐⭐⭐ Moderate | MeloTTS native Spanish; accent flattening confirmed for LatAm | MEDIUM |
+| 4th | **OuteTTS** | ⭐⭐⭐ Adequate | 20k-60k hours, high training tier (but performance disaster negates) | MEDIUM |
+| 5th | **Chatterbox** | ⭐⭐⭐ Unvalidated | Listed in 23 languages, zero validation | LOW |
+| 6th | **CosyVoice 3.0** | ⭐⭐ Unknown | No benchmarks, no samples, unclear training allocation | VERY LOW |
+| ❌ 7th | **Nari Dia** | 🚫 **NONE** | English only, no Spanish support | N/A |
 
 ---
 
@@ -1827,7 +1986,27 @@ No system is discarded. Each is assigned a role based on its actual constraints 
 
 ---
 
-### Tier 3 — Consider If Calendar Allows: Chatterbox (Fast Prototyping + Disclosure)
+### Tier 3 — Implement Third: OpenVoice V2 (Third Codec Architecture)
+
+**Why third:** HiFi-GAN vocoder is architecturally distinct from both VQGAN (FishGram) and Dual-Track (Qwen). Adds a third synthesis fingerprint that forces the countermeasure to generalise beyond the two existing attack surfaces. Minimal VRAM, local inference, MIT license — no infrastructure or legal friction. Start after FishGram and Qwen are stable.
+
+**Hard restriction:** Accent flattening for Latin American Spanish is a confirmed architectural limitation. This must be explicitly disclosed in the thesis methodology. The attacks will be phonetically plausible Spanish but may not preserve the speaker's regional accent characteristics.
+
+**Realistic Calendar Plan:**
+
+| Meeting Cycle | Calendar Weeks | Work Hours | Deliverable |
+|---------------|---------------|------------|-------------|
+| Cycle 1 | Weeks 1–2 | 4–6 h | venv setup, 3–5 HABLA speaker test samples, quality go/no-go |
+| **Buffer** | Weeks 3–4 | — | 1.5-week buffer for dependency and accent quality issues |
+| Cycle 2 | Weeks 5–6 | 6–8 h | Full pipeline integrated, 162-speaker production run |
+| Cycle 3 | Weeks 7–8 | 4–6 h | Output formatted, methodology documented for thesis |
+
+**Total:** ~7 weeks calendar time (~20–30 work hours)
+**Sample split:** Fish Speech 70% · Qwen3-TTS 20% · OpenVoice V2 10%
+
+---
+
+### Tier 4 — Consider If Calendar Allows: Chatterbox (Fast Prototyping + Disclosure)
 
 **When to consider:** After Tier 1 and 2 are stable. Easiest to install of all systems.
 

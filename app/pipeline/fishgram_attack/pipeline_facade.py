@@ -139,8 +139,9 @@ class FishGramAttackPipeline:
             logger.info(f"Validation complete")
             logger.info(f"  Passed: {result_4.validation_stats['passed']}/{result_4.validation_stats['total']}")
             logger.info(f"  Rejected: {result_4.validation_stats['rejected']}")
-            logger.info(f"  Avg DNSMOS: {result_4.avg_dnsmos:.2f}")
-            logger.info(f"  Avg similarity: {result_4.avg_similarity:.2f}")
+            logger.info(f"  Avg WER: {result_4.avg_wer:.4f}")
+            logger.info(f"  Avg CER: {result_4.avg_cer:.4f}")
+            logger.info(f"  Prefix trims: {result_4.prefix_trim_count}")
             logger.info("")
         else:
             logger.warning("STEP 4 skipped (run_step_4=False)")
