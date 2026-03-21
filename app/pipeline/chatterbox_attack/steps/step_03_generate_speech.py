@@ -8,6 +8,10 @@ Key implementation decisions:
   - The Resemble Perth watermark is bypassed via NoOpWatermarker for research validity.
     Without this, every generated sample carries a neural steganographic watermark
     that could give anti-spoofing detectors an artificial advantage.
+  - The perth_patcher module MUST be imported before chatterbox.mtl_tts because
+    ChatterboxMultilingualTTS.__init__ calls perth.PerthImplicitWatermarker()
+    unconditionally. The native Perth binary frequently fails to load (returns None),
+    so we replace it with NoOpWatermarker at module level before the import.
   - Output is a torch.Tensor at 24 kHz (model.sr). It is resampled to 16 kHz
     before saving for consistency with all other pipeline stages.
   - The model is loaded once with from_pretrained(), then reused for all samples.
@@ -21,11 +25,11 @@ from pathlib import Path
 from loguru import logger
 from tqdm import tqdm
 
-from chatterbox.mtl_tts import ChatterboxMultilingualTTS
-
 from app.pipeline.chatterbox_attack.settings import settings
 from app.pipeline.chatterbox_attack.schemas.generation_result import GenerationResult
+from app.pipeline.chatterbox_attack.utils.perth_patcher import ensure_patched  # noqa: F401 — patches perth on import
 from app.pipeline.chatterbox_attack.utils.watermark_remover import NoOpWatermarker
+from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 
 
 class SpeechGenerator:
