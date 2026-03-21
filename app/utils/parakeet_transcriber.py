@@ -49,7 +49,7 @@ class ParakeetTranscriber:
 
         Args:
             model_id: HuggingFace model identifier for Parakeet TDT.
-                Defaults to the 1.1B parameter variant.
+                Defaults to the 0.6b-v3 multilingual variant (25 languages).
             device: Compute device. Use 'cuda' on ml-server03 A40 GPUs.
 
         Raises:
@@ -61,6 +61,7 @@ class ParakeetTranscriber:
             return
 
         import nemo.collections.asr as nemo_asr
+        from omegaconf import open_dict
 
         logger.info(f"Loading Parakeet TDT model: {model_id} on {device}")
         self._model = nemo_asr.models.ASRModel.from_pretrained(model_name=model_id)
@@ -69,7 +70,26 @@ class ParakeetTranscriber:
         if device.startswith("cuda"):
             self._model = self._model.cuda()
 
+        self._disable_cuda_graphs()
         logger.info("Parakeet TDT model loaded successfully.")
+
+    def _disable_cuda_graphs(self) -> None:
+        """Disable CUDA graph decoder to avoid crashes on mismatched CUDA versions.
+
+        Some pipeline venvs ship PyTorch with CUDA runtime headers newer than
+        the server driver (e.g. CUDA 12.8 runtime vs driver 560.35.03 which
+        caps at ~12.6). NeMo's CUDA graph greedy decoder calls
+        cudaStreamBeginCapture which fails with cudaError 222 in that scenario.
+        Disabling CUDA graphs forces standard eager-mode GPU execution with no
+        accuracy or meaningful speed penalty for single-file transcription.
+        """
+        from omegaconf import open_dict
+
+        with open_dict(self._model.cfg.decoding):
+            self._model.cfg.decoding.greedy.loop_labels = False
+            self._model.cfg.decoding.greedy.use_cuda_graph_decoder = False
+        self._model.change_decoding_strategy(self._model.cfg.decoding)
+        logger.debug("CUDA graph decoder disabled for compatibility.")
 
     def transcribe(self, audio_path: Path) -> str:
         """Transcribe a single audio file to text.
