@@ -1,24 +1,23 @@
 """
-Gap-detection speech endpoint trimmer for Chatterbox output.
+Speech endpoint trimmer for Chatterbox trailing noise artifacts.
 
-Chatterbox Multilingual TTS frequently generates noise artifacts after the
-actual speech content ends (triggered by the ``long_tail`` EOS forcing
-mechanism). These artifacts are NOT silence — they can reach 8-20% of peak
-energy, defeating simple threshold-based trimming.
+Chatterbox Multilingual TTS frequently generates loud noise artifacts after
+the actual speech ends. The pattern is consistent:
+  Speech (high, variable energy) -> Silence gap -> Noise (moderate, flat energy)
 
-However, a consistent pattern exists: speech ends, energy drops to near zero
-for 100-300 ms, then the noise artifact begins. This module exploits that
-gap by:
-  1. Computing a smoothed RMS energy envelope in short frames.
-  2. Scanning backwards from the end to find a sustained silence gap (energy
-     below 3% of peak for at least ``min_gap_ms`` milliseconds).
-  3. Trimming at the START of that gap (with a small margin to preserve the
-     last syllable's tail).
+The noise can reach 15-40% of peak energy, defeating simple threshold trims.
+However, the silence gap between speech and noise is always the LONGEST
+silence gap in the audio — longer than any inter-word or inter-syllable pause.
 
-If no trailing gap is found, the audio is returned unchanged — it is either
-clean or the noise is too merged with speech to safely remove.
+Algorithm:
+  1. Compute smoothed RMS energy envelope.
+  2. Identify all silence gaps (runs of frames below 3% of peak).
+  3. Select the longest gap that occurs in the second half of the audio.
+  4. Verify by comparing mean energy before vs after the gap: if after-gap
+     energy is lower than before-gap, it is noise.
+  5. Trim at the start of the gap (plus a small margin).
 
-No external models or downloads required — only numpy.
+No external models required — only numpy.
 """
 import numpy as np
 import torch
@@ -34,10 +33,7 @@ def trim_trailing_noise(
     silence_threshold_ratio: float = 0.03,
     min_gap_ms: int = 150,
 ) -> torch.Tensor:
-    """Trim trailing non-speech noise by detecting the post-speech silence gap.
-
-    Chatterbox noise artifacts are preceded by a brief silence gap after the
-    real speech ends. This function finds that gap and trims at its start.
+    """Trim trailing non-speech noise by finding the longest silence gap.
 
     Args:
         wav: Audio tensor of shape (1, num_samples) or (num_samples,).
@@ -45,14 +41,10 @@ def trim_trailing_noise(
         margin_ms: Milliseconds to keep after the last speech frame before
             the gap (preserves tail of final syllable).
         frame_ms: RMS frame length in milliseconds.
-        smooth_ms: Rolling average window size in milliseconds for smoothing
-            the RMS envelope.
-        silence_threshold_ratio: Frames with smoothed RMS below this fraction
-            of peak are considered silence. 0.03 = 3% of peak.
-        min_gap_ms: Minimum duration in milliseconds for a silence region to
-            qualify as the post-speech gap. Must be long enough to distinguish
-            from inter-syllable pauses (~50-80 ms) but short enough to catch
-            the Chatterbox artifact gap (~100-300 ms).
+        smooth_ms: Rolling average window for smoothing the RMS envelope.
+        silence_threshold_ratio: Frames below this fraction of peak smoothed
+            RMS are considered silent. 0.03 = 3% of peak.
+        min_gap_ms: Minimum gap duration to consider as a speech endpoint.
 
     Returns:
         Trimmed waveform tensor with the same number of dimensions as input.
@@ -81,58 +73,41 @@ def trim_trailing_noise(
     silence_threshold = peak_rms * silence_threshold_ratio
     is_silent = smoothed < silence_threshold
 
-    min_gap_frames = max(1, int(min_gap_ms / (hop_len / sample_rate * 1000)))
+    gaps = _find_silence_gaps(is_silent, hop_len, sample_rate, min_gap_ms)
 
-    # Scan backwards from the end looking for a silence gap that is
-    # followed by non-silence (the noise artifact). The gap must be at
-    # least min_gap_frames long and must NOT extend to the very end of
-    # the audio (that would be trailing silence, not a gap before noise).
-    #
-    # Walk from the end:
-    #   1. Skip any trailing non-silence (the noise artifact itself).
-    #   2. Count consecutive silence frames (the gap).
-    #   3. If the gap is long enough, we found it. Trim at its start.
-
-    i = num_frames - 1
-
-    # Step 1: skip trailing non-silence (noise artifact)
-    while i >= 0 and not is_silent[i]:
-        i -= 1
-
-    if i < 0:
+    if not gaps:
         return wav
 
-    noise_start_frame = i + 1
+    # Find the longest gap in the second half of the audio
+    midpoint = num_frames // 2
+    candidate_gaps = [g for g in gaps if g["start"] >= midpoint]
 
-    # Step 2: count consecutive silence frames (the gap)
-    gap_end = i
-    while i >= 0 and is_silent[i]:
-        i -= 1
-
-    gap_start = i + 1
-    gap_length = gap_end - gap_start + 1
-
-    if gap_length < min_gap_frames:
+    if not candidate_gaps:
         return wav
 
-    # Step 3: verify there is actual speech BEFORE the gap
-    # (at least 500ms of audio before gap_start to be meaningful)
-    min_speech_frames = int(500 / (hop_len / sample_rate * 1000))
-    if gap_start < min_speech_frames:
-        return wav
+    longest_gap = max(candidate_gaps, key=lambda g: g["length"])
 
-    # Trim at gap_start (last speech frame before the gap) + margin
-    trim_frame = gap_start
+    # Verify: mean energy after gap should be lower than before gap
+    before_mean = smoothed[:longest_gap["start"]].mean()
+    after_start = longest_gap["end"]
+    if after_start < num_frames:
+        after_mean = smoothed[after_start:].mean()
+        if after_mean >= before_mean:
+            # After-gap is louder than before-gap — not a noise artifact
+            return wav
+
+    # Trim at the start of the gap + margin
+    trim_frame = longest_gap["start"]
     trim_sample = trim_frame * hop_len + frame_len
     margin_samples = int(margin_ms * sample_rate / 1000)
     trim_point = min(trim_sample + margin_samples, len(audio))
 
-    # Safety: don't trim more than 40% of the audio
-    if trim_point < len(audio) * 0.6:
+    # Safety: don't trim more than 50% of the audio
+    if trim_point < len(audio) * 0.5:
         logger.warning(
-            f"Gap-based trim would remove >{40}% of audio "
+            f"Trim would remove >{50}% of audio "
             f"({len(audio) / sample_rate:.2f}s -> {trim_point / sample_rate:.2f}s). "
-            f"Skipping trim for safety."
+            f"Skipping for safety."
         )
         return wav
 
@@ -140,8 +115,9 @@ def trim_trailing_noise(
     trimmed_dur = trim_point / sample_rate
     logger.debug(
         f"Trimmed trailing noise: {original_dur:.2f}s -> {trimmed_dur:.2f}s "
-        f"(gap at {gap_start * hop_len / sample_rate:.2f}s, "
-        f"noise at {noise_start_frame * hop_len / sample_rate:.2f}s)"
+        f"(removed {original_dur - trimmed_dur:.2f}s, "
+        f"gap at {longest_gap['start'] * hop_len / sample_rate:.2f}s, "
+        f"gap duration {longest_gap['length'] * hop_len / sample_rate * 1000:.0f}ms)"
     )
 
     trimmed = torch.from_numpy(audio[:trim_point])
@@ -149,3 +125,45 @@ def trim_trailing_noise(
         trimmed = trimmed.unsqueeze(0)
 
     return trimmed
+
+
+def _find_silence_gaps(
+    is_silent: np.ndarray,
+    hop_len: int,
+    sample_rate: int,
+    min_gap_ms: int,
+) -> list:
+    """Find all silence gaps that exceed the minimum duration.
+
+    Args:
+        is_silent: Boolean array where True means the frame is below the
+            silence threshold.
+        hop_len: Hop length in samples between frames.
+        sample_rate: Audio sample rate in Hz.
+        min_gap_ms: Minimum gap duration in milliseconds.
+
+    Returns:
+        List of dicts with 'start', 'end', and 'length' (in frames) for
+        each qualifying silence gap.
+    """
+    min_gap_frames = max(1, int(min_gap_ms / (hop_len / sample_rate * 1000)))
+    gaps = []
+    i = 0
+    n = len(is_silent)
+
+    while i < n:
+        if is_silent[i]:
+            gap_start = i
+            while i < n and is_silent[i]:
+                i += 1
+            gap_length = i - gap_start
+            if gap_length >= min_gap_frames:
+                gaps.append({
+                    "start": gap_start,
+                    "end": i,
+                    "length": gap_length,
+                })
+        else:
+            i += 1
+
+    return gaps
