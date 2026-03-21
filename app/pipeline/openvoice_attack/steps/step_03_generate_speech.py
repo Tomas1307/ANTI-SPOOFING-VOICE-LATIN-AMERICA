@@ -83,7 +83,7 @@ class SpeechGenerator:
             settings.OPENVOICE_CHECKPOINT_DIR / "converter" / "checkpoint.pth"
         )
         source_se_path = str(
-            settings.OPENVOICE_CHECKPOINT_DIR / "base_speakers" / "ses" / "es-default.pth"
+            settings.OPENVOICE_CHECKPOINT_DIR / "base_speakers" / "ses" / "es.pth"
         )
 
         logger.info("Loading ToneColorConverter...")
