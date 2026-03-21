@@ -74,22 +74,31 @@ class ParakeetTranscriber:
         logger.info("Parakeet TDT model loaded successfully.")
 
     def _disable_cuda_graphs(self) -> None:
-        """Disable CUDA graph decoder to avoid crashes on mismatched CUDA versions.
+        """Disable CUDA graph decoder and pre-enable timestamps mode.
 
-        Some pipeline venvs ship PyTorch with CUDA runtime headers newer than
-        the server driver (e.g. CUDA 12.8 runtime vs driver 560.35.03 which
-        caps at ~12.6). NeMo's CUDA graph greedy decoder calls
-        cudaStreamBeginCapture which fails with cudaError 222 in that scenario.
-        Disabling CUDA graphs forces standard eager-mode GPU execution with no
-        accuracy or meaningful speed penalty for single-file transcription.
+        Two problems are solved here:
+
+        1. Some pipeline venvs ship PyTorch with CUDA runtime headers newer than
+           the server driver (e.g. CUDA 12.8 runtime vs driver 560.35.03 which
+           caps at ~12.6). NeMo's CUDA graph greedy decoder calls
+           cudaStreamBeginCapture which fails with cudaError 222 in that scenario.
+
+        2. Passing timestamps=True to model.transcribe() causes NeMo to internally
+           call change_decoding_strategy, which re-creates the decoder and resets
+           use_cuda_graph_decoder to True. By enabling timestamps here alongside
+           the CUDA graph disable, we avoid NeMo ever needing to reconfigure.
+
+        Both transcribe() and transcribe_with_timestamps() call model.transcribe()
+        without timestamps=True; timestamps are always available in the output.
         """
         from omegaconf import open_dict
 
         with open_dict(self._model.cfg.decoding):
             self._model.cfg.decoding.greedy.loop_labels = False
             self._model.cfg.decoding.greedy.use_cuda_graph_decoder = False
+            self._model.cfg.decoding.compute_timestamps = True
         self._model.change_decoding_strategy(self._model.cfg.decoding)
-        logger.debug("CUDA graph decoder disabled for compatibility.")
+        logger.debug("CUDA graph decoder disabled, timestamps pre-enabled.")
 
     def transcribe(self, audio_path: Path) -> str:
         """Transcribe a single audio file to text.
@@ -140,7 +149,7 @@ class ParakeetTranscriber:
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        results = self._model.transcribe([str(audio_path)], timestamps=True)
+        results = self._model.transcribe([str(audio_path)])
         result = results[0]
         text = result.text if hasattr(result, "text") else str(result)
 
