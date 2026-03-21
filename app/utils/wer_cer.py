@@ -13,9 +13,11 @@ Normalization pipeline:
     4. Punctuation removal
     5. Whitespace normalization
 
-This ensures 'decision' and 'decisión' are treated identically, which is
-necessary because Parakeet TDT is English-trained and will output ASCII
-transcriptions of Spanish audio.
+This ensures 'decision' and 'decisión' are treated identically for
+accent-invariant comparison. Even with Parakeet TDT 0.6b-v3 (which
+supports Spanish natively), ASCII normalization is applied to both
+reference and hypothesis so that diacritic handling differences between
+TTS text input and ASR output do not inflate error rates.
 
 Requires: jiwer >= 3.0
     pip install jiwer

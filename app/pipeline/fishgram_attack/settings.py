@@ -140,8 +140,8 @@ class FishGramAttackSettings(BaseModel):
 
     # === Parakeet STT Validation ===
     PARAKEET_MODEL_ID: str = Field(
-        default="nvidia/parakeet-tdt-1.1b",
-        description="NVIDIA Parakeet TDT model ID for transcription-based quality validation"
+        default="nvidia/parakeet-tdt-0.6b-v3",
+        description="NVIDIA Parakeet TDT model ID for transcription-based quality validation (supports Spanish)"
     )
     WER_MAX_ACCEPTABLE: float = Field(
         default=0.15,

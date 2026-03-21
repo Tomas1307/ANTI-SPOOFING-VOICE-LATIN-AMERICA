@@ -1,14 +1,13 @@
 """
-Singleton wrapper for NVIDIA Parakeet TDT 1.1B automatic speech recognition model.
+Singleton wrapper for NVIDIA Parakeet TDT automatic speech recognition model.
 
-Parakeet TDT (Token-and-Duration Transducer) provides word-level timestamps
-natively, making it the preferred model for audio content validation and
-spurious prefix detection in TTS attack pipelines.
+Parakeet TDT 0.6b-v3 (Token-and-Duration Transducer) provides word-level
+timestamps natively and supports 25 languages including Spanish (3.45% WER
+on FLEURS). This makes it the preferred model for audio content validation
+and spurious prefix detection in TTS attack pipelines.
 
 Installation on ml-server03 (per pipeline venv):
-    pip install nemo_toolkit[asr]
-    # or lighter variant:
-    pip install nvidia-nemo[asr]
+    pip install -U "nemo_toolkit[asr]"
 """
 from pathlib import Path
 from typing import List, Tuple
@@ -19,7 +18,7 @@ from app.utils.word_timestamp import WordTimestamp
 
 
 class ParakeetTranscriber:
-    """Singleton wrapper for NVIDIA Parakeet TDT 1.1B ASR model.
+    """Singleton wrapper for NVIDIA Parakeet TDT ASR model.
 
     The model is loaded once on first use and reused across all subsequent
     calls. Loading NeMo models is expensive (~10s), so repeated instantiation
@@ -27,7 +26,7 @@ class ParakeetTranscriber:
 
     Usage:
         transcriber = ParakeetTranscriber()
-        transcriber.load(model_id="nvidia/parakeet-tdt-1.1b", device="cuda")
+        transcriber.load(model_id="nvidia/parakeet-tdt-0.6b-v3", device="cuda")
         text = transcriber.transcribe(Path("audio.wav"))
         text, timestamps = transcriber.transcribe_with_timestamps(Path("audio.wav"))
 
@@ -45,7 +44,7 @@ class ParakeetTranscriber:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def load(self, model_id: str = "nvidia/parakeet-tdt-1.1b", device: str = "cuda") -> None:
+    def load(self, model_id: str = "nvidia/parakeet-tdt-0.6b-v3", device: str = "cuda") -> None:
         """Load the Parakeet TDT model from HuggingFace if not already loaded.
 
         Args:

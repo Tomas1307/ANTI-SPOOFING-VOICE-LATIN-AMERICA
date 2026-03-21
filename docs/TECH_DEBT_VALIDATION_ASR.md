@@ -1,6 +1,11 @@
-# Tech Debt: Spanish ASR Validation (Step 4)
+# Tech Debt: Spanish ASR Validation (Step 4) — RESOLVED
 
-## Problem
+**Status**: RESOLVED (2026-03-21)
+**Solution**: Replaced `nvidia/parakeet-tdt-1.1b` (English-only) with `nvidia/parakeet-tdt-0.6b-v3` (25 languages including Spanish, 3.45% WER on FLEURS).
+
+---
+
+## Original Problem
 
 The quality validation step (Step 4) across all attack pipelines uses NVIDIA Parakeet TDT 1.1B
 (`nvidia/parakeet-tdt-1.1b`) for STT transcription to compute WER/CER metrics. This model is
@@ -51,17 +56,28 @@ The shared transcriber singleton is in `app/utils/parakeet_transcriber.py`.
    "Parakeet" which is English-only. They may have meant the NeMo multilingual family or may
    not have been aware of the language limitation.
 
-## Interim Workaround
+## Resolution Applied
 
-Run pipelines with Steps 1-3 and Step 5 only (skip Step 4 validation). The generated audio
-has been verified as intelligible Spanish by human listening. Validation can be re-run once
-the ASR model issue is resolved.
+**Model**: `nvidia/parakeet-tdt-0.6b-v3` — 0.6B parameter FastConformer TDT with unified
+SentencePiece tokenizer (8,192 tokens) supporting 25 European languages.
 
-## Settings to Change
+**Spanish benchmarks**:
+- FLEURS: 3.45% WER
+- MLS: 4.39% WER
+- CoVoST2: 3.41% WER
 
-Each pipeline's `settings.py` has:
-```python
-PARAKEET_MODEL_ID: str = "nvidia/parakeet-tdt-1.1b"
-```
+**Changes made**:
+1. Updated `PARAKEET_MODEL_ID` in all 4 pipeline settings files to `nvidia/parakeet-tdt-0.6b-v3`
+2. Updated `app/utils/parakeet_transcriber.py` docstrings and default parameter
+3. Updated `app/utils/wer_cer.py` docstring rationale (ASCII normalization kept for accent-invariant comparison)
+4. Step 4 logic unchanged (model ID loaded from settings at runtime)
 
-This needs to be swapped to a Spanish-capable model ID once the resolution is chosen.
+**Caveats**:
+- Benchmarks are on European/neutral Spanish. HABLA dataset has Latin American accents — WER may be higher.
+- No language forcing: Parakeet 0.6b-v3 auto-detects language (no `language="es"` parameter like Whisper).
+- VRAM: ~3-4 GB on GPU, trivial on A40 (46GB).
+
+## Previous Workaround (no longer needed)
+
+~~Run pipelines with Steps 1-3 and Step 5 only (skip Step 4 validation).~~
+Step 4 can now run normally with the default `run_step_4=True`.

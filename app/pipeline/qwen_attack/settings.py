@@ -182,8 +182,8 @@ class QwenAttackSettings(BaseModel):
 
     # === Parakeet STT Validation ===
     PARAKEET_MODEL_ID: str = Field(
-        default="nvidia/parakeet-tdt-1.1b",
-        description="HuggingFace model ID for NVIDIA Parakeet TDT ASR"
+        default="nvidia/parakeet-tdt-0.6b-v3",
+        description="HuggingFace model ID for NVIDIA Parakeet TDT ASR (supports Spanish)"
     )
     WER_THRESHOLD: float = Field(
         default=0.0,
