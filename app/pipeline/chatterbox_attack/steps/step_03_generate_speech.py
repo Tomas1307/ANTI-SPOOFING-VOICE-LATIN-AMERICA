@@ -205,7 +205,10 @@ class SpeechGenerator:
         )
 
         wav_trimmed = trim_trailing_noise(
-            wav_resampled, settings.SAMPLE_RATE, margin_ms=settings.VAD_MARGIN_MS
+            wav_resampled,
+            settings.SAMPLE_RATE,
+            margin_ms=settings.VAD_MARGIN_MS,
+            text=text,
         )
 
         torchaudio.save(str(output_path), wav_trimmed, settings.SAMPLE_RATE)
