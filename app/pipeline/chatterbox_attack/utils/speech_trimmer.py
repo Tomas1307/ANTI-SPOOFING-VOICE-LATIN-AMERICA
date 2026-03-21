@@ -1,173 +1,150 @@
 """
-Two-stage speech endpoint trimmer for Chatterbox output.
+Gap-detection speech endpoint trimmer for Chatterbox output.
 
 Chatterbox Multilingual TTS frequently generates noise artifacts after the
 actual speech content ends (triggered by the ``long_tail`` EOS forcing
-mechanism). These artifacts are NOT silence — they can be loud, speech-like
-noise that both energy-based trimming and VAD misclassify as speech.
+mechanism). These artifacts are NOT silence — they can reach 8-20% of peak
+energy, defeating simple threshold-based trimming.
 
-This module uses a two-stage approach:
-  1. **Duration ceiling**: Estimates expected speech duration from the input
-     text word count and a conservative speaking rate. Any audio beyond
-     ``max_duration_factor * expected_duration`` is unconditionally removed.
-  2. **Silero VAD refinement**: Within the ceiling, detects the end of the
-     last contiguous speech block (ignoring short isolated segments near the
-     end that are likely noise misdetected as speech) and trims there.
+However, a consistent pattern exists: speech ends, energy drops to near zero
+for 100-300 ms, then the noise artifact begins. This module exploits that
+gap by:
+  1. Computing a smoothed RMS energy envelope in short frames.
+  2. Scanning backwards from the end to find a sustained silence gap (energy
+     below 3% of peak for at least ``min_gap_ms`` milliseconds).
+  3. Trimming at the START of that gap (with a small margin to preserve the
+     last syllable's tail).
 
-The Silero VAD model is loaded once via torch.hub and reused across calls.
+If no trailing gap is found, the audio is returned unchanged — it is either
+clean or the noise is too merged with speech to safely remove.
+
+No external models or downloads required — only numpy.
 """
+import numpy as np
 import torch
-import torchaudio
 from loguru import logger
-
-
-_vad_model = None
-_vad_utils = None
-
-SPEECH_GAP_THRESHOLD_MS = 500
-MIN_TRAILING_SEGMENT_MS = 300
-
-
-def _load_vad():
-    """Load Silero VAD model from torch.hub (cached after first call).
-
-    Returns:
-        Tuple of (model, utils) where utils contains get_speech_timestamps
-        and other helper functions.
-    """
-    global _vad_model, _vad_utils
-    if _vad_model is None:
-        model, utils = torch.hub.load(
-            repo_or_dir="snakers4/silero-vad",
-            model="silero_vad",
-            trust_repo=True,
-        )
-        _vad_model = model
-        _vad_utils = utils
-    return _vad_model, _vad_utils
-
-
-def _find_main_speech_end(speech_timestamps: list) -> int:
-    """Find the end sample of the main speech block, ignoring trailing noise.
-
-    Chatterbox noise artifacts can fool VAD into detecting short spurious
-    speech segments after the real content. This function identifies the
-    main contiguous speech block and ignores any short, isolated segments
-    that appear after a gap.
-
-    Strategy:
-      - Walk the speech segments from the end.
-      - If the last segment is short (< MIN_TRAILING_SEGMENT_MS) and there
-        is a gap (> SPEECH_GAP_THRESHOLD_MS) before it, discard it and use
-        the previous segment's end.
-      - Repeat until a substantial segment or the main block is reached.
-
-    Args:
-        speech_timestamps: List of dicts with 'start' and 'end' keys
-            (sample indices at 16 kHz) from Silero VAD.
-
-    Returns:
-        End sample index (at 16 kHz) of the main speech content.
-    """
-    if len(speech_timestamps) <= 1:
-        return speech_timestamps[-1]["end"]
-
-    gap_threshold_samples = int(SPEECH_GAP_THRESHOLD_MS * 16)
-    min_segment_samples = int(MIN_TRAILING_SEGMENT_MS * 16)
-
-    end_idx = len(speech_timestamps) - 1
-
-    while end_idx > 0:
-        current = speech_timestamps[end_idx]
-        previous = speech_timestamps[end_idx - 1]
-
-        segment_duration = current["end"] - current["start"]
-        gap_before = current["start"] - previous["end"]
-
-        if gap_before > gap_threshold_samples and segment_duration < min_segment_samples:
-            logger.debug(
-                f"Discarding trailing VAD segment [{current['start']}-{current['end']}] "
-                f"(gap={gap_before / 16:.0f}ms, duration={segment_duration / 16:.0f}ms)"
-            )
-            end_idx -= 1
-        else:
-            break
-
-    return speech_timestamps[end_idx]["end"]
 
 
 def trim_trailing_noise(
     wav: torch.Tensor,
     sample_rate: int,
     margin_ms: int = 150,
-    text: str = "",
-    max_duration_factor: float = 1.5,
-    min_words_per_second: float = 2.0,
+    frame_ms: int = 25,
+    smooth_ms: int = 100,
+    silence_threshold_ratio: float = 0.03,
+    min_gap_ms: int = 150,
 ) -> torch.Tensor:
-    """Trim trailing non-speech noise from a waveform.
+    """Trim trailing non-speech noise by detecting the post-speech silence gap.
 
-    Uses a two-stage approach for robust trimming:
-      1. Apply a text-based duration ceiling (if text is provided).
-      2. Use Silero VAD to find the actual speech end within the ceiling.
+    Chatterbox noise artifacts are preceded by a brief silence gap after the
+    real speech ends. This function finds that gap and trims at its start.
 
     Args:
         wav: Audio tensor of shape (1, num_samples) or (num_samples,).
         sample_rate: Sample rate of the waveform in Hz.
-        margin_ms: Extra milliseconds to keep after last detected speech end.
-        text: The text that was synthesised. Used to estimate expected duration
-            and apply a hard ceiling. Pass empty string to skip ceiling.
-        max_duration_factor: Multiplier for expected duration ceiling.
-        min_words_per_second: Conservative speaking rate for ceiling estimation.
-            2.0 words/sec is very slow Spanish speech — ensures we never clip
-            legitimate content.
+        margin_ms: Milliseconds to keep after the last speech frame before
+            the gap (preserves tail of final syllable).
+        frame_ms: RMS frame length in milliseconds.
+        smooth_ms: Rolling average window size in milliseconds for smoothing
+            the RMS envelope.
+        silence_threshold_ratio: Frames with smoothed RMS below this fraction
+            of peak are considered silence. 0.03 = 3% of peak.
+        min_gap_ms: Minimum duration in milliseconds for a silence region to
+            qualify as the post-speech gap. Must be long enough to distinguish
+            from inter-syllable pauses (~50-80 ms) but short enough to catch
+            the Chatterbox artifact gap (~100-300 ms).
 
     Returns:
         Trimmed waveform tensor with the same number of dimensions as input.
     """
     was_2d = wav.dim() == 2
-    wav_1d = wav.squeeze(0) if was_2d else wav
+    audio = wav.squeeze(0).cpu().numpy().astype(np.float32)
 
-    if text:
-        word_count = len(text.split())
-        expected_duration = word_count / min_words_per_second
-        max_duration = expected_duration * max_duration_factor
-        max_samples = int(max_duration * sample_rate)
+    frame_len = int(frame_ms * sample_rate / 1000)
+    hop_len = frame_len // 2
+    num_frames = max(1, (len(audio) - frame_len) // hop_len + 1)
 
-        if wav_1d.shape[-1] > max_samples:
-            original_dur = wav_1d.shape[-1] / sample_rate
-            logger.debug(
-                f"Duration ceiling: {original_dur:.1f}s -> {max_duration:.1f}s "
-                f"({word_count} words, {min_words_per_second} w/s * {max_duration_factor}x)"
-            )
-            wav_1d = wav_1d[:max_samples]
+    rms = np.zeros(num_frames, dtype=np.float32)
+    for i in range(num_frames):
+        start = i * hop_len
+        frame = audio[start : start + frame_len]
+        rms[i] = np.sqrt(np.mean(frame ** 2))
 
-    model, utils = _load_vad()
-    get_speech_timestamps = utils[0]
+    smooth_frames = max(1, int(smooth_ms / frame_ms))
+    kernel = np.ones(smooth_frames, dtype=np.float32) / smooth_frames
+    smoothed = np.convolve(rms, kernel, mode="same")
 
-    if sample_rate != 16000:
-        wav_16k = torchaudio.functional.resample(wav_1d, sample_rate, 16000)
-    else:
-        wav_16k = wav_1d
+    peak_rms = smoothed.max()
+    if peak_rms < 1e-8:
+        return wav
 
-    speech_timestamps = get_speech_timestamps(
-        wav_16k, model, sampling_rate=16000
+    silence_threshold = peak_rms * silence_threshold_ratio
+    is_silent = smoothed < silence_threshold
+
+    min_gap_frames = max(1, int(min_gap_ms / (hop_len / sample_rate * 1000)))
+
+    # Scan backwards from the end looking for a silence gap that is
+    # followed by non-silence (the noise artifact). The gap must be at
+    # least min_gap_frames long and must NOT extend to the very end of
+    # the audio (that would be trailing silence, not a gap before noise).
+    #
+    # Walk from the end:
+    #   1. Skip any trailing non-silence (the noise artifact itself).
+    #   2. Count consecutive silence frames (the gap).
+    #   3. If the gap is long enough, we found it. Trim at its start.
+
+    i = num_frames - 1
+
+    # Step 1: skip trailing non-silence (noise artifact)
+    while i >= 0 and not is_silent[i]:
+        i -= 1
+
+    if i < 0:
+        return wav
+
+    noise_start_frame = i + 1
+
+    # Step 2: count consecutive silence frames (the gap)
+    gap_end = i
+    while i >= 0 and is_silent[i]:
+        i -= 1
+
+    gap_start = i + 1
+    gap_length = gap_end - gap_start + 1
+
+    if gap_length < min_gap_frames:
+        return wav
+
+    # Step 3: verify there is actual speech BEFORE the gap
+    # (at least 500ms of audio before gap_start to be meaningful)
+    min_speech_frames = int(500 / (hop_len / sample_rate * 1000))
+    if gap_start < min_speech_frames:
+        return wav
+
+    # Trim at gap_start (last speech frame before the gap) + margin
+    trim_frame = gap_start
+    trim_sample = trim_frame * hop_len + frame_len
+    margin_samples = int(margin_ms * sample_rate / 1000)
+    trim_point = min(trim_sample + margin_samples, len(audio))
+
+    # Safety: don't trim more than 40% of the audio
+    if trim_point < len(audio) * 0.6:
+        logger.warning(
+            f"Gap-based trim would remove >{40}% of audio "
+            f"({len(audio) / sample_rate:.2f}s -> {trim_point / sample_rate:.2f}s). "
+            f"Skipping trim for safety."
+        )
+        return wav
+
+    original_dur = len(audio) / sample_rate
+    trimmed_dur = trim_point / sample_rate
+    logger.debug(
+        f"Trimmed trailing noise: {original_dur:.2f}s -> {trimmed_dur:.2f}s "
+        f"(gap at {gap_start * hop_len / sample_rate:.2f}s, "
+        f"noise at {noise_start_frame * hop_len / sample_rate:.2f}s)"
     )
 
-    if not speech_timestamps:
-        if was_2d:
-            wav_1d = wav_1d.unsqueeze(0)
-        return wav_1d
-
-    main_speech_end_16k = _find_main_speech_end(speech_timestamps)
-
-    scale = sample_rate / 16000
-    main_speech_end = int(main_speech_end_16k * scale)
-
-    margin_samples = int(margin_ms * sample_rate / 1000)
-    trim_point = min(main_speech_end + margin_samples, wav_1d.shape[-1])
-
-    trimmed = wav_1d[:trim_point]
-
+    trimmed = torch.from_numpy(audio[:trim_point])
     if was_2d:
         trimmed = trimmed.unsqueeze(0)
 
