@@ -19,6 +19,8 @@ Key implementation decisions:
 """
 import json
 import time
+import librosa
+import numpy as np
 import torch
 import torchaudio
 from pathlib import Path
@@ -202,9 +204,14 @@ class SpeechGenerator:
         wav_resampled = torchaudio.functional.resample(
             wav, model.sr, settings.SAMPLE_RATE
         )
-        torchaudio.save(str(output_path), wav_resampled, settings.SAMPLE_RATE)
+
+        audio_np = wav_resampled.squeeze(0).cpu().numpy()
+        trimmed, _ = librosa.effects.trim(audio_np, top_db=settings.TRIM_TOP_DB)
+        wav_trimmed = torch.from_numpy(trimmed).unsqueeze(0)
+
+        torchaudio.save(str(output_path), wav_trimmed, settings.SAMPLE_RATE)
 
         generation_time = time.time() - start_time
-        audio_duration = wav_resampled.shape[-1] / settings.SAMPLE_RATE
+        audio_duration = wav_trimmed.shape[-1] / settings.SAMPLE_RATE
 
         return generation_time, audio_duration

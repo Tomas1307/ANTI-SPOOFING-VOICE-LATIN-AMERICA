@@ -133,6 +133,10 @@ class ChatterboxAttackSettings(BaseModel):
         default=2.0,
         description="Penalty for repeated speech tokens (multilingual default is 2.0)"
     )
+    TRIM_TOP_DB: int = Field(
+        default=30,
+        description="dB threshold for librosa.effects.trim to cut trailing noise after generation"
+    )
 
     # === Parakeet STT Validation ===
     PARAKEET_MODEL_ID: str = Field(
