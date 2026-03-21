@@ -133,9 +133,9 @@ class ChatterboxAttackSettings(BaseModel):
         default=2.0,
         description="Penalty for repeated speech tokens (multilingual default is 2.0)"
     )
-    TRIM_TOP_DB: int = Field(
-        default=30,
-        description="dB threshold for librosa.effects.trim to cut trailing noise after generation"
+    VAD_MARGIN_MS: int = Field(
+        default=150,
+        description="Milliseconds to keep after last detected speech frame (Silero VAD trim margin)"
     )
 
     # === Parakeet STT Validation ===

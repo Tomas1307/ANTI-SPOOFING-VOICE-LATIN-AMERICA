@@ -19,8 +19,6 @@ Key implementation decisions:
 """
 import json
 import time
-import librosa
-import numpy as np
 import torch
 import torchaudio
 from pathlib import Path
@@ -30,6 +28,7 @@ from tqdm import tqdm
 from app.pipeline.chatterbox_attack.settings import settings
 from app.pipeline.chatterbox_attack.schemas.generation_result import GenerationResult
 from app.pipeline.chatterbox_attack.utils.perth_patcher import ensure_patched  # noqa: F401 — patches perth on import
+from app.pipeline.chatterbox_attack.utils.speech_trimmer import trim_trailing_noise
 from app.pipeline.chatterbox_attack.utils.watermark_remover import NoOpWatermarker
 from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 
@@ -205,9 +204,9 @@ class SpeechGenerator:
             wav, model.sr, settings.SAMPLE_RATE
         )
 
-        audio_np = wav_resampled.squeeze(0).cpu().numpy()
-        trimmed, _ = librosa.effects.trim(audio_np, top_db=settings.TRIM_TOP_DB)
-        wav_trimmed = torch.from_numpy(trimmed).unsqueeze(0)
+        wav_trimmed = trim_trailing_noise(
+            wav_resampled, settings.SAMPLE_RATE, margin_ms=settings.VAD_MARGIN_MS
+        )
 
         torchaudio.save(str(output_path), wav_trimmed, settings.SAMPLE_RATE)
 
