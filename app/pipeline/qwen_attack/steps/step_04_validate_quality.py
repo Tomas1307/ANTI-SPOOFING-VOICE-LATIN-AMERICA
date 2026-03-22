@@ -29,6 +29,7 @@ from app.pipeline.qwen_attack.utils.artifact_detector import (
     detect_truncation,
 )
 from app.utils.ecapa_similarity import EcapaSimilarity
+from app.utils.metrics_writer import MetricsWriter
 from app.utils.nisqa_scorer import NisqaScorer
 from app.utils.parakeet_transcriber import ParakeetTranscriber
 from app.utils.prefix_trimmer import detect_prefix_trim_point, trim_audio_prefix
@@ -242,6 +243,14 @@ class QualityValidator:
         logger.info(f"  Average NISQA MOS   : {avg_nisqa:.2f}")
         logger.info(f"  Average Speaker Sim : {avg_sim:.3f}")
         logger.info(f"  Output              : {validated_path}")
+
+        MetricsWriter.write_validation_csv(
+            output_dir=self.output_dir,
+            system_id=settings.QWEN_SYSTEM_ID,
+            generated=generated,
+            validated=validated,
+            rejected=rejected,
+        )
 
         return ValidationResult(
             validated_samples_path=validated_path,
