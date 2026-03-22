@@ -115,7 +115,7 @@ class FishGramAttackPipeline:
             logger.info("STEP 3/5: Generate Synthetic Speech")
             logger.info("-" * 80)
 
-            step_3 = SpeechGenerator()
+            step_3 = SpeechGenerator(skip_existing=self.config.skip_existing_step_3)
             result_3 = step_3.execute()
 
             logger.info(f"Generated: {result_3.total_generated} samples")

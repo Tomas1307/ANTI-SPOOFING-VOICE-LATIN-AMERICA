@@ -125,6 +125,12 @@ class ReferenceAudioPreparator:
                 logger.error(f"Transcription failed for {speaker_id}: {e}")
                 reference_text = ""
 
+            # Count total bonafide files across all splits for dynamic sample matching
+            bonafide_count = sum(
+                len(list(speaker_dir.rglob(f"*.{ext}")))
+                for ext in ("wav", "flac")
+            )
+
             # Store metadata with transcript
             references[speaker_id] = {
                 "speaker_id": speaker_id,
@@ -132,7 +138,8 @@ class ReferenceAudioPreparator:
                 "reference_text": reference_text,
                 "duration_seconds": self.target_duration,
                 "split": split,
-                "source_files": [f.name for f in audio_files]
+                "source_files": [f.name for f in audio_files],
+                "bonafide_count": bonafide_count
             }
 
         # Save metadata

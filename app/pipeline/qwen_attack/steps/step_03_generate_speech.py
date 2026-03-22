@@ -32,13 +32,15 @@ class SpeechGenerator:
         model: Qwen3TTSModel instance, loaded during execute().
     """
 
-    def __init__(self, output_dir: Path | None = None):
+    def __init__(self, output_dir: Path | None = None, skip_existing: bool = False):
         """Initialize speech generator.
 
         Args:
             output_dir: Output directory (default: from settings).
+            skip_existing: When True, skip WAV files that already exist on disk (for resume).
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
+        self.skip_existing = skip_existing
         self.model = None
 
     def _load_model(self) -> Qwen3TTSModel:
@@ -162,6 +164,8 @@ class SpeechGenerator:
             RuntimeError: If model loading fails.
         """
         logger.info("Generating synthetic speech with Qwen3-TTS...")
+        if self.skip_existing:
+            logger.info("  Resume mode: skip_existing=True (will skip already-generated WAVs)")
 
         # Load model
         self.model = self._load_model()
@@ -223,10 +227,31 @@ class SpeechGenerator:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
+                    output_path = gen_dir / f"QWEN3TTS_{speaker_id}_{text_id}.wav"
+
+                    # Skip existing files when resuming
+                    if self.skip_existing and output_path.exists():
+                        try:
+                            info = sf.info(str(output_path))
+                            audio_duration = info.duration
+                            generated[sample_id] = {
+                                "speaker_id": speaker_id,
+                                "text_id": text_id,
+                                "text": text,
+                                "audio_path": str(output_path),
+                                "duration_seconds": audio_duration,
+                                "generation_time_seconds": 0.0,
+                                "rtf": 0.0,
+                                "split": split,
+                                "skipped_existing": True
+                            }
+                            logger.debug(f"Skipping existing: {output_path.name}")
+                        except Exception as e:
+                            logger.warning(f"Existing file unreadable {output_path.name}: {e}")
+                        pbar.update(1)
+                        continue
 
                     try:
-                        output_path = gen_dir / f"QWEN3TTS_{speaker_id}_{text_id}.wav"
-
                         generation_time, audio_duration = self._generate_single(
                             text=text,
                             voice_clone_prompt=voice_clone_prompt,

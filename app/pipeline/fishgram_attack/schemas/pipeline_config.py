@@ -62,6 +62,10 @@ class FishGramPipelineConfig(BaseModel):
         default=None,
         description="Override compute device (default: from settings)"
     )
+    skip_existing_step_3: bool = Field(
+        default=False,
+        description="Skip already-generated WAV files in Step 3 (for resume after interruption)"
+    )
 
     class Config:
         """Pydantic model configuration."""

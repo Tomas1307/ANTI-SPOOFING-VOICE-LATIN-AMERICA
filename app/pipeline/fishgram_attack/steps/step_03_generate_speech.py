@@ -35,14 +35,17 @@ class SpeechGenerator:
 
     def __init__(
         self,
-        output_dir: Path | None = None
+        output_dir: Path | None = None,
+        skip_existing: bool = False
     ):
         """Initialize speech generator.
 
         Args:
             output_dir: Output directory (default: from settings).
+            skip_existing: When True, skip WAV files that already exist on disk (for resume).
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
+        self.skip_existing = skip_existing
         self.api_url = settings.FISH_SPEECH_API_URL
 
     def _check_server_health(self) -> bool:
@@ -142,6 +145,8 @@ class SpeechGenerator:
         """
         logger.info("Generating synthetic speech...")
         logger.info(f"  Fish Speech API: {self.api_url}")
+        if self.skip_existing:
+            logger.info("  Resume mode: skip_existing=True (will skip already-generated WAVs)")
 
         # Verify server is running
         if not self._check_server_health():
@@ -196,10 +201,33 @@ class SpeechGenerator:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
+                    output_path = gen_dir / f"FISHGRAM_{speaker_id}_{text_id}.wav"
+
+                    # Skip existing files when resuming
+                    if self.skip_existing and output_path.exists():
+                        try:
+                            synthetic_audio, _ = librosa.load(
+                                output_path, sr=settings.SAMPLE_RATE
+                            )
+                            audio_duration = len(synthetic_audio) / settings.SAMPLE_RATE
+                            generated[sample_id] = {
+                                "speaker_id": speaker_id,
+                                "text_id": text_id,
+                                "text": text,
+                                "audio_path": str(output_path),
+                                "duration_seconds": audio_duration,
+                                "generation_time_seconds": 0.0,
+                                "rtf": 0.0,
+                                "split": split,
+                                "skipped_existing": True
+                            }
+                            logger.debug(f"Skipping existing: {output_path.name}")
+                        except Exception as e:
+                            logger.warning(f"Existing file unreadable {output_path.name}: {e}")
+                        pbar.update(1)
+                        continue
 
                     try:
-                        output_path = gen_dir / f"FISHGRAM_{speaker_id}_{text_id}.wav"
-
                         generation_time = self._generate_single(
                             text=text,
                             reference_audio_path=ref_path,

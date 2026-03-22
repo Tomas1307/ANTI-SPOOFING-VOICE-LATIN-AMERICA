@@ -58,8 +58,8 @@ class QwenAttackSettings(BaseModel):
 
     # === Directory Paths ===
     BONAFIDE_DIR: Path = Field(
-        default=Path("data/bonafide_dataset_by_speaker"),
-        description="Directory containing HABLA bonafide speakers (162 total)"
+        default=Path("data/bonafide_dataset_by_speaker_v2"),
+        description="Directory containing HABLA v2 bonafide speakers (1,567 total)"
     )
     OUTPUT_DIR: Path = Field(
         default=Path("data/qwen_output"),
@@ -124,6 +124,14 @@ class QwenAttackSettings(BaseModel):
     SAMPLES_PER_SPEAKER: int = Field(
         default=2,
         description="Texts per speaker (2 for validation, 5 for production)"
+    )
+    MATCH_BONAFIDE_COUNT: bool = Field(
+        default=True,
+        description="When True, generate as many samples as bonafide files per speaker instead of fixed SAMPLES_PER_SPEAKER"
+    )
+    MAX_GENERATION_RETRIES: int = Field(
+        default=5,
+        description="Max retry rounds for regenerating rejected samples after Step 4 validation"
     )
     RANDOM_SEED: int = Field(
         default=42,
