@@ -68,6 +68,12 @@ class EcapaSimilarity:
             logger.debug("ECAPA-TDNN model already loaded, skipping.")
             return
 
+        # SpeechBrain's init calls torchaudio.list_audio_backends(), which was
+        # removed in torchaudio >= 2.7 (ships with torch 2.10+). Patch it before
+        # importing speechbrain so openvoice_env and qwen_env don't crash.
+        if not hasattr(torchaudio, "list_audio_backends"):
+            torchaudio.list_audio_backends = lambda: ["soundfile"]
+
         from speechbrain.inference.speaker import SpeakerRecognition
 
         logger.info(f"Loading ECAPA-TDNN (spkrec-ecapa-voxceleb) on {device}")
