@@ -83,6 +83,17 @@ class SpeechGenerator:
         logger.info("Loading ChatterboxMultilingualTTS from HuggingFace cache...")
         model = ChatterboxMultilingualTTS.from_pretrained(device=settings.DEVICE)
         model.watermarker = NoOpWatermarker()
+
+        # Fix: transformers >= 4.47 rejects output_attentions=True with SDPA
+        # attention. Chatterbox's internal GPT model uses output_attentions, so
+        # force eager attention on all sub-modules that have SDPA configured.
+        for _, module in model.named_modules():
+            config = getattr(module, "config", None)
+            if config is not None and getattr(config, "_attn_implementation", None) == "sdpa":
+                config._attn_implementation = "eager"
+                config._attn_implementation_internal = "eager"
+                logger.debug(f"Patched {type(module).__name__} attention: sdpa -> eager")
+
         logger.info("Model loaded; watermark bypassed for research use")
 
         generated = {}
