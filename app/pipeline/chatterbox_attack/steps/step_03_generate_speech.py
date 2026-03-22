@@ -87,12 +87,9 @@ class SpeechGenerator:
         # Fix: transformers >= 4.47 rejects output_attentions=True with SDPA
         # attention. Chatterbox's internal GPT model uses output_attentions, so
         # force eager attention on all sub-modules that have SDPA configured.
-        for _, module in model.named_modules():
-            config = getattr(module, "config", None)
-            if config is not None and getattr(config, "_attn_implementation", None) == "sdpa":
-                config._attn_implementation = "eager"
-                config._attn_implementation_internal = "eager"
-                logger.debug(f"Patched {type(module).__name__} attention: sdpa -> eager")
+        # ChatterboxMultilingualTTS is NOT an nn.Module, so walk its attributes
+        # and recurse into any nn.Module children via named_modules().
+        self._patch_sdpa_to_eager(model)
 
         logger.info("Model loaded; watermark bypassed for research use")
 
@@ -177,6 +174,35 @@ class SpeechGenerator:
             failed_generations=failed,
             avg_rtf=avg_rtf,
         )
+
+    @staticmethod
+    def _patch_sdpa_to_eager(model: ChatterboxMultilingualTTS) -> None:
+        """Force eager attention on all internal transformers models.
+
+        ChatterboxMultilingualTTS is a plain Python class (not nn.Module) that
+        holds several nn.Module sub-models. This method walks all attributes,
+        finds nn.Module instances, and patches any transformers config that uses
+        SDPA attention to use eager instead. Required for transformers >= 4.47
+        where output_attentions=True is incompatible with SDPA.
+
+        Args:
+            model: Loaded ChatterboxMultilingualTTS instance to patch in-place.
+        """
+        patched = 0
+        for attr_name in vars(model):
+            attr = getattr(model, attr_name)
+            if not isinstance(attr, torch.nn.Module):
+                continue
+            for name, submodule in attr.named_modules():
+                config = getattr(submodule, "config", None)
+                if config is None:
+                    continue
+                if getattr(config, "_attn_implementation", None) == "sdpa":
+                    config._attn_implementation = "eager"
+                    config._attn_implementation_internal = "eager"
+                    patched += 1
+        if patched > 0:
+            logger.info(f"Patched {patched} sub-module(s) from SDPA to eager attention")
 
     def _generate_single(
         self,
