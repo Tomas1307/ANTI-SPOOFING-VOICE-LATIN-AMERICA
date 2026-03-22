@@ -19,6 +19,7 @@ Installation (per pipeline venv on ml-server03):
     pip install speechbrain
 """
 import numpy as np
+import soundfile as sf
 import torch
 import torchaudio
 from pathlib import Path
@@ -105,7 +106,15 @@ class EcapaSimilarity:
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        signal, sr = torchaudio.load(str(audio_path))
+        # Use soundfile instead of torchaudio.load() because torchaudio >= 2.7
+        # (torch 2.10+) defaults to torchcodec backend which is not installed
+        # in openvoice_env / qwen_env. soundfile is available in all 4 envs.
+        data, sr = sf.read(str(audio_path), dtype="float32")
+        signal = torch.from_numpy(data)
+        if signal.ndim == 1:
+            signal = signal.unsqueeze(0)
+        else:
+            signal = signal.T
         if sr != 16000:
             resampler = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)
             signal = resampler(signal)
