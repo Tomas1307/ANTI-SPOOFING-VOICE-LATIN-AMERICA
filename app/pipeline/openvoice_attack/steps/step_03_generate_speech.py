@@ -1,7 +1,7 @@
 """
-Step 3: Generate Synthetic Speech with OpenVoice V2
+Step 3: Generate Synthetic Speech with OpenVoice
 
-Generates synthetic Spanish voice cloning attacks using OpenVoice V2:
+Generates synthetic Spanish voice cloning attacks using OpenVoice:
   1. MeloTTS (language='ES') synthesises text into a base Spanish voice.
   2. ToneColorConverter transfers the target speaker's tone colour onto the
      base voice using the speaker's reference audio embedding.
@@ -33,7 +33,7 @@ from app.pipeline.openvoice_attack.schemas.generation_result import GenerationRe
 
 
 class SpeechGenerator:
-    """Generates synthetic speech using OpenVoice V2 (MeloTTS + ToneColorConverter).
+    """Generates synthetic speech using OpenVoice (MeloTTS + ToneColorConverter).
 
     Loads both models once at the beginning of execute() and releases GPU
     memory on completion. Per speaker, extracts the tone color embedding once
@@ -62,7 +62,7 @@ class SpeechGenerator:
             RuntimeError: If model loading fails.
             FileNotFoundError: If required checkpoint files are missing.
         """
-        logger.info("Step 3: Generating synthetic speech with OpenVoice V2...")
+        logger.info("Step 3: Generating synthetic speech with OpenVoice...")
 
         gen_dir = self.output_dir / "generated"
         gen_dir.mkdir(parents=True, exist_ok=True)

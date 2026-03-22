@@ -1,5 +1,5 @@
 """
-Audio concatenation utilities for OpenVoice V2 reference audio preparation.
+Audio concatenation utilities for OpenVoice reference audio preparation.
 """
 import numpy as np
 import librosa

@@ -37,8 +37,8 @@ class QwenAttackSettings(BaseModel):
         SAMPLES_PER_SPEAKER: Number of synthetic samples per speaker.
         RANDOM_SEED: Random seed for reproducible text sampling.
 
-        DNSMOS_THRESHOLD_OVRL: Minimum DNSMOS overall score for validation.
-        SPEAKER_SIM_THRESHOLD: Minimum speaker similarity for validation.
+        NISQA_MIN_ACCEPTABLE: Minimum NISQA MOS score (informational).
+        SPEAKER_SIM_MIN_ACCEPTABLE: Minimum ECAPA-TDNN cosine similarity (informational).
 
         QWEN_SYSTEM_ID: Attack identifier for protocol files.
         AUDIO_ID_START_TRAIN: Starting ID for train samples.
@@ -218,6 +218,16 @@ class QwenAttackSettings(BaseModel):
     MIN_WORDS_PER_SECOND: float = Field(
         default=1.5,
         description="Minimum expected speaking rate for truncation detection"
+    )
+
+    # === Quality Metrics (Informational, not used for rejection) ===
+    NISQA_MIN_ACCEPTABLE: float = Field(
+        default=2.5,
+        description="Minimum acceptable NISQA MOS score (informational threshold, not used for rejection)"
+    )
+    SPEAKER_SIM_MIN_ACCEPTABLE: float = Field(
+        default=0.7,
+        description="Minimum acceptable ECAPA-TDNN cosine similarity (informational, not rejection)"
     )
 
     # === Split Configuration ===

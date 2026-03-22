@@ -1,7 +1,7 @@
 """
-OpenVoice V2 Attack Pipeline.
+OpenVoice Attack Pipeline.
 
-Generates synthetic Spanish voice cloning attacks using OpenVoice V2
+Generates synthetic Spanish voice cloning attacks using OpenVoice
 (MeloTTS + ToneColorConverter). Third codec architecture in the HABLA
 anti-spoofing attack suite.
 """

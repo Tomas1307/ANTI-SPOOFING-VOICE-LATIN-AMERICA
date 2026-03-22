@@ -1,5 +1,5 @@
 """
-Pipeline configuration schema for OpenVoice V2 attack generation.
+Pipeline configuration schema for OpenVoice attack generation.
 """
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -7,7 +7,7 @@ from typing import Optional
 
 
 class OpenVoicePipelineConfig(BaseModel):
-    """Configuration for running the OpenVoice V2 attack pipeline.
+    """Configuration for running the OpenVoice attack pipeline.
 
     This schema defines the runtime configuration that can be passed to the pipeline.
     Most defaults are defined in settings.py and can be overridden here.

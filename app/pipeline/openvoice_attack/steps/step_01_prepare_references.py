@@ -2,7 +2,7 @@
 Step 1: Prepare Reference Audio
 
 Creates 15-second reference audio clips for each speaker by concatenating
-training samples. OpenVoice V2 extracts the tone color embedding directly
+training samples. OpenVoice extracts the tone color embedding directly
 from the audio file — no reference transcription is required.
 """
 import json
@@ -17,10 +17,10 @@ from app.pipeline.openvoice_attack.utils.audio_concatenation import concatenate_
 
 
 class ReferenceAudioPreparator:
-    """Prepares reference audio clips for OpenVoice V2 tone color extraction.
+    """Prepares reference audio clips for OpenVoice tone color extraction.
 
     Concatenates multiple training samples per speaker to create reference
-    clips that capture speaker characteristics. OpenVoice V2 uses these
+    clips that capture speaker characteristics. OpenVoice uses these
     clips to extract a tone color embedding (target_se) via se_extractor.get_se(),
     so no text transcription is needed here.
 
@@ -56,7 +56,7 @@ class ReferenceAudioPreparator:
         Raises:
             Exception: If reference preparation fails.
         """
-        logger.info("Step 1: Preparing reference audio clips for OpenVoice V2...")
+        logger.info("Step 1: Preparing reference audio clips for OpenVoice...")
 
         ref_dir = self.output_dir / "references"
         ref_dir.mkdir(parents=True, exist_ok=True)

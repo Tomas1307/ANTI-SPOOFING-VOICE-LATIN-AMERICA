@@ -9,8 +9,9 @@ from typing import Any, Dict, List
 class ValidationResult(BaseModel):
     """Result from quality validation (Step 4).
 
-    Includes Qwen-specific artifact detection results and Parakeet-based
-    WER/CER transcription accuracy metrics.
+    Includes Qwen-specific artifact detection results, Parakeet-based WER/CER
+    transcription accuracy metrics, NISQA speech quality MOS estimation,
+    and ECAPA-TDNN speaker similarity scoring.
 
     Attributes:
         validated_samples_path: Path to JSON file with validated samples only.
@@ -19,6 +20,8 @@ class ValidationResult(BaseModel):
         avg_wer: Average Word Error Rate across validated samples.
         avg_cer: Average Character Error Rate across validated samples.
         prefix_trim_count: Number of samples that had a spurious prefix trimmed.
+        avg_nisqa: Average NISQA MOS score across validated samples.
+        avg_speaker_similarity: Average ECAPA-TDNN cosine similarity.
     """
 
     validated_samples_path: Path = Field(
@@ -44,6 +47,14 @@ class ValidationResult(BaseModel):
     prefix_trim_count: int = Field(
         default=0,
         description="Number of samples where a spurious prefix was detected and trimmed"
+    )
+    avg_nisqa: float = Field(
+        default=0.0,
+        description="Average NISQA MOS score across validated samples (1.0-5.0 scale)"
+    )
+    avg_speaker_similarity: float = Field(
+        default=0.0,
+        description="Average ECAPA-TDNN cosine similarity between reference and generated audio"
     )
 
     class Config:

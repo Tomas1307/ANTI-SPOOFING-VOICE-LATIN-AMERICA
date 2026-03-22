@@ -160,6 +160,16 @@ class ChatterboxAttackSettings(BaseModel):
         description="Maximum acceptable audio duration in seconds; longer clips are rejected"
     )
 
+    # === Quality Metrics (Informational, not used for rejection) ===
+    NISQA_MIN_ACCEPTABLE: float = Field(
+        default=2.5,
+        description="Minimum acceptable NISQA MOS score (informational threshold, not used for rejection)"
+    )
+    SPEAKER_SIM_MIN_ACCEPTABLE: float = Field(
+        default=0.7,
+        description="Minimum acceptable ECAPA-TDNN cosine similarity (informational, not rejection)"
+    )
+
     # === Split Configuration ===
     TRAIN_SPLIT_NAME: str = Field(default="train", description="Directory name for train split")
     VAL_SPLIT_NAME: str = Field(default="val", description="Directory name for validation split")

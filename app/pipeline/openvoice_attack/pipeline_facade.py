@@ -1,7 +1,7 @@
 """
-OpenVoice V2 Attack Pipeline Facade
+OpenVoice Attack Pipeline Facade
 
-Orchestrates all 5 steps of the OpenVoice V2 voice cloning attack pipeline.
+Orchestrates all 5 steps of the OpenVoice voice cloning attack pipeline.
 Third attack pipeline providing a distinct codec architecture (VITS + HiFi-GAN
 tone color converter) alongside FishGram (VQGAN) and Qwen (Dual-Track).
 """
@@ -20,7 +20,7 @@ from app.pipeline.openvoice_attack.settings import settings
 
 
 class OpenVoiceAttackPipeline:
-    """Facade for OpenVoice V2 voice cloning attack pipeline.
+    """Facade for OpenVoice voice cloning attack pipeline.
 
     Orchestrates 5 steps:
     1. Prepare reference audio (15s clips from training samples).
@@ -29,7 +29,7 @@ class OpenVoiceAttackPipeline:
     4. Validate quality (Parakeet TDT STT + WER/CER + spurious prefix trimming).
     5. Format output (ASVspoof2019 LA format, OPENVOICE system ID, 7000000+ IDs).
 
-    OpenVoice V2 runs entirely in-process. No HTTP server is required.
+    OpenVoice runs entirely in-process. No HTTP server is required.
     Both MeloTTS and ToneColorConverter are loaded into GPU memory during
     Step 3 and released after generation completes.
 
@@ -62,7 +62,7 @@ class OpenVoiceAttackPipeline:
             settings.DEVICE = self.config.device_override
 
     def run(self) -> Path:
-        """Execute the full OpenVoice V2 attack pipeline.
+        """Execute the full OpenVoice attack pipeline.
 
         Returns:
             Path to output directory (LA/) with ASVspoof2019 format.

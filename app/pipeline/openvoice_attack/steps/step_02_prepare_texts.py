@@ -14,7 +14,7 @@ from app.pipeline.openvoice_attack.schemas.text_prompts_result import TextPrompt
 
 
 class TextPromptPreparator:
-    """Prepares Spanish text prompts for OpenVoice V2 TTS generation.
+    """Prepares Spanish text prompts for OpenVoice TTS generation.
 
     Loads Mozilla Common Voice transcripts and assigns random texts
     to each speaker with reproducible seeding.

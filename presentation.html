@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HABLA 2.0 — Progress Update</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080808;
+  --bg-card: #111111;
+  --bg-card2: #161616;
+  --border: rgba(255,255,255,0.08);
+  --border-bright: rgba(255,255,255,0.15);
+  --white: #ffffff;
+  --muted: rgba(255,255,255,0.45);
+  --muted2: rgba(255,255,255,0.25);
+  --green: #3eff8b;
+  --amber: #f5a623;
+  --red: #ff4d4d;
+  --blue: #4d9fff;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--white);
+  -webkit-font-smoothing: antialiased;
+}
+
+#dots {
+  position: fixed;
+  right: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 100;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted2);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.dot.active { background: var(--white); transform: scale(1.6); }
+.dot:hover { background: rgba(255,255,255,0.6); }
+
+#counter {
+  position: fixed;
+  bottom: 32px;
+  right: 36px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted2);
+  letter-spacing: 1px;
+  z-index: 100;
+}
+
+#nav {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+.nbtn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  padding: 8px 18px;
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+.nbtn:hover { color: var(--white); border-color: rgba(255,255,255,0.35); }
+
+.slide {
+  min-height: 100vh;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slide.tall {
+  min-height: 150vh;
+  align-items: flex-start;
+  padding-top: 80px;
+}
+
+.inner {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: -2.5px;
+  line-height: 1.0;
+  color: var(--white);
+}
+
+h2 {
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  color: var(--white);
+  margin-bottom: 12px;
+}
+
+h3 {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 20px;
+}
+
+p { font-size: 16px; line-height: 1.7; color: var(--muted); font-weight: 300; }
+
+.div { width: 100%; height: 1px; background: var(--border); margin: 32px 0; }
+
+.stat-num {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1;
+  color: var(--white);
+}
+.stat-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  font-weight: 400;
+  margin-top: 6px;
+}
+
+.card-sm {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+}
+
+.steps { display: flex; flex-direction: column; gap: 0; }
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.step:last-child { border-bottom: none; }
+
+.step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted2);
+  width: 24px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  letter-spacing: 1px;
+}
+
+.step-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--white);
+  margin-bottom: 5px;
+  letter-spacing: -0.2px;
+}
+
+.step-class {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted2);
+  margin-bottom: 7px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+.tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  margin-left: 10px;
+  vertical-align: middle;
+}
+.tag.green { border-color: rgba(62,255,139,0.3); color: var(--green); }
+.tag.amber { border-color: rgba(245,166,35,0.3); color: var(--amber); }
+.tag.blue { border-color: rgba(77,159,255,0.3); color: var(--blue); }
+
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+.three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+
+pre {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.65);
+  background: #0d0d0d;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+  overflow-x: auto;
+}
+.kw { color: #7dd3fc; }
+.fn { color: #fde68a; }
+.str { color: #86efac; }
+.cm { color: rgba(255,255,255,0.28); }
+.num { color: #f9a8d4; }
+
+.callout {
+  border-left: 2px solid rgba(255,255,255,0.15);
+  padding: 14px 20px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  font-weight: 300;
+}
+.callout.warn { border-left-color: rgba(245,166,35,0.4); background: rgba(245,166,35,0.04); }
+.callout.hi { border-left-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.65); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted2);
+  padding: 0 16px 12px 0;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 12px 16px 12px 0;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  line-height: 1.5;
+  font-weight: 300;
+}
+td strong { color: var(--white); font-weight: 500; }
+tr:last-child td { border-bottom: none; }
+
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  pointer-events: none;
+  opacity: 0.08;
+}
+
+.pipe-vis { display: flex; align-items: stretch; gap: 0; margin: 32px 0; }
+.pipe-box {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 20px;
+  background: var(--bg-card);
+}
+.pipe-box:first-child { border-radius: 6px 0 0 6px; }
+.pipe-box:last-child { border-radius: 0 6px 6px 0; }
+.pipe-box-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted2); margin-bottom: 10px; }
+.pipe-box-title { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 6px; letter-spacing: -0.2px; }
+.pipe-box-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted2); margin-bottom: 10px; }
+.pipe-box-desc { font-size: 12px; color: var(--muted); line-height: 1.5; font-weight: 300; }
+.pipe-sep { width: 1px; background: var(--border); flex-shrink: 0; }
+
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.accent-row:last-child { border-bottom: none; }
+.accent-code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted2); width: 28px; flex-shrink: 0; }
+.accent-name { font-size: 13px; color: var(--muted); width: 90px; flex-shrink: 0; font-weight: 300; }
+.bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.bar-fill { height: 100%; border-radius: 2px; background: rgba(255,255,255,0.3); }
+.bar-fill.new { background: var(--green); opacity: 0.6; }
+.bar-fill.warn { background: var(--amber); opacity: 0.6; }
+.accent-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); width: 60px; text-align: right; flex-shrink: 0; }
+
+@media print {
+  .slide { page-break-after: always; min-height: 100vh; }
+  #dots, #nav, #counter { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="dots"></div>
+<div id="counter">1 / 10</div>
+<div id="nav">
+  <button class="nbtn" onclick="go(-1)">← prev</button>
+  <button class="nbtn" onclick="go(1)">next →</button>
+</div>
+
+<!-- ══════════════════════════════════
+     01 — TITLE
+══════════════════════════════════ -->
+<section class="slide" id="s1" style="justify-content:flex-start; padding-top:140px;">
+  <div class="glow" style="width:700px;height:700px;background:#fff;top:-300px;left:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Maestría en Ingeniería de Sistemas y Computación · March 2026</div>
+    <h1>HABLA 2.0</h1>
+    <h1 style="color:rgba(255,255,255,0.2);">Progress Update</h1>
+    <div class="div" style="margin-top:52px;"></div>
+    <div style="display:flex; gap:64px; align-items:flex-start;">
+      <div>
+        <div class="stat-label">Author</div>
+        <div style="font-size:18px; font-weight:500; margin-top:8px;">Tomás Acosta</div>
+        <div style="font-size:13px; color:var(--muted); margin-top:5px;">Universidad de los Andes</div>
+      </div>
+      <div>
+        <div class="stat-label">Scope</div>
+        <div style="font-size:15px; font-weight:300; color:rgba(255,255,255,0.55); max-width:480px; line-height:1.7; margin-top:8px;">
+          Three pipelines built — Mozilla Common Voice speaker selection, FishGram voice cloning attacks, Qwen voice cloning attacks.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     02 — OVERVIEW
+══════════════════════════════════ -->
+<section class="slide" id="s2">
+  <div class="inner">
+    <div class="eyebrow">Overview</div>
+    <h2>Three pipelines</h2>
+    <p style="max-width:600px; margin-bottom:36px;">All share the same architecture — Facade orchestrator, Strategy steps, Pydantic schemas, loguru logging.</p>
+
+    <div class="pipe-vis">
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 01</div>
+        <div class="pipe-box-title">Mozilla Speaker Selection</div>
+        <div class="pipe-box-sub">select_mozilla_speakers/</div>
+        <div class="pipe-box-desc">Expands the bonafide dataset by selecting CV v24.0 speakers — adds Mexico and Spain for the first time.</div>
+        <div style="margin-top:14px;"><span class="tag green">Complete</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 02</div>
+        <div class="pipe-box-title">FishGram Attack</div>
+        <div class="pipe-box-sub">fishgram_attack/</div>
+        <div class="pipe-box-desc">Zero-shot voice cloning via Fish Speech 4B (VQGAN). HTTP API on ml-server03. Primary attack source — 80% of total.</div>
+        <div style="margin-top:14px;"><span class="tag green">Complete</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 03</div>
+        <div class="pipe-box-title">Qwen Attack</div>
+        <div class="pipe-box-sub">qwen_attack/</div>
+        <div class="pipe-box-desc">Voice cloning via Qwen3-TTS 1.7B (Dual-Track codec). Different architecture — forces detector generalization.</div>
+        <div style="margin-top:14px;"><span class="tag green">Complete</span></div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="three">
+      <div>
+        <div class="stat-num">5</div>
+        <div class="stat-label">Steps per pipeline</div>
+      </div>
+      <div>
+        <div class="stat-num">7</div>
+        <div class="stat-label">Accent regions now covered</div>
+      </div>
+      <div>
+        <div class="stat-num">810+</div>
+        <div class="stat-label">Synthetic attacks generated</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     03 — MOZILLA ARCHITECTURE
+══════════════════════════════════ -->
+<section class="slide tall" id="s3">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 01 — Mozilla Speaker Selection</div>
+    <h2>Architecture</h2>
+    <p style="margin-bottom:40px; max-width:640px;">Selects acoustically-valid Spanish speakers from Mozilla Common Voice v24.0 and integrates them as new bonafide HABLA speakers — physically copied, renumbered in HABLA-style IDs, split 70/15/15.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Extract HABLA Embeddings</div>
+          <div class="step-class">HablaEmbeddingExtractor · step_01_extract_habla_embeddings.py</div>
+          <div class="step-desc">Loads up to 20 audio samples per speaker from the 162 existing HABLA speakers. ECAPA-TDNN (192-dim, speechbrain/spkrec-ecapa-voxceleb). Per-speaker mean embedding, L2-normalized. Output: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">habla_embeddings.npy (162, 192)</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Extract CV Embeddings</div>
+          <div class="step-class">CVEmbeddingExtractor · step_02_extract_cv_embeddings.py</div>
+          <div class="step-desc">Parses CV v24.0 validated.tsv (436,590 rows). One ECAPA-TDNN embedding per candidate — from their first validated sample. Output: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">cv_embeddings.npy (N_cv, 192)</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Filter by Similarity</div>
+          <div class="step-class">SimilarityFilter · step_03_filter_by_similarity.py</div>
+          <div class="step-desc">Full cosine similarity matrix <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">CV @ HABLA.T → (N_cv × 162)</code>. Per CV speaker: take <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">max_sim</code> across all 162 HABLA speakers. Reject if <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">max_sim ≥ 0.75</code>. Output: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">filtered_speakers.json</code> — 3,299 speakers pass.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Balanced Sampling</div>
+          <div class="step-class">BalancedSampler · step_04_balanced_sampling.py</div>
+          <div class="step-desc">Stratified sampling across 5 accents and gender/age groups, targeting 15,340 total samples. Colombia and Chile top up existing HABLA counts to 5,450 each. Mexico and Spain are entirely new accents. Output: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">selected_15340.tsv</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Integrate CV Samples</div>
+          <div class="step-class">DatasetIntegrator · step_05_integrate_cv_samples.py</div>
+          <div class="step-desc">Copies all 162 HABLA speakers into <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">bonafide_dataset_by_speaker_v2/</code> via shutil.copytree. Each new CV speaker gets a HABLA-style ID (e.g. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">mxm_00163</code>) continuing the max index per accent+gender. Split: 70% train / 15% val / 15% test. Mapping saved to <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">cv_speaker_mapping.json</code>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     04 — MOZILLA RESULTS
+══════════════════════════════════ -->
+<section class="slide" id="s4">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 01 — Results</div>
+    <h2>Sampling results</h2>
+
+    <div class="two" style="margin-top:40px; gap:56px;">
+      <div>
+        <h3>Samples by accent</h3>
+        <div>
+          <div class="accent-row">
+            <div class="accent-code">mx</div>
+            <div class="accent-name">Mexico</div>
+            <div class="bar-track"><div class="bar-fill new" style="width:100%"></div></div>
+            <div class="accent-val" style="color:var(--green);">5,450</div>
+          </div>
+          <div class="accent-row">
+            <div class="accent-code">es</div>
+            <div class="accent-name">Spain</div>
+            <div class="bar-track"><div class="bar-fill new" style="width:100%"></div></div>
+            <div class="accent-val" style="color:var(--green);">5,450</div>
+          </div>
+          <div class="accent-row">
+            <div class="accent-code">cl</div>
+            <div class="accent-name">Chile</div>
+            <div class="bar-track"><div class="bar-fill" style="width:25%"></div></div>
+            <div class="accent-val">1,361</div>
+          </div>
+          <div class="accent-row">
+            <div class="accent-code">co</div>
+            <div class="accent-name">Colombia</div>
+            <div class="bar-track"><div class="bar-fill" style="width:16%"></div></div>
+            <div class="accent-val">846</div>
+          </div>
+          <div class="accent-row">
+            <div class="accent-code">ve</div>
+            <div class="accent-name">Venezuela</div>
+            <div class="bar-track"><div class="bar-fill warn" style="width:0.5%"></div></div>
+            <div class="accent-val" style="color:var(--amber);">4</div>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;" class="callout warn">
+          <strong style="color:var(--amber);">Venezuela — data scarcity finding.</strong> CV v24.0 has almost no self-identified Venezuelan speakers with known gender/age who pass the similarity filter. Target was 2,233. This is a dataset gap, not a pipeline failure.
+        </div>
+      </div>
+
+      <div>
+        <h3>Summary</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Total samples selected</div>
+            <div style="font-size:36px; font-weight:700; letter-spacing:-1.5px;">13,111</div>
+            <div style="font-size:12px; color:var(--muted2); margin-top:4px;">of 15,340 target</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">New unique speakers</div>
+            <div style="font-size:36px; font-weight:700; letter-spacing:-1.5px;">1,405</div>
+            <div style="font-size:12px; color:var(--muted2); margin-top:4px;">Added to bonafide pool</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">New accents added</div>
+            <div style="font-size:36px; font-weight:700; letter-spacing:-1.5px; color:var(--green);">+2</div>
+            <div style="font-size:12px; color:var(--muted2); margin-top:4px;">Mexico + Spain — 0 speakers in HABLA v1</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Available pool (post-filter)</div>
+            <div style="font-size:16px; font-weight:500; color:var(--muted); margin-top:6px; letter-spacing:-0.3px;">271,477 samples · 3,299 speakers</div>
+            <div style="font-size:12px; color:var(--muted2); margin-top:4px;">From 436,590 validated CV rows</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     05 — DUPLICATE PREVENTION
+══════════════════════════════════ -->
+<section class="slide" id="s5">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 01 — Design Decision</div>
+    <h2>Duplicate prevention</h2>
+    <p style="margin-bottom:40px; max-width:580px;">CV speakers have hashed <code style="font-family:'JetBrains Mono',monospace;font-size:13px;color:rgba(255,255,255,0.45)">client_id</code>s — no overlap with HABLA-style speaker IDs. Speaker-ID matching is impossible. Acoustic similarity is used instead.</p>
+
+    <div class="two" style="gap:48px;">
+      <div>
+        <h3>Three-step gate</h3>
+        <div class="steps">
+          <div class="step" style="padding:18px 0;">
+            <div class="step-num">01</div>
+            <div>
+              <div class="step-title">HABLA reference embeddings</div>
+              <div class="step-desc">192-dim ECAPA-TDNN, averaged over ≤20 utterances per speaker, L2-normalized. Matrix: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">(162, 192)</code>.</div>
+            </div>
+          </div>
+          <div class="step" style="padding:18px 0;">
+            <div class="step-num">02</div>
+            <div>
+              <div class="step-title">CV candidate embeddings</div>
+              <div class="step-desc">Same ECAPA-TDNN model. One embedding per candidate from their first validated audio. Matrix: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">(N_cv, 192)</code>.</div>
+            </div>
+          </div>
+          <div class="step" style="padding:18px 0; border-bottom:none;">
+            <div class="step-num">03</div>
+            <div>
+              <div class="step-title">Cosine similarity gate</div>
+              <div class="step-desc">Full matrix <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">CV @ HABLA.T → (N_cv × 162)</code>. Per CV speaker: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">max_sim</code> across all 162. <strong style="color:var(--white);">Reject if max_sim ≥ 0.75.</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>Code</h3>
+        <pre><code><span class="cm"># settings.py</span>
+SIMILARITY_THRESHOLD = <span class="num">0.75</span>
+
+<span class="cm"># step_03_filter_by_similarity.py</span>
+sim_matrix = cv_embs @ habla_embs.<span class="fn">T</span>
+<span class="cm"># shape: (N_cv, 162)</span>
+
+max_sim = sim_matrix.<span class="fn">max</span>(axis=<span class="num">1</span>)
+<span class="cm"># one score per CV speaker</span>
+
+passed = max_sim &lt; SIMILARITY_THRESHOLD
+<span class="cm"># must be distant from ALL 162</span></code></pre>
+
+        <div style="margin-top:20px;" class="callout hi">
+          A CV speaker must be acoustically distant from every one of the 162 HABLA speakers — not just those from the same accent region.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     06 — FISHGRAM
+══════════════════════════════════ -->
+<section class="slide tall" id="s6">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Attack</div>
+    <h2>Fish Speech 4B</h2>
+    <p style="margin-bottom:16px; max-width:640px;">Primary attack pipeline. Zero-shot voice cloning via Fish Speech (OpenAudio-S1, 4B params, VQGAN vocoder) — running as a persistent HTTP API on ml-server03. Produces 80% of total attacks.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">810</div><div class="stat-label">Attacks · 162 × 5</div></div>
+      <div><div class="stat-num">~61m</div><div class="stat-label">Runtime on A40</div></div>
+      <div><div class="stat-num">85–95%</div><div class="stat-label">Quality pass rate</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References</div>
+          <div class="step-class">ReferenceAudioPreparator</div>
+          <div class="step-desc">First 5 training samples per speaker concatenated (alphabetical sort → deterministic) into a single 15-second reference clip.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts</div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Mozilla CV Spanish transcripts filtered to 5–100 words. Assignment via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">np.random.seed(42)</code> — fully deterministic across runs.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate Speech <span class="tag blue">HTTP API</span></div>
+          <div class="step-class">SpeechGenerator</div>
+          <div class="step-desc"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">POST /v1/tts</code> — base64 reference audio + text. Model (~12GB VRAM) runs as a persistent server. Pipeline is decoupled from model lifecycle — no reload per request.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate Quality</div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">DNSMOS ≥ 3.5. Speaker similarity ≥ 0.65 (ECAPA-TDNN cosine). Silence rejection: &gt;1s consecutive silence → discard.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA protocol. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">FISHGRAM</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_9000001+</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     07 — QWEN
+══════════════════════════════════ -->
+<section class="slide tall" id="s7">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 03 — Qwen Attack</div>
+    <h2>Qwen3-TTS 1.7B</h2>
+    <p style="margin-bottom:16px; max-width:640px;">Secondary attack pipeline. Same output volume as FishGram but a completely different codec architecture — Dual-Track vs VQGAN. A detector trained on both cannot overfit to a single synthesis fingerprint.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">1.7B</div><div class="stat-label">Model params</div></div>
+      <div><div class="stat-num">~8GB</div><div class="stat-label">VRAM · loaded/released</div></div>
+      <div><div class="stat-num">20%</div><div class="stat-label">Share of total attacks</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References + STT <span class="tag green">vs FishGram</span></div>
+          <div class="step-class">ReferenceAudioPreparator (with faster-whisper)</div>
+          <div class="step-desc">Same 15s clip assembly, but also transcribes the reference audio using <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">faster-whisper large-v3</code> (Spanish). <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">reference_text</code> stored in metadata. Whisper model is a lazy singleton — loaded once, shared across all speakers.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts <span class="tag amber">Max 40 words</span></div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Stricter limit than FishGram (100 words). Qwen3-TTS silently truncates audio on longer inputs without raising exceptions — the 40-word cap prevents that failure mode entirely.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate Speech <span class="tag blue">Local model</span></div>
+          <div class="step-class">SpeechGenerator</div>
+          <div class="step-desc">Loads <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">Qwen3-TTS-12Hz-1.7B-Base</code> directly into GPU. Speaker prompt computed once per speaker via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">create_voice_clone_prompt()</code>, reused across all 5 samples — avoids 810 redundant feature extractions. Providing <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">ref_text</code> enables full cloning mode (<code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">x_vector_only_mode=False</code>).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate + Artifact Detection <span class="tag green">Enhanced</span></div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">Standard DNSMOS + speaker similarity, plus Qwen-specific checks: duration outside 0.5–30s → reject. RMS &lt; 0.001 → reject. Audio suspiciously short for text length → reject.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">QWEN3TTS</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_8000001+</code> — no collision with FishGram range.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     08 — COMPARISON
+══════════════════════════════════ -->
+<section class="slide" id="s8">
+  <div class="inner">
+    <div class="eyebrow">Pipelines 02 & 03</div>
+    <h2>FishGram vs Qwen</h2>
+    <p style="margin-bottom:36px; max-width:560px;">Two codec architectures, intentionally. A countermeasure model trained on both must learn genuine anti-spoofing features — not codec-specific artifacts.</p>
+
+    <table>
+      <thead>
+        <tr><th>Aspect</th><th>FishGram</th><th>Qwen</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Model</td><td><strong>Fish Speech 4B</strong></td><td><strong>Qwen3-TTS 1.7B</strong></td></tr>
+        <tr><td>Codec</td><td>VQGAN vocoder</td><td>Dual-Track codec</td></tr>
+        <tr><td>Inference</td><td>HTTP API — persistent server</td><td>Local Python — loaded/released</td></tr>
+        <tr><td>Reference input</td><td>Audio only (15s)</td><td>Audio + STT transcript</td></tr>
+        <tr><td>Text limit</td><td>5–100 words</td><td>5–40 words (truncation prevention)</td></tr>
+        <tr><td>Artifact detection</td><td>DNSMOS + similarity</td><td>+ duration · silence · truncation</td></tr>
+        <tr><td>System ID</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">FISHGRAM</code></td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">QWEN3TTS</code></td></tr>
+        <tr><td>Audio ID range</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">9000000+</code></td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">8000000+</code></td></tr>
+        <tr><td>Share of attacks</td><td><strong>80%</strong></td><td><strong>20%</strong></td></tr>
+        <tr><td>Virtual env</td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">envs/fishgram_env/</code></td><td><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,0.45)">envs/qwen_env/</code></td></tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:24px;" class="callout hi">
+      Isolated virtual environments prevent PyTorch version conflicts — each TTS system has incompatible dependency trees.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     09 — NEXT STEPS
+══════════════════════════════════ -->
+<section class="slide" id="s9">
+  <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
+  <div class="inner">
+    <div class="eyebrow">What's next</div>
+    <h2>Next steps</h2>
+    <div class="div"></div>
+
+    <div style="display:flex; flex-direction:column; max-width:700px;">
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px;">01</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Run full production attack pipelines</div>
+          <div class="step-desc" style="font-size:15px;">Execute FishGram and Qwen at full scale on ml-server03 — 162 speakers × 5 samples each (810 attacks per pipeline). Confirm final quality pass rates and output stats.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px;">02</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Third attack pipeline</div>
+          <div class="step-desc" style="font-size:15px;">CosyVoice 3.0 (flow-matching based) as a third codec architecture — further hardening detector generalization beyond VQGAN and Dual-Track.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0; border-bottom:none;">
+        <div class="step-num" style="font-size:14px;">03</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Fourth attack pipeline</div>
+          <div class="step-desc" style="font-size:15px;">Evaluate a fourth TTS system for additional codec diversity — expanding attack coverage and further stress-testing the anti-spoofing detector.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+    <div style="display:flex; justify-content:space-between;">
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 · Universidad de los Andes · March 2026</div>
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace;">Tomás Acosta</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     10 — COMPARE IT YOURSELF
+══════════════════════════════════ -->
+<section class="slide" id="s10">
+  <div class="inner">
+    <div class="eyebrow">Demo</div>
+    <h2>Compare it yourself</h2>
+    <p style="margin-bottom:40px; max-width:560px;">Listen to the original reference audio alongside the synthetic clone — same speaker, same voice, generated by the attack pipeline.</p>
+
+    <div class="two" style="gap:24px; margin-bottom:32px;">
+      <div class="card-sm" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Original · Bonafide</div>
+          <div style="font-size:15px; font-weight:500; color:var(--white); margin-bottom:4px;">Speaker —</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">accent · gender</div>
+        </div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; text-align:center; color:var(--muted2); font-size:13px; font-family:'JetBrains Mono',monospace;">
+          [ audio player ]
+        </div>
+      </div>
+      <div class="card-sm" style="display:flex; flex-direction:column; gap:16px;">
+        <div>
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:8px; opacity:0.8;">Synthetic · Spoof</div>
+          <div style="font-size:15px; font-weight:500; color:var(--white); margin-bottom:4px;">Clone —</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">pipeline · system ID</div>
+        </div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; text-align:center; color:var(--muted2); font-size:13px; font-family:'JetBrains Mono',monospace;">
+          [ audio player ]
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Speaker</div>
+        <div style="font-size:18px; font-weight:600; color:var(--white);">—</div>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Pipeline</div>
+        <div style="font-size:18px; font-weight:600; color:var(--white);">—</div>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Speaker similarity</div>
+        <div style="font-size:18px; font-weight:600; color:var(--white);">—</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+const N = 10;
+let cur = 1;
+
+const dotsEl = document.getElementById('dots');
+for (let i = 1; i <= N; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 1 ? ' active' : '');
+  d.onclick = () => jump(i);
+  dotsEl.appendChild(d);
+}
+
+function jump(n) {
+  n = Math.max(1, Math.min(N, n));
+  cur = n;
+  document.getElementById('s' + n).scrollIntoView({ behavior: 'smooth' });
+  update();
+}
+
+function go(d) { jump(cur + d); }
+
+function update() {
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i + 1 === cur));
+  document.getElementById('counter').textContent = cur + ' / ' + N;
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && e.intersectionRatio >= 0.25) {
+      const m = e.target.id.match(/s(\d+)/);
+      if (m) { cur = +m[1]; update(); }
+    }
+  });
+}, { threshold: 0.25 });
+
+document.querySelectorAll('.slide').forEach(s => obs.observe(s));
+
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown','PageDown'].includes(e.key)) go(1);
+  if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) go(-1);
+});
+
+update();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 """
-Step classes for OpenVoice V2 Attack Pipeline.
+Step classes for OpenVoice Attack Pipeline.
 """
 from app.pipeline.openvoice_attack.steps.step_01_prepare_references import ReferenceAudioPreparator
 from app.pipeline.openvoice_attack.steps.step_02_prepare_texts import TextPromptPreparator

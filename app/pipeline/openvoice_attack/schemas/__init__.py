@@ -1,5 +1,5 @@
 """
-Pydantic schemas for OpenVoice V2 Attack Pipeline.
+Pydantic schemas for OpenVoice Attack Pipeline.
 """
 from app.pipeline.openvoice_attack.schemas.pipeline_config import OpenVoicePipelineConfig
 from app.pipeline.openvoice_attack.schemas.reference_result import ReferenceResult

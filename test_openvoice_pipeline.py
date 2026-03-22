@@ -1,5 +1,5 @@
 """
-Test script for OpenVoice V2 Attack Pipeline (Validation Mode)
+Test script for OpenVoice Attack Pipeline (Validation Mode)
 
 Runs the full 5-step pipeline on 3 speakers with 2 samples each (6 total).
 """
@@ -7,7 +7,7 @@ from app.pipeline.openvoice_attack import OpenVoiceAttackPipeline
 from app.pipeline.openvoice_attack.settings import settings
 
 print("=" * 80)
-print("OPENVOICE V2 ATTACK PIPELINE - VALIDATION MODE TEST")
+print("OPENVOICE ATTACK PIPELINE - VALIDATION MODE TEST")
 print("=" * 80)
 print()
 

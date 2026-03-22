@@ -1,5 +1,5 @@
 """
-Configuration settings for OpenVoice V2 Attack Pipeline.
+Configuration settings for OpenVoice Attack Pipeline.
 
 All pipeline-specific parameters are defined here as a Pydantic model.
 Global application settings belong in app/config.py instead.
@@ -11,10 +11,10 @@ from typing import List, Tuple
 
 
 class OpenVoiceAttackSettings(BaseModel):
-    """Configuration for OpenVoice V2 voice cloning attack pipeline.
+    """Configuration for OpenVoice voice cloning attack pipeline.
 
     This pipeline generates synthetic Spanish voice cloning attacks using
-    OpenVoice V2 (MeloTTS + ToneColorConverter) for anti-spoofing dataset
+    OpenVoice (MeloTTS + ToneColorConverter) for anti-spoofing dataset
     augmentation. Inference is fully local — no HTTP server required.
 
     Attributes:
@@ -23,7 +23,7 @@ class OpenVoiceAttackSettings(BaseModel):
 
         BONAFIDE_DIR: Directory containing HABLA bonafide speakers.
         OUTPUT_DIR: Output directory for OpenVoice synthetic samples.
-        OPENVOICE_CHECKPOINT_DIR: Root directory of OpenVoice V2 checkpoints.
+        OPENVOICE_CHECKPOINT_DIR: Root directory of OpenVoice checkpoints.
         CV_METADATA_PATH: Path to Mozilla Common Voice validated.tsv.
 
         SAMPLE_RATE: Target audio processing sample rate (Hz).
@@ -69,7 +69,7 @@ class OpenVoiceAttackSettings(BaseModel):
     )
     OPENVOICE_CHECKPOINT_DIR: Path = Field(
         default=Path("pretrained_models/openvoice_v2/checkpoints_v2"),
-        description="Root directory containing OpenVoice V2 converter and base speaker checkpoints"
+        description="Root directory containing OpenVoice converter and base speaker checkpoints"
     )
     CV_METADATA_PATH: Path = Field(
         default=Path("data/cv-corpus-24.0-2025-12-05/es/validated.tsv"),
@@ -144,6 +144,16 @@ class OpenVoiceAttackSettings(BaseModel):
     MAX_AUDIO_DURATION: float = Field(
         default=30.0,
         description="Maximum acceptable audio duration in seconds; longer clips are rejected"
+    )
+
+    # === Quality Metrics (Informational, not used for rejection) ===
+    NISQA_MIN_ACCEPTABLE: float = Field(
+        default=2.5,
+        description="Minimum acceptable NISQA MOS score (informational threshold, not used for rejection)"
+    )
+    SPEAKER_SIM_MIN_ACCEPTABLE: float = Field(
+        default=0.7,
+        description="Minimum acceptable ECAPA-TDNN cosine similarity (informational, not rejection)"
     )
 
     # === Split Configuration ===
