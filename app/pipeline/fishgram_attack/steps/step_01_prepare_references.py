@@ -80,7 +80,10 @@ class ReferenceAudioPreparator:
                 logger.warning(f"No train directory for {speaker_id}, skipping")
                 continue
 
-            audio_files = sorted(train_dir.glob("*.wav"))[:5]  # Take first 5 files
+            audio_files = sorted(
+                f for ext in ("*.wav", "*.flac", "*.mp3")
+                for f in train_dir.glob(ext)
+            )[:5]
 
             if not audio_files:
                 logger.warning(f"No audio files for {speaker_id}, skipping")
@@ -104,7 +107,7 @@ class ReferenceAudioPreparator:
             # Count total bonafide files across all splits for dynamic sample matching
             bonafide_count = sum(
                 len(list(speaker_dir.rglob(f"*.{ext}")))
-                for ext in ("wav", "flac")
+                for ext in ("wav", "flac", "mp3")
             )
 
             # Store metadata
