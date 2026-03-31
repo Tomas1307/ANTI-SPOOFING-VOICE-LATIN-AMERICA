@@ -370,6 +370,24 @@ audio {
   background: rgba(255,77,77,0.03);
 }
 
+/* Chart styles */
+.chart-row { display:flex; align-items:center; gap:12px; padding:7px 0; }
+.chart-label { font-size:12px; color:var(--muted); width:72px; flex-shrink:0; font-weight:300; text-align:right; }
+.chart-bar-track { flex:1; height:22px; background:rgba(255,255,255,0.04); border-radius:3px; position:relative; overflow:hidden; }
+.chart-bar-fill { height:100%; border-radius:3px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(0,0,0,0.7); font-weight:600; min-width:32px; transition:width 0.6s ease; }
+.chart-bar-fill.green { background:var(--green); }
+.chart-bar-fill.amber { background:var(--amber); }
+.chart-bar-fill.red { background:var(--red); }
+.chart-bar-fill.blue { background:var(--blue); }
+.chart-bar-fill.white { background:rgba(255,255,255,0.5); }
+.chart-bar-fill.dim { background:rgba(255,255,255,0.15); color:rgba(255,255,255,0.5); }
+.chart-val { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); width:56px; flex-shrink:0; text-align:right; }
+
+.stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:24px; text-align:center; }
+.stat-card .num { font-size:36px; font-weight:700; letter-spacing:-1.5px; color:var(--white); line-height:1; }
+.stat-card .sub { font-size:11px; color:var(--muted2); margin-top:6px; letter-spacing:0.5px; }
+.stat-card .detail { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted2); margin-top:8px; }
+
 @media print {
   .slide { page-break-after: always; min-height: 100vh; }
   #dots, #nav, #counter { display: none; }
@@ -379,7 +397,7 @@ audio {
 <body>
 
 <div id="dots"></div>
-<div id="counter">1 / 19</div>
+<div id="counter">1 / 21</div>
 <div id="nav">
   <button class="nbtn" onclick="go(-1)">← prev</button>
   <button class="nbtn" onclick="go(1)">next →</button>
@@ -678,262 +696,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     06 — FISHGRAM
+     06 — REJECTION CRITERIA
 ══════════════════════════════════ -->
-<section class="slide tall" id="s6">
-  <div class="inner">
-    <div class="eyebrow">Pipeline 02 — FishGram Attack</div>
-    <h2>Fish Speech 4B</h2>
-    <p style="margin-bottom:16px; max-width:640px;">Zero-shot voice cloning via Fish Speech (OpenAudio-S1, 4B params, VQGAN vocoder) — running as a persistent HTTP API on ml-server03. Highest perceived audio quality across all four attack pipelines.</p>
-
-    <div style="display:flex; gap:40px; margin:28px 0;">
-      <div><div class="stat-num">4B</div><div class="stat-label">Model params</div></div>
-      <div><div class="stat-num">4.98</div><div class="stat-label">Avg NISQA MOS</div></div>
-      <div><div class="stat-num">83.3%</div><div class="stat-label">Validation pass rate</div></div>
-    </div>
-
-    <div class="div"></div>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div>
-          <div class="step-title">Prepare References</div>
-          <div class="step-class">ReferenceAudioPreparator</div>
-          <div class="step-desc">Training samples per speaker concatenated (alphabetical sort — deterministic) into a single 15-second reference clip. Supports both WAV and MP3 for HABLA v2 compatibility.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div>
-          <div class="step-title">Prepare Texts</div>
-          <div class="step-class">TextPromptPreparator</div>
-          <div class="step-desc">Mozilla CV Spanish transcripts filtered to 5–100 words. Assignment via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">np.random.seed(42)</code> — fully deterministic. 1:1 bonafide-to-synthetic ratio per speaker.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div>
-          <div class="step-title">Generate Speech <span class="tag blue">HTTP API</span></div>
-          <div class="step-class">SpeechGenerator</div>
-          <div class="step-desc"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">POST /v1/tts</code> — base64 reference audio + text. Model (~12GB VRAM) runs as a persistent server decoupled from pipeline lifecycle. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">skip_existing</code> enables resume after interruption.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div>
-          <div class="step-title">Validate Quality</div>
-          <div class="step-class">QualityValidator</div>
-          <div class="step-desc">Multi-layer validation: duration range · silence detection · Parakeet TDT ASR (WER/CER) · NISQA MOS · ECAPA-TDNN speaker similarity. Hard rejection on WER &gt; 0.15 or CER &gt; 0.10.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">05</div>
-        <div>
-          <div class="step-title">Format Output</div>
-          <div class="step-class">OutputFormatter</div>
-          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA protocol. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">FISHGRAM</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_9000001+</code></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════
-     07 — QWEN
-══════════════════════════════════ -->
-<section class="slide tall" id="s7">
-  <div class="inner">
-    <div class="eyebrow">Pipeline 03 — Qwen Attack</div>
-    <h2>Qwen3-TTS 1.7B</h2>
-    <p style="margin-bottom:16px; max-width:640px;">Dual-Track codec architecture — fundamentally different synthesis fingerprint from VQGAN. Best speaker cloning fidelity across all four pipelines (avg similarity 0.730). Requires STT-enhanced reference for full cloning mode.</p>
-
-    <div style="display:flex; gap:40px; margin:28px 0;">
-      <div><div class="stat-num">1.7B</div><div class="stat-label">Model params</div></div>
-      <div><div class="stat-num">4.54</div><div class="stat-label">Avg NISQA MOS</div></div>
-      <div><div class="stat-num">0.730</div><div class="stat-label">Avg speaker similarity</div></div>
-      <div><div class="stat-num">100%</div><div class="stat-label">Validation pass rate</div></div>
-    </div>
-
-    <div class="div"></div>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div>
-          <div class="step-title">Prepare References + STT <span class="tag green">vs others</span></div>
-          <div class="step-class">ReferenceAudioPreparator (with faster-whisper)</div>
-          <div class="step-desc">Same 15s clip assembly, but also transcribes the reference audio using <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">faster-whisper large-v3</code> (Spanish). <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">reference_text</code> stored in metadata. Whisper is a lazy singleton — loaded once.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div>
-          <div class="step-title">Prepare Texts <span class="tag amber">Max 40 words</span></div>
-          <div class="step-class">TextPromptPreparator</div>
-          <div class="step-desc">Stricter limit than other pipelines. Qwen3-TTS silently truncates audio on longer inputs without raising exceptions — the 40-word cap prevents that failure mode entirely.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div>
-          <div class="step-title">Generate Speech <span class="tag blue">Local model</span></div>
-          <div class="step-class">SpeechGenerator</div>
-          <div class="step-desc">Loads <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">Qwen3-TTS-12Hz-1.7B-Base</code> into GPU. Speaker prompt computed once per speaker via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">create_voice_clone_prompt()</code>, reused across all samples. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">ref_text</code> enables full cloning mode.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div>
-          <div class="step-title">Validate + Artifact Detection <span class="tag green">Enhanced</span></div>
-          <div class="step-class">QualityValidator</div>
-          <div class="step-desc">Standard validation plus Qwen-specific checks: duration outside 0.5–30s → reject. RMS &lt; 0.001 → reject. Audio suspiciously short for text length → reject (truncation detection).</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">05</div>
-        <div>
-          <div class="step-title">Format Output</div>
-          <div class="step-class">OutputFormatter</div>
-          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">QWEN3TTS</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_8000001+</code></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════
-     08 — CHATTERBOX
-══════════════════════════════════ -->
-<section class="slide tall" id="s8">
-  <div class="inner">
-    <div class="eyebrow">Pipeline 04 — Chatterbox Attack</div>
-    <h2>Chatterbox 500M</h2>
-    <p style="margin-bottom:16px; max-width:660px;">Flow-matching based synthesis. Third distinct codec architecture. Required a non-trivial post-processing step to address a known artifact — trailing noise after speech ends.</p>
-
-    <div style="display:flex; gap:40px; margin:28px 0;">
-      <div><div class="stat-num">500M</div><div class="stat-label">Model params</div></div>
-      <div><div class="stat-num">4.85</div><div class="stat-label">Avg NISQA MOS</div></div>
-      <div><div class="stat-num">83.3%</div><div class="stat-label">Validation pass rate</div></div>
-    </div>
-
-    <div class="div"></div>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div>
-          <div class="step-title">Prepare References</div>
-          <div class="step-class">ReferenceAudioPreparator</div>
-          <div class="step-desc">15-second reference clip from training samples, same as other pipelines. WAV + MP3 support for HABLA v2.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div>
-          <div class="step-title">Prepare Texts</div>
-          <div class="step-class">TextPromptPreparator</div>
-          <div class="step-desc">Mozilla CV Spanish transcripts, 5–100 word range. 1:1 bonafide-to-synthetic ratio per speaker.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div>
-          <div class="step-title">Generate + Trim Trailing Noise <span class="tag red">Post-processing</span></div>
-          <div class="step-class">SpeechGenerator · SpeechTrimmer</div>
-          <div class="step-desc">Chatterbox consistently generates loud noise (15–40% peak amplitude) after speech ends. Simple VAD or energy thresholds fail because the noise is too loud. The fix uses <strong style="color:var(--white);">gap detection</strong>: find the longest silence gap in the second half, verify energy drops after it, trim at gap start + 150ms margin.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div>
-          <div class="step-title">Validate Quality</div>
-          <div class="step-class">QualityValidator</div>
-          <div class="step-desc">Multi-layer validation after trimming: duration · silence · Parakeet WER/CER · NISQA MOS · ECAPA-TDNN similarity.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">05</div>
-        <div>
-          <div class="step-title">Format Output</div>
-          <div class="step-class">OutputFormatter</div>
-          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">CHATTERBOX</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_6000001+</code></div>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-top:32px;" class="callout warn">
-      <strong style="color:var(--amber);">Trailing noise trimmer — algorithm.</strong> (1) Smoothed RMS energy envelope: 25ms frames, 100ms rolling average. (2) Find silence gaps &lt; 3% of peak amplitude, &gt; 150ms duration. (3) Select the longest gap in the second half of audio. (4) Verify mean energy after gap &lt; before gap — confirms noise, not speech. (5) Trim at gap start + 150ms margin. Safety: never trims more than 50% of audio length.
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════
-     09 — OPENVOICE
-══════════════════════════════════ -->
-<section class="slide tall" id="s9">
-  <div class="inner">
-    <div class="eyebrow">Pipeline 05 — OpenVoice Attack</div>
-    <h2>OpenVoice</h2>
-    <p style="margin-bottom:16px; max-width:660px;">Two-stage approach: MeloTTS generates neutral Spanish speech, then ToneColorConverter transfers the speaker's voice characteristics. Fourth distinct synthesis architecture. Perfect intelligibility — zero WER and CER in validation.</p>
-
-    <div style="display:flex; gap:40px; margin:28px 0;">
-      <div><div class="stat-num">0.00%</div><div class="stat-label">Avg WER (validation)</div></div>
-      <div><div class="stat-num">4.06</div><div class="stat-label">Avg NISQA MOS</div></div>
-      <div><div class="stat-num">100%</div><div class="stat-label">Validation pass rate</div></div>
-    </div>
-
-    <div class="div"></div>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div>
-          <div class="step-title">Prepare References + Tone Embeddings</div>
-          <div class="step-class">ReferenceAudioPreparator</div>
-          <div class="step-desc">15-second reference clip. OpenVoice extracts a tone-color embedding directly from audio via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">se_extractor.get_se(vad=True)</code>. No STT required — voice characteristics captured acoustically.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div>
-          <div class="step-title">Prepare Texts</div>
-          <div class="step-class">TextPromptPreparator</div>
-          <div class="step-desc">Mozilla CV Spanish transcripts, 5–100 word range. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">np.random.seed(42)</code> deterministic assignment.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div>
-          <div class="step-title">Generate Speech <span class="tag blue">Two-stage</span></div>
-          <div class="step-class">SpeechGenerator (MeloTTS + ToneColorConverter)</div>
-          <div class="step-desc"><strong style="color:var(--white);">Stage 1 — MeloTTS</strong>: synthesizes neutral Spanish speech from text. <strong style="color:var(--white);">Stage 2 — ToneColorConverter</strong>: applies speaker tone color via VITS-based conversion. Intensity: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">tau=0.3</code> (0=no change, 1=full transfer). Target embedding extracted once per speaker and cached.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div>
-          <div class="step-title">Validate + Spurious Prefix Trimming <span class="tag amber">Auto-correct</span></div>
-          <div class="step-class">QualityValidator</div>
-          <div class="step-desc">Standard multi-layer validation, plus spurious prefix detection: ASR may hallucinate words at audio start. Detected via sequence alignment (difflib), trimmed at word boundary, re-transcribed.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">05</div>
-        <div>
-          <div class="step-title">Format Output</div>
-          <div class="step-class">OutputFormatter</div>
-          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">OPENVOICE</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_7000001+</code></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════
-     10 — REJECTION CRITERIA
-══════════════════════════════════ -->
-<section class="slide" id="s10">
+<section class="slide" id="s6">
   <div class="inner">
     <div class="eyebrow">Step 4 — Quality Validation</div>
     <h2>Rejection criteria</h2>
@@ -1012,9 +777,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     11 — NISQA
+     07 — NISQA
 ══════════════════════════════════ -->
-<section class="slide" id="s11">
+<section class="slide" id="s7">
   <div class="inner">
     <div class="eyebrow">Quality Metric — NISQA</div>
     <h2>NISQA: Non-Intrusive Speech Quality Assessment</h2>
@@ -1101,9 +866,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     12 — ECAPA-TDNN
+     08 — ECAPA-TDNN
 ══════════════════════════════════ -->
-<section class="slide" id="s12">
+<section class="slide" id="s8">
   <div class="inner">
     <div class="eyebrow">Quality Metric — ECAPA-TDNN</div>
     <h2>ECAPA-TDNN: Speaker Similarity</h2>
@@ -1186,6 +951,259 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 
         <div style="margin-top:12px; font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace;">
           Desplanques et al. "ECAPA-TDNN: Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification" · Interspeech 2020 · arXiv:2005.07143
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     09 — FISHGRAM
+══════════════════════════════════ -->
+<section class="slide tall" id="s9">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Attack</div>
+    <h2>Fish Speech 4B</h2>
+    <p style="margin-bottom:16px; max-width:640px;">Zero-shot voice cloning via Fish Speech (OpenAudio-S1, 4B params, VQGAN vocoder) — running as a persistent HTTP API on ml-server03. Highest perceived audio quality across all four attack pipelines.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">4B</div><div class="stat-label">Model params</div></div>
+      <div><div class="stat-num">4.98</div><div class="stat-label">Avg NISQA MOS</div></div>
+      <div><div class="stat-num">83.3%</div><div class="stat-label">Validation pass rate</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References</div>
+          <div class="step-class">ReferenceAudioPreparator</div>
+          <div class="step-desc">Training samples per speaker concatenated (alphabetical sort — deterministic) into a single 15-second reference clip. Supports both WAV and MP3 for HABLA v2 compatibility.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts</div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Mozilla CV Spanish transcripts filtered to 5–100 words. Assignment via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">np.random.seed(42)</code> — fully deterministic. 1:1 bonafide-to-synthetic ratio per speaker.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate Speech <span class="tag blue">HTTP API</span></div>
+          <div class="step-class">SpeechGenerator</div>
+          <div class="step-desc"><code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">POST /v1/tts</code> — base64 reference audio + text. Model (~12GB VRAM) runs as a persistent server decoupled from pipeline lifecycle. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">skip_existing</code> enables resume after interruption.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate Quality</div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">Multi-layer validation: duration range · silence detection · Parakeet TDT ASR (WER/CER) · NISQA MOS · ECAPA-TDNN speaker similarity. Hard rejection on WER &gt; 0.15 or CER &gt; 0.10.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA protocol. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">FISHGRAM</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_9000001+</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     10 — QWEN
+══════════════════════════════════ -->
+<section class="slide tall" id="s10">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 03 — Qwen Attack</div>
+    <h2>Qwen3-TTS 1.7B</h2>
+    <p style="margin-bottom:16px; max-width:640px;">Dual-Track codec architecture — fundamentally different synthesis fingerprint from VQGAN. Best speaker cloning fidelity across all four pipelines (avg similarity 0.730). Requires STT-enhanced reference for full cloning mode.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">1.7B</div><div class="stat-label">Model params</div></div>
+      <div><div class="stat-num">4.54</div><div class="stat-label">Avg NISQA MOS</div></div>
+      <div><div class="stat-num">0.730</div><div class="stat-label">Avg speaker similarity</div></div>
+      <div><div class="stat-num">100%</div><div class="stat-label">Validation pass rate</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References + STT <span class="tag green">vs others</span></div>
+          <div class="step-class">ReferenceAudioPreparator (with faster-whisper)</div>
+          <div class="step-desc">Same 15s clip assembly, but also transcribes the reference audio using <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">faster-whisper large-v3</code> (Spanish). <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">reference_text</code> stored in metadata. Whisper is a lazy singleton — loaded once.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts <span class="tag amber">Max 40 words</span></div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Stricter limit than other pipelines. Qwen3-TTS silently truncates audio on longer inputs without raising exceptions — the 40-word cap prevents that failure mode entirely.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate Speech <span class="tag blue">Local model</span></div>
+          <div class="step-class">SpeechGenerator</div>
+          <div class="step-desc">Loads <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">Qwen3-TTS-12Hz-1.7B-Base</code> into GPU. Speaker prompt computed once per speaker via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">create_voice_clone_prompt()</code>, reused across all samples. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">ref_text</code> enables full cloning mode.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate + Artifact Detection <span class="tag green">Enhanced</span></div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">Standard validation plus Qwen-specific checks: duration outside 0.5–30s → reject. RMS &lt; 0.001 → reject. Audio suspiciously short for text length → reject (truncation detection).</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">QWEN3TTS</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_8000001+</code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     11 — CHATTERBOX
+══════════════════════════════════ -->
+<section class="slide tall" id="s11">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 04 — Chatterbox Attack</div>
+    <h2>Chatterbox 500M</h2>
+    <p style="margin-bottom:16px; max-width:660px;">Flow-matching based synthesis. Third distinct codec architecture. Required a non-trivial post-processing step to address a known artifact — trailing noise after speech ends.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">500M</div><div class="stat-label">Model params</div></div>
+      <div><div class="stat-num">4.85</div><div class="stat-label">Avg NISQA MOS</div></div>
+      <div><div class="stat-num">83.3%</div><div class="stat-label">Validation pass rate</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References</div>
+          <div class="step-class">ReferenceAudioPreparator</div>
+          <div class="step-desc">15-second reference clip from training samples, same as other pipelines. WAV + MP3 support for HABLA v2.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts</div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Mozilla CV Spanish transcripts, 5–100 word range. 1:1 bonafide-to-synthetic ratio per speaker.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate + Trim Trailing Noise <span class="tag red">Post-processing</span></div>
+          <div class="step-class">SpeechGenerator · SpeechTrimmer</div>
+          <div class="step-desc">Chatterbox consistently generates loud noise (15–40% peak amplitude) after speech ends. Simple VAD or energy thresholds fail because the noise is too loud. The fix uses <strong style="color:var(--white);">gap detection</strong>: find the longest silence gap in the second half, verify energy drops after it, trim at gap start + 150ms margin.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate Quality</div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">Multi-layer validation after trimming: duration · silence · Parakeet WER/CER · NISQA MOS · ECAPA-TDNN similarity.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">CHATTERBOX</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_6000001+</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;" class="callout warn">
+      <strong style="color:var(--amber);">Trailing noise trimmer — algorithm.</strong> (1) Smoothed RMS energy envelope: 25ms frames, 100ms rolling average. (2) Find silence gaps &lt; 3% of peak amplitude, &gt; 150ms duration. (3) Select the longest gap in the second half of audio. (4) Verify mean energy after gap &lt; before gap — confirms noise, not speech. (5) Trim at gap start + 150ms margin. Safety: never trims more than 50% of audio length.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     12 — OPENVOICE
+══════════════════════════════════ -->
+<section class="slide tall" id="s12">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 05 — OpenVoice Attack</div>
+    <h2>OpenVoice</h2>
+    <p style="margin-bottom:16px; max-width:660px;">Two-stage approach: MeloTTS generates neutral Spanish speech, then ToneColorConverter transfers the speaker's voice characteristics. Fourth distinct synthesis architecture. Perfect intelligibility — zero WER and CER in validation.</p>
+
+    <div style="display:flex; gap:40px; margin:28px 0;">
+      <div><div class="stat-num">0.00%</div><div class="stat-label">Avg WER (validation)</div></div>
+      <div><div class="stat-num">4.06</div><div class="stat-label">Avg NISQA MOS</div></div>
+      <div><div class="stat-num">100%</div><div class="stat-label">Validation pass rate</div></div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div>
+          <div class="step-title">Prepare References + Tone Embeddings</div>
+          <div class="step-class">ReferenceAudioPreparator</div>
+          <div class="step-desc">15-second reference clip. OpenVoice extracts a tone-color embedding directly from audio via <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">se_extractor.get_se(vad=True)</code>. No STT required — voice characteristics captured acoustically.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div>
+          <div class="step-title">Prepare Texts</div>
+          <div class="step-class">TextPromptPreparator</div>
+          <div class="step-desc">Mozilla CV Spanish transcripts, 5–100 word range. <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">np.random.seed(42)</code> deterministic assignment.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div>
+          <div class="step-title">Generate Speech <span class="tag blue">Two-stage</span></div>
+          <div class="step-class">SpeechGenerator (MeloTTS + ToneColorConverter)</div>
+          <div class="step-desc"><strong style="color:var(--white);">Stage 1 — MeloTTS</strong>: synthesizes neutral Spanish speech from text. <strong style="color:var(--white);">Stage 2 — ToneColorConverter</strong>: applies speaker tone color via VITS-based conversion. Intensity: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">tau=0.3</code> (0=no change, 1=full transfer). Target embedding extracted once per speaker and cached.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div>
+          <div class="step-title">Validate + Spurious Prefix Trimming <span class="tag amber">Auto-correct</span></div>
+          <div class="step-class">QualityValidator</div>
+          <div class="step-desc">Standard multi-layer validation, plus spurious prefix detection: ASR may hallucinate words at audio start. Detected via sequence alignment (difflib), trimmed at word boundary, re-transcribed.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div>
+          <div class="step-title">Format Output</div>
+          <div class="step-class">OutputFormatter</div>
+          <div class="step-desc">WAV → FLAC. ASVspoof2019 LA. System ID: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">OPENVOICE</code>. Audio IDs: <code style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4)">LA_T_7000001+</code></div>
         </div>
       </div>
     </div>
@@ -1292,9 +1310,245 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     14 — REJECTED SAMPLES (with audio)
+     14 — FISHGRAM PRODUCTION RESULTS
 ══════════════════════════════════ -->
 <section class="slide tall" id="s14">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Production Run</div>
+    <h2>FishGram at scale</h2>
+    <p style="margin-bottom:28px; max-width:640px;">Full production run: 1,567 speakers x ~23 samples each. Fish Speech (OpenAudio S1-mini, VQGAN vocoder) running as persistent HTTP API on ml-server03 GPU 3. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN.</p>
+
+    <!-- Hero stats -->
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,927</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">34,197</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">95.2% pass rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">1,730</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">4.8% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">36.1h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 3.80s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- Key metrics summary -->
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>2.17%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>4.26%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.70%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.62%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.571</strong></td>
+              <td>4.890</td>
+              <td>0.764</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td><strong>0.602</strong></td>
+              <td>0.618</td>
+              <td>0.112</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout hi">
+          <strong style="color:var(--white);">Scale vs validation shift.</strong> At production scale, mean similarity dropped from 0.567 (validation, 6 samples) to 0.602 (production, 34K samples) — actually <em>improved</em> with more speakers. NISQA dropped from 4.978 to 4.571 as more diverse and challenging texts were generated, but median remains high at 4.890.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">1,341</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">77.5% of rejections — pronunciation errors on proper nouns and rare words</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">378</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">21.8% — both word and character errors exceeded thresholds simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent output</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">11</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">0.6% — model produced near-silent or garbled audio (RMS below threshold)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     15 — FISHGRAM DISTRIBUTION CHARTS
+══════════════════════════════════ -->
+<section class="slide tall" id="s15">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Distribution Analysis</div>
+    <h2>Quality distributions</h2>
+    <p style="margin-bottom:28px; max-width:640px;">Distribution of NISQA MOS, speaker similarity, WER, and per-accent pass rates across all 34,197 passed samples.</p>
+
+    <div class="two" style="gap:40px; margin-bottom:36px;">
+      <!-- NISQA distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">NISQA MOS distribution</h3>
+        <div class="chart-row">
+          <div class="chart-label">4.5+</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:74.7%">25,544</div></div>
+          <div class="chart-val">74.7%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">4.0 - 4.5</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:9.8%"></div></div>
+          <div class="chart-val">9.8%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">3.0 - 4.0</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:9.3%"></div></div>
+          <div class="chart-val">9.3%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">&lt; 3.0</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill red" style="width:6.2%"></div></div>
+          <div class="chart-val">6.2%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Median: 4.890 — three quarters of samples achieve near-perfect perceptual quality</div>
+      </div>
+
+      <!-- WER distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">WER distribution (passed)</h3>
+        <div class="chart-row">
+          <div class="chart-label">0%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:78.2%">26,746</div></div>
+          <div class="chart-val">78.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">5 - 10%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:14.2%"></div></div>
+          <div class="chart-val">14.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">10 - 15%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:7.6%"></div></div>
+          <div class="chart-val">7.6%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">78.2% of passed samples have perfect transcription (0% WER)</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <!-- Speaker similarity distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">Speaker similarity distribution</h3>
+        <div class="chart-row">
+          <div class="chart-label">0.7+</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:18.3%"></div></div>
+          <div class="chart-val">18.3%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">0.5 - 0.7</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:65.4%">22,365</div></div>
+          <div class="chart-val">65.4%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">&lt; 0.5</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:16.3%"></div></div>
+          <div class="chart-val">16.3%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Mean: 0.602 — bulk of clones land in the moderate fidelity zone (0.5-0.7)</div>
+      </div>
+
+      <!-- Per-accent pass rates -->
+      <div>
+        <h3 style="margin-bottom:12px;">Pass rate by accent</h3>
+        <div class="chart-row">
+          <div class="chart-label">PE</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:96%"></div></div>
+          <div class="chart-val">96.0%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">CL</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.8%"></div></div>
+          <div class="chart-val">95.8%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">VE</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.7%"></div></div>
+          <div class="chart-val">95.7%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">MX</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.4%"></div></div>
+          <div class="chart-val">95.4%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">CO</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.2%"></div></div>
+          <div class="chart-val">95.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">AR</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.1%"></div></div>
+          <div class="chart-val">95.1%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">ES</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:93.2%"></div></div>
+          <div class="chart-val">93.2%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Accent-uniform quality — Spain (ES) slightly lower, likely due to phonetic diversity in text prompts</div>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;" class="callout hi">
+      <strong style="color:var(--white);">Production insight.</strong> Pass rates are remarkably uniform across all 7 accents (93.2% - 96.0%), confirming that Fish Speech's VQGAN architecture handles Latin American Spanish accent diversity well. The slight ES dip may reflect Castilian-specific phonemes in the Common Voice text corpus that challenge the model.
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════
+     16 — REJECTED SAMPLES (with audio)
+══════════════════════════════════ -->
+<section class="slide tall" id="s16">
   <div class="inner">
     <div class="eyebrow">Step 4 — Rejection Analysis</div>
     <h2>Rejected samples</h2>
@@ -1390,9 +1644,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     15 — DEMO: BONAFIDE vs CHATTERBOX
+     17 — DEMO: BONAFIDE vs CHATTERBOX
 ══════════════════════════════════ -->
-<section class="slide" id="s15">
+<section class="slide" id="s17">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 04</div>
     <h2>Bonafide vs Chatterbox</h2>
@@ -1448,9 +1702,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     16 — DEMO: BONAFIDE vs OPENVOICE
+     18 — DEMO: BONAFIDE vs OPENVOICE
 ══════════════════════════════════ -->
-<section class="slide" id="s16">
+<section class="slide" id="s18">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 05</div>
     <h2>Bonafide vs OpenVoice</h2>
@@ -1506,9 +1760,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     17 — LRLSPOOF COMPARISON
+     19 — LRLSPOOF COMPARISON
 ══════════════════════════════════ -->
-<section class="slide tall" id="s17">
+<section class="slide tall" id="s19">
   <div class="inner">
     <div class="eyebrow">Related Work — LRLSpoof</div>
     <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
@@ -1571,9 +1825,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     18 — SPEECHFAKE COMPARISON
+     20 — SPEECHFAKE COMPARISON
 ══════════════════════════════════ -->
-<section class="slide" id="s18">
+<section class="slide" id="s20">
   <div class="inner">
     <div class="eyebrow">Related Work — SpeechFake-MD</div>
     <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
@@ -1672,9 +1926,9 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <!-- ══════════════════════════════════
-     19 — NEXT STEPS
+     21 — NEXT STEPS
 ══════════════════════════════════ -->
-<section class="slide" id="s19">
+<section class="slide" id="s21">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
@@ -1685,19 +1939,26 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
       <div class="step" style="padding:24px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(62,255,139,0.15); color:var(--green);">01</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — FishGram + Qwen3TTS <span class="tag green">Running</span></div>
-          <div class="step-desc" style="font-size:15px;">Already executing on ml-server03 — 1,567 speakers, 1:1 bonafide-to-synthetic ratio. FishGram via Fish Speech HTTP API, Qwen3TTS local inference. Results slide to follow once complete.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — FishGram <span class="tag green">Complete</span></div>
+          <div class="step-desc" style="font-size:15px;">35,927 samples generated, 34,197 passed validation (95.2%). 1,567 speakers across 7 Latin American accents. 36.1 hours of synthetic audio. Full results in slides 14-15.</div>
         </div>
       </div>
       <div class="step" style="padding:24px 0;">
-        <div class="step-num" style="font-size:14px;">02</div>
+        <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">02</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — Chatterbox + OpenVoice</div>
-          <div class="step-desc" style="font-size:15px;">Queued after FishGram and Qwen complete. Same 1,567 speakers. Chatterbox includes automatic trailing noise trimming. OpenVoice runs the two-stage MeloTTS + ToneColorConverter pipeline.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — Qwen3TTS + Chatterbox + OpenVoice <span class="tag amber">Blocked</span></div>
+          <div class="step-desc" style="font-size:15px;">Pipelines built and validated (see slides 3-12). Datacenter hosting ml-server03 is offline for maintenance — estimated return in ~1 week. All tmux launch commands prepared. Each pipeline targets the same 1,567 speakers with the same text sampling seed for cross-pipeline comparability.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px;">03</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Cross-pipeline analysis at production scale</div>
+          <div class="step-desc" style="font-size:15px;">Once all 4 pipelines complete: update cross-pipeline comparison (slide 13) with production-scale metrics. Compare NISQA, WER, CER, and speaker similarity distributions across architectures. Identify which TTS system produces the most dangerous attacks for anti-spoofing detector evaluation.</div>
         </div>
       </div>
       <div class="step" style="padding:24px 0; border-bottom:none;">
-        <div class="step-num" style="font-size:14px;">03</div>
+        <div class="step-num" style="font-size:14px;">04</div>
         <div>
           <div class="step-title" style="font-size:18px; margin-bottom:8px;">New attack pipelines — OuteTTS + CosyVoice 3.0</div>
           <div class="step-desc" style="font-size:15px;">Expand attack diversity with two additional TTS systems. OuteTTS (LLM-based, DAC codec — Apache 2.0). CosyVoice 3.0 (Conditional Flow Matching, 1M hours training data — Apache 2.0). Both add novel codec architectures not yet represented in HABLA 2.0.</div>
@@ -1714,7 +1975,7 @@ passed = max_sim &lt; SIMILARITY_THRESHOLD
 </section>
 
 <script>
-const N = 19;
+const N = 21;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');

@@ -388,7 +388,80 @@ Using W2V+AASIST (50 epochs):
 
 ---
 
-## 6. Action Items Summary
+## 6. HISPASpoof: Spanish Synthetic Speech Detection Dataset
+
+**Paper**: "HISPASpoof: A New Dataset For Spanish Speech Forensics"
+**Authors**: Maria Risques, Kratika Bhagtani, Amit Kumar Singh Yadav, Edward J. Delp
+**Affiliation**: Video and Image Processing Laboratory (VIPER), Purdue University
+**Source**: https://arxiv.org/html/2509.09155
+**Code**: https://gitlab.com/viper-purdue/s3d-spanish-syn-speech-det.git
+
+### Dataset Overview
+
+- **535,687 total speech signals** (detection: 43,687 + attribution: 492,000)
+- **6 Spanish accents**: Peninsular, Argentinian, Colombian, Mexican, Chilean, Peruvian
+- **6 TTS systems**: ElevenLabs, F5-TTS, FishSpeech, XTTS-v1.1, XTTS-v2, YourTTS
+- **24 speakers** (4 per accent, gender-balanced) + 6 unseen test speakers
+- Real speech from VoxPopuli, CIEMPIESS, and public corpora
+- Attribution subset text generated via ChatGPT-4o for copyright-free diversity
+- License: CC0 / CC BY-SA 4.0 (real speech sources)
+
+### Detection Results (EER %)
+
+#### Trained on ASVspoof 2019 (English) -> Tested on HISPASpoof
+
+| Method | ASVspoof Test | HISPASpoof |
+|---|---|---|
+| LFCC+GMM | 3.59% | 42.71% |
+| Wav2Vec2-AASIST | 0.27% | 19.92% |
+| PaSST | 4.77% | 32.14% |
+
+**Critical finding**: English-trained detectors fail catastrophically on Spanish (EER jumps from 0.27% to 19.92% even for best model).
+
+#### Trained on HISPASpoof (Spanish) -> Tested on HISPASpoof
+
+| Method | HISPASpoof |
+|---|---|
+| LFCC+GMM | 1.57% |
+| Spec-ResNet | **0.72%** |
+| PaSST | 4.10% |
+| Wav2Vec2-AASIST | 10.27% |
+
+**Language-specific training is essential**: Spec-ResNet drops from 43.23% to 0.72% EER when trained on Spanish data.
+
+#### Attribution (Closed-Set)
+
+| Method | Accuracy | F1-Score |
+|---|---|---|
+| PaSST | **100%** | **100%** |
+| Spec-ResNet | 99.91% | 99.87% |
+| Wav2Vec2-AASIST | 99.96% | 99.93% |
+
+### Comparison: Our HABLA Pipeline vs HISPASpoof
+
+| Aspect | HABLA (ours) | HISPASpoof |
+|---|---|---|
+| Accents | 7 Latin American (incl. Venezuelan, Puerto Rican) | 6 (incl. Peninsular, no Venezuelan/Puerto Rican) |
+| Speakers | 162 | 24 + 6 unseen |
+| TTS systems | Fish Speech, Qwen3-TTS, CosyVoice, OuteTTS, Chatterbox, OpenVoice | ElevenLabs, F5-TTS, FishSpeech, XTTS-v1.1, XTTS-v2, YourTTS |
+| Bonafide source | HABLA dataset (real recordings) | VoxPopuli, CIEMPIESS, public corpora |
+| Voice cloning | Zero-shot (reference audio) | Zero-shot |
+| Evaluation | Full pipeline (WER, CER, speaker similarity) | EER + attribution |
+| Partial spoof | Planned (novel contribution) | No |
+| Focus | Voice cloning attacks + detection | Detection + attribution |
+
+### Key Differentiators for Our Thesis
+
+1. **Overlap in TTS**: Both use FishSpeech. Direct comparison possible on shared accent-TTS pairs.
+2. **We add Qwen3-TTS and CosyVoice**: Novel attack vectors not in HISPASpoof.
+3. **More speakers**: 162 vs 24 gives us more statistical power per accent.
+4. **More Latin American accents**: We include Venezuelan and Puerto Rican, they include Peninsular (European Spanish).
+5. **Partial spoof**: We will create partially spoofed utterances (see Section 8), which HISPASpoof does not address.
+6. **Their EER results validate our premise**: English-trained detectors degrade severely on Spanish, confirming the need for language-specific anti-spoofing research.
+
+---
+
+## 7. Action Items Summary
 
 ### Immediate (code changes)
 
@@ -402,4 +475,5 @@ Using W2V+AASIST (50 epochs):
 1. Complete MDPI Section 6 analysis (need manual paper access)
 2. Compare our Spanish results against LRLSpoof's 23.14 hours
 3. Compare our attack systems against SpeechFake-MD's 6 multilingual tools
-4. Highlight our novel contributions: Qwen3-TTS attacks, Latin American accent focus, HABLA bonafide data
+4. Compare our pipeline against HISPASpoof's 6 accents and 6 TTS systems
+5. Highlight our novel contributions: Qwen3-TTS attacks, Latin American accent focus, HABLA bonafide data, partial spoof for Spanish

@@ -115,6 +115,12 @@ run_pipeline "OPENVOICE" "openvoice_env" "test_openvoice_pipeline.py"
 # --- Qwen ---
 run_pipeline "QWEN3TTS" "qwen_env" "test_qwen_pipeline.py"
 
+# --- OuteTTS ---
+run_pipeline "OUTETTS" "outetts_env" "test_outetts_pipeline.py"
+
+# --- CosyVoice ---
+run_pipeline "COSYVOICE" "cosyvoice_env" "test_cosyvoice_pipeline.py"
+
 # --- FishGram (requires Fish Speech server) ---
 if [[ "$SKIP_FISHGRAM" == "true" ]]; then
     echo "----------------------------------------------------------------"
@@ -138,5 +144,7 @@ echo "  Metrics CSVs:"
 echo "    data/chatterbox_output/metrics/CHATTERBOX_validation.csv"
 echo "    data/openvoice_output/metrics/OPENVOICE_validation.csv"
 echo "    data/qwen_output/metrics/QWEN3TTS_validation.csv"
+echo "    data/outetts_output/metrics/OUTETTS_validation.csv"
+echo "    data/cosyvoice_output/metrics/COSYVOICE_validation.csv"
 echo "    data/fishgram_output/metrics/FISHGRAM_validation.csv"
 echo "================================================================"
