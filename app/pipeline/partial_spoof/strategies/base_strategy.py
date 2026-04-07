@@ -1,19 +1,29 @@
-"""Abstract base class for voice cloning attack strategies.
+"""
+Abstract base class for voice cloning attack strategies.
 
-Each concrete strategy wraps a specific TTS/voice cloning system and
-provides a uniform interface for the Partial Spoof pipeline to generate
-cloned speech from text and a speaker reference audio.
+Each concrete strategy wraps a specific voice cloning system and exposes
+a uniform interface for generating cloned speech from text and reference audio.
 """
 from abc import ABC, abstractmethod
 from pathlib import Path
 
 
-class AttackStrategy(ABC):
-    """Abstract interface for voice cloning attack systems.
+VALID_ATTACK_SYSTEMS = [
+    "fishgram",
+    "qwen",
+    "cosyvoice",
+    "outetts",
+    "chatterbox",
+    "openvoice",
+]
 
-    Concrete implementations wrap specific TTS engines (Fish Speech,
-    Qwen3-TTS, CosyVoice, OuteTTS, Chatterbox, OpenVoice) and expose
-    a uniform generate() method for the partial spoof pipeline.
+
+class AttackStrategy(ABC):
+    """Abstract interface for voice cloning attack strategies.
+
+    Concrete implementations wrap specific TTS/voice cloning systems
+    (Fish Speech, Qwen3-TTS, CosyVoice, OuteTTS, Chatterbox, OpenVoice)
+    and provide a consistent API for generating cloned speech.
 
     The lifecycle is: load_model() -> generate() (N times) -> cleanup().
     """
@@ -23,7 +33,7 @@ class AttackStrategy(ABC):
         """Load the voice cloning model onto the specified device.
 
         Args:
-            device: PyTorch device string (e.g., 'cuda:0', 'cpu').
+            device: Compute device string (e.g., 'cuda:0', 'cpu').
         """
 
     @abstractmethod
@@ -35,14 +45,13 @@ class AttackStrategy(ABC):
         reference_text: str = "",
         seed: int | None = None,
     ) -> float:
-        """Generate cloned speech for the given text and speaker reference.
+        """Generate cloned speech for the given text using the speaker's reference audio.
 
         Args:
-            text: Text to synthesize in the cloned voice.
-            reference_audio_path: Path to the speaker reference audio clip.
-            output_path: Path where the generated WAV file will be saved.
-            reference_text: Optional transcript of the reference audio,
-                required by some systems (Qwen, CosyVoice) for better cloning.
+            text: Text transcript to synthesize.
+            reference_audio_path: Path to the speaker's reference audio file.
+            output_path: Path where the generated audio will be saved.
+            reference_text: Optional transcript of the reference audio (some systems need this).
             seed: Optional random seed for reproducible generation.
 
         Returns:
@@ -51,7 +60,7 @@ class AttackStrategy(ABC):
 
     @abstractmethod
     def cleanup(self) -> None:
-        """Release model resources and free GPU memory."""
+        """Release model resources and GPU memory."""
 
     @abstractmethod
     def name(self) -> str:
@@ -66,5 +75,5 @@ class AttackStrategy(ABC):
         """Whether this system requires a text transcript of the reference audio.
 
         Returns:
-            True if reference_text must be non-empty for optimal cloning.
+            True if the system needs reference_text for optimal voice cloning.
         """

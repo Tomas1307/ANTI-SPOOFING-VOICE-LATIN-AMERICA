@@ -1,45 +1,36 @@
-"""Factory for creating voice cloning attack strategy instances.
-
-Uses conditional module imports to avoid loading all TTS frameworks
-at once. Each strategy module imports its heavy ML dependencies at
-file-level (per CLAUDE.md), so only the selected system's dependencies
-are loaded into memory.
 """
-from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy
+Factory function for creating attack strategy instances.
 
-
-VALID_SYSTEMS = frozenset({
-    "fishgram",
-    "qwen",
-    "cosyvoice",
-    "outetts",
-    "chatterbox",
-    "openvoice",
-})
+Uses conditional module imports to avoid loading all 6 TTS frameworks
+at once. Each strategy module has its heavy ML imports at file top
+(per CLAUDE.md). This factory only imports the selected strategy module.
+"""
+from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy, VALID_ATTACK_SYSTEMS
 
 
 def create_attack_strategy(attack_system: str) -> AttackStrategy:
-    """Create and return the appropriate AttackStrategy for the given system.
+    """Create an attack strategy instance for the specified voice cloning system.
+
+    Imports only the selected strategy module to avoid loading unnecessary
+    ML dependencies. Each concrete strategy file contains its own heavy
+    imports (torch, model-specific libraries) at the top of its file.
 
     Args:
         attack_system: Voice cloning system identifier. Must be one of:
-            fishgram, qwen, cosyvoice, outetts, chatterbox, openvoice.
+            'fishgram', 'qwen', 'cosyvoice', 'outetts', 'chatterbox', 'openvoice'.
 
     Returns:
-        An instance of the corresponding AttackStrategy subclass.
+        Concrete AttackStrategy instance for the specified system.
 
     Raises:
-        ValueError: If attack_system is not a recognized identifier.
+        ValueError: If attack_system is not a recognized system name.
     """
-    if attack_system not in VALID_SYSTEMS:
+    if attack_system not in VALID_ATTACK_SYSTEMS:
         raise ValueError(
             f"Unknown attack system '{attack_system}'. "
-            f"Valid options: {sorted(VALID_SYSTEMS)}"
+            f"Valid options: {VALID_ATTACK_SYSTEMS}"
         )
 
-    # Conditional module imports to load only the selected strategy's
-    # ML dependencies. Each strategy file has its heavy imports at
-    # file-level per CLAUDE.md; here we import the module itself.
     if attack_system == "fishgram":
         from app.pipeline.partial_spoof.strategies.fishgram_strategy import FishGramStrategy
         return FishGramStrategy()
@@ -63,5 +54,3 @@ def create_attack_strategy(attack_system: str) -> AttackStrategy:
     if attack_system == "openvoice":
         from app.pipeline.partial_spoof.strategies.openvoice_strategy import OpenVoiceStrategy
         return OpenVoiceStrategy()
-
-    raise ValueError(f"No strategy implementation for '{attack_system}'.")

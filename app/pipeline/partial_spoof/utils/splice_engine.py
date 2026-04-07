@@ -1,13 +1,14 @@
-"""Core audio splicing engine for partial spoof generation.
+"""
+Core word-level audio splicing engine.
 
-Handles the mechanics of replacing word segments in bonafide audio
-with corresponding segments from cloned audio, including duration
-mismatch resolution and crossfade application.
+Replaces selected word segments in bonafide audio with corresponding
+segments from cloned audio, handling duration mismatches via silence
+stealing and time compression. Processes replacements in reverse order
+to preserve sample positions.
 """
 import numpy as np
-from typing import Dict, List, Tuple
-
 from loguru import logger
+from typing import Dict, List, Tuple
 
 from app.pipeline.partial_spoof.utils.crossfade import apply_crossfade
 
@@ -25,26 +26,26 @@ def splice_words(
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
 
-    Processes word replacements in reverse order (right to left) so that
-    earlier splice operations do not shift the sample positions of later
-    words in the waveform.
+    Processes word replacements in reverse order (right-to-left) so that
+    earlier splices do not shift sample positions of later words.
+
+    Word dicts must have keys: 'word' (str), 'start' (float seconds),
+    'end' (float seconds).
 
     Args:
-        bonafide_audio: Full bonafide waveform as 1-D float32 array.
-        cloned_audio: Full cloned waveform as 1-D float32 array.
-        bonafide_words: List of word dicts with 'word', 'start', 'end' keys.
-        cloned_words: List of word dicts with 'word', 'start', 'end' keys.
-        selected_indices: Sorted list of word indices to replace.
+        bonafide_audio: Full bonafide waveform (1-D float32 array).
+        cloned_audio: Full cloned waveform (1-D float32 array).
+        bonafide_words: Word-level timestamps for bonafide audio.
+        cloned_words: Word-level timestamps for cloned audio.
+        selected_indices: Zero-based indices of words to replace.
         sample_rate: Audio sample rate in Hz.
-        crossfade_ms: Crossfade duration in milliseconds at splice boundaries.
-        max_silence_steal_ms: Maximum silence to steal from adjacent pauses in ms.
-        max_stretch_ratio: Maximum time-compression ratio allowed.
+        crossfade_ms: Crossfade duration at splice boundaries (ms).
+        max_silence_steal_ms: Max silence to steal from adjacent pauses (ms).
+        max_stretch_ratio: Max time compression ratio for duration mismatch.
 
     Returns:
-        Tuple of:
-            - Spliced waveform as 1-D float32 array.
-            - List of splice detail dicts for each replaced word, containing
-              bonafide/cloned start/end times and the applied crossfade.
+        Tuple of (spliced_audio, splice_details) where splice_details is a
+        list of dicts with per-word splice metadata.
     """
     crossfade_samples = int(crossfade_ms * sample_rate / 1000)
     max_silence_steal_samples = int(max_silence_steal_ms * sample_rate / 1000)
@@ -63,75 +64,37 @@ def splice_words(
         bw = bonafide_words[idx]
         cw = cloned_words[idx]
 
-        b_start_sample = int(bw["start"] * sample_rate)
-        b_end_sample = int(bw["end"] * sample_rate)
-        c_start_sample = int(cw["start"] * sample_rate)
-        c_end_sample = int(cw["end"] * sample_rate)
+        b_start = _clamp(int(bw["start"] * sample_rate), 0, len(result))
+        b_end = _clamp(int(bw["end"] * sample_rate), b_start, len(result))
+        c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
+        c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
 
-        b_start_sample = max(0, min(b_start_sample, len(result)))
-        b_end_sample = max(b_start_sample, min(b_end_sample, len(result)))
-        c_start_sample = max(0, min(c_start_sample, len(cloned_audio)))
-        c_end_sample = max(c_start_sample, min(c_end_sample, len(cloned_audio)))
+        bf_len = b_end - b_start
+        cloned_segment = cloned_audio[c_start:c_end].copy()
+        cl_len = len(cloned_segment)
 
-        bonafide_segment_len = b_end_sample - b_start_sample
-        cloned_segment = cloned_audio[c_start_sample:c_end_sample].copy()
-        cloned_segment_len = len(cloned_segment)
-
-        if cloned_segment_len == 0 or bonafide_segment_len == 0:
+        if cl_len == 0 or bf_len == 0:
             logger.warning(f"Zero-length segment for word index {idx}, skipping.")
             continue
 
-        duration_diff = cloned_segment_len - bonafide_segment_len
+        duration_diff = cl_len - bf_len
 
         if duration_diff > 0:
-            cloned_segment = _handle_longer_cloned(
-                result=result,
-                cloned_segment=cloned_segment,
-                b_end_sample=b_end_sample,
-                bonafide_segment_len=bonafide_segment_len,
-                duration_diff=duration_diff,
-                max_silence_steal_samples=max_silence_steal_samples,
-                max_stretch_ratio=max_stretch_ratio,
-                sample_rate=sample_rate,
-                word_index=idx,
+            cloned_segment = _resolve_duration_mismatch(
+                result, cloned_segment, b_end, bf_len, duration_diff,
+                max_silence_steal_samples, max_stretch_ratio, sample_rate, idx,
             )
 
-        actual_crossfade = min(
-            crossfade_samples,
-            b_start_sample,
-            len(result) - b_end_sample,
-            len(cloned_segment) // 2,
-        )
+        cf = min(crossfade_samples, b_start, len(cloned_segment) // 2)
 
-        if actual_crossfade > 0 and len(cloned_segment) > 2 * actual_crossfade:
-            before_splice = result[:b_start_sample]
-            after_splice = result[b_end_sample:]
+        before = result[:b_start]
+        after = result[b_end:]
 
-            left_joined = apply_crossfade(
-                segment_before=before_splice[-(actual_crossfade):] if len(before_splice) >= actual_crossfade else before_splice,
-                segment_after=cloned_segment[:actual_crossfade],
-                crossfade_samples=min(actual_crossfade, len(before_splice)),
-            ) if actual_crossfade > 0 and len(before_splice) >= actual_crossfade else cloned_segment[:0]
-
-            right_joined = apply_crossfade(
-                segment_before=cloned_segment[-(actual_crossfade):],
-                segment_after=after_splice[:actual_crossfade] if len(after_splice) >= actual_crossfade else after_splice,
-                crossfade_samples=min(actual_crossfade, len(after_splice)),
-            ) if actual_crossfade > 0 and len(after_splice) >= actual_crossfade else cloned_segment[0:0]
-
-            result = np.concatenate([
-                before_splice[:-(actual_crossfade)] if actual_crossfade > 0 else before_splice,
-                left_joined,
-                cloned_segment[actual_crossfade:-(actual_crossfade)] if actual_crossfade > 0 else cloned_segment,
-                right_joined,
-                after_splice[actual_crossfade:] if actual_crossfade > 0 else after_splice,
-            ])
+        if cf > 0 and len(after) >= cf:
+            joined = apply_crossfade(before, cloned_segment, cf)
+            result = apply_crossfade(joined, after, cf)
         else:
-            result = np.concatenate([
-                result[:b_start_sample],
-                cloned_segment,
-                result[b_end_sample:],
-            ])
+            result = np.concatenate([before, cloned_segment, after])
 
         splice_details.append({
             "word_index": idx,
@@ -140,66 +103,62 @@ def splice_words(
             "bonafide_end_s": bw["end"],
             "cloned_start_s": cw["start"],
             "cloned_end_s": cw["end"],
-            "duration_ratio": cloned_segment_len / bonafide_segment_len,
-            "crossfade_ms": actual_crossfade * 1000 / sample_rate,
+            "duration_ratio": round(cl_len / bf_len, 4),
+            "crossfade_ms": crossfade_ms,
         })
 
-    splice_details.reverse()
+    splice_details.sort(key=lambda d: d["word_index"])
     return result, splice_details
 
 
-def _handle_longer_cloned(
+def _resolve_duration_mismatch(
     result: np.ndarray,
     cloned_segment: np.ndarray,
-    b_end_sample: int,
-    bonafide_segment_len: int,
+    b_end: int,
+    bf_len: int,
     duration_diff: int,
     max_silence_steal_samples: int,
     max_stretch_ratio: float,
     sample_rate: int,
     word_index: int,
 ) -> np.ndarray:
-    """Handle case where cloned word segment is longer than bonafide.
+    """Resolve duration mismatch when cloned segment is longer than bonafide.
 
-    Attempts to resolve the duration mismatch by:
-    1. Stealing silence from the gap after the word.
-    2. Time-compressing the cloned segment within tolerance.
-    3. Truncating as a last resort.
+    Strategy (in order of preference):
+    1. Steal silence from the gap after the bonafide word.
+    2. Time-compress the cloned segment within the allowed ratio.
+    3. Truncate the cloned segment as a last resort.
 
     Args:
         result: Current working waveform.
-        cloned_segment: Extracted cloned word segment.
-        b_end_sample: End sample position of bonafide word.
-        bonafide_segment_len: Length of bonafide word segment in samples.
+        cloned_segment: Cloned word segment to fit.
+        b_end: End sample position of bonafide word.
+        bf_len: Length of bonafide word in samples.
         duration_diff: Excess samples (cloned - bonafide).
         max_silence_steal_samples: Maximum silence samples to absorb.
         max_stretch_ratio: Maximum compression ratio allowed.
-        sample_rate: Audio sample rate.
-        word_index: Index of the word being processed (for logging).
+        sample_rate: Audio sample rate in Hz.
+        word_index: Word index for logging.
 
     Returns:
-        Adjusted cloned segment (possibly compressed or truncated).
+        Adjusted cloned segment.
     """
-    silence_after = _measure_silence_after(result, b_end_sample, sample_rate)
-    stealable = min(silence_after, max_silence_steal_samples, duration_diff)
+    silence = _measure_silence_after(result, b_end, sample_rate)
+    stealable = min(silence, max_silence_steal_samples, duration_diff)
+    remaining = duration_diff - stealable
 
-    remaining_diff = duration_diff - stealable
-
-    if remaining_diff <= 0:
+    if remaining <= 0:
         return cloned_segment
 
-    target_len = bonafide_segment_len + stealable
-    compression_ratio = len(cloned_segment) / target_len
+    target_len = bf_len + stealable
+    ratio = len(cloned_segment) / target_len
 
-    if compression_ratio <= max_stretch_ratio:
-        indices = np.linspace(0, len(cloned_segment) - 1, target_len).astype(int)
-        return cloned_segment[indices]
+    if ratio <= max_stretch_ratio:
+        return _time_compress(cloned_segment, target_len)
 
     logger.warning(
-        f"Word index {word_index}: cloned segment {len(cloned_segment)} samples "
-        f"exceeds bonafide {bonafide_segment_len} by {duration_diff} samples. "
-        f"Compression ratio {compression_ratio:.2f} exceeds max {max_stretch_ratio}. "
-        f"Truncating to fit."
+        f"Word index {word_index}: compression ratio {ratio:.2f} exceeds "
+        f"max {max_stretch_ratio}. Truncating cloned segment."
     )
     return cloned_segment[:target_len]
 
@@ -208,39 +167,67 @@ def _measure_silence_after(
     audio: np.ndarray,
     position: int,
     sample_rate: int,
-    window_ms: float = 100.0,
-    threshold_ratio: float = 0.02,
+    silence_threshold: float = 0.01,
 ) -> int:
-    """Measure consecutive near-silent samples after a position.
+    """Measure consecutive near-silent samples after a given position.
 
     Args:
         audio: Full audio waveform.
         position: Sample position to start measuring from.
         sample_rate: Audio sample rate in Hz.
-        window_ms: Analysis window in milliseconds.
-        threshold_ratio: Silence threshold as fraction of peak amplitude.
+        silence_threshold: RMS threshold below which a window is silent.
 
     Returns:
-        Number of near-silent samples after the position.
+        Number of consecutive silent samples after position.
     """
     if position >= len(audio):
         return 0
 
-    window_samples = int(window_ms * sample_rate / 1000)
-    end = min(position + window_samples, len(audio))
-    segment = audio[position:end]
-
-    if len(segment) == 0:
-        return 0
-
-    peak = np.max(np.abs(audio)) if np.max(np.abs(audio)) > 0 else 1.0
-    threshold = peak * threshold_ratio
-
+    window_samples = int(0.01 * sample_rate)
     silent_count = 0
-    for sample in segment:
-        if abs(sample) < threshold:
-            silent_count += 1
+    idx = position
+
+    while idx + window_samples <= len(audio):
+        window = audio[idx:idx + window_samples]
+        rms = np.sqrt(np.mean(window ** 2))
+        if rms < silence_threshold:
+            silent_count += window_samples
+            idx += window_samples
         else:
             break
 
     return silent_count
+
+
+def _time_compress(segment: np.ndarray, target_length: int) -> np.ndarray:
+    """Compress audio segment to target length via linear interpolation.
+
+    Suitable for small adjustments (up to ~10 percent). For larger changes,
+    a phase-vocoder approach would preserve quality better.
+
+    Args:
+        segment: Audio segment (1-D float32).
+        target_length: Desired number of output samples.
+
+    Returns:
+        Compressed segment of exactly target_length samples.
+    """
+    if target_length <= 0 or len(segment) == 0:
+        return segment
+
+    indices = np.linspace(0, len(segment) - 1, target_length)
+    return np.interp(indices, np.arange(len(segment)), segment).astype(np.float32)
+
+
+def _clamp(value: int, low: int, high: int) -> int:
+    """Clamp an integer value to [low, high] range.
+
+    Args:
+        value: Value to clamp.
+        low: Minimum allowed value.
+        high: Maximum allowed value.
+
+    Returns:
+        Clamped value.
+    """
+    return max(low, min(value, high))

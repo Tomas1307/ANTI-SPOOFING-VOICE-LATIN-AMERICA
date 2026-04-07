@@ -16,7 +16,11 @@
       "Bash(find:*)",
       "Bash(soxi:*)",
       "Bash(ffprobe:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/schemas\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/steps\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/utils\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/strategies\")"
     ]
   }
 }

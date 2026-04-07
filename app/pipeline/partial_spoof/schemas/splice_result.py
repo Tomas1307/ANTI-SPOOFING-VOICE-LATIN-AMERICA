@@ -1,4 +1,6 @@
-"""Result schema for Step 5: Audio splicing."""
+"""
+Result schema for Step 5: Audio Splicing.
+"""
 from pathlib import Path
 from typing import Dict, List
 
@@ -6,36 +8,35 @@ from pydantic import BaseModel, Field
 
 
 class SpliceResult(BaseModel):
-    """Result from audio splicing of cloned word segments into bonafide audio.
+    """Result from audio splicing operation (Step 5).
 
     Attributes:
-        metadata_path: Path to splice_metadata.json with per-sample details.
-        total_spliced: Number of partially spoofed samples produced.
+        metadata_path: Path to splice_metadata.json output file.
+        total_spliced: Total number of partially spoofed samples created.
         failed_splices: List of sample IDs where splicing failed.
-        avg_spoof_duration_ratio: Average ratio of spoofed audio duration
-            to total audio duration across all samples.
+        avg_spoof_duration_ratio: Average spoof duration ratio across all samples.
         tier_counts: Number of spliced samples per tier.
     """
 
     metadata_path: Path = Field(
         ...,
-        description="Path to splice_metadata.json.",
+        description="Path to splice_metadata.json output file",
     )
     total_spliced: int = Field(
         ...,
-        description="Partially spoofed samples produced.",
+        description="Total number of partially spoofed samples created",
     )
     failed_splices: List[str] = Field(
         default_factory=list,
-        description="Sample IDs where splicing failed.",
+        description="List of sample IDs where splicing failed",
     )
     avg_spoof_duration_ratio: float = Field(
         default=0.0,
-        description="Average spoofed-duration / total-duration ratio.",
+        description="Average fraction of audio duration that is synthetic",
     )
     tier_counts: Dict[str, int] = Field(
         default_factory=dict,
-        description="Spliced sample count per tier.",
+        description="Number of spliced samples per tier (e.g., {'W1': 100, 'W2': 60, 'W3': 30})",
     )
 
     class Config:

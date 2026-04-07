@@ -1,4 +1,6 @@
-"""Pydantic schemas for the Partial Spoof pipeline."""
+"""
+Pydantic schemas for Partial Spoof Pipeline.
+"""
 from app.pipeline.partial_spoof.schemas.pipeline_config import PartialSpoofPipelineConfig
 from app.pipeline.partial_spoof.schemas.transcription_result import TranscriptionResult
 from app.pipeline.partial_spoof.schemas.cloned_generation_result import ClonedGenerationResult

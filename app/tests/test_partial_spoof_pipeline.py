@@ -261,13 +261,13 @@ class TestStrategyFactory:
 
     def test_factory_valid_systems(self):
         """All valid system names are recognized (import may fail on local machine)."""
-        from app.pipeline.partial_spoof.utils.strategy_factory import VALID_SYSTEMS
-        assert "fishgram" in VALID_SYSTEMS
-        assert "qwen" in VALID_SYSTEMS
-        assert "cosyvoice" in VALID_SYSTEMS
-        assert "outetts" in VALID_SYSTEMS
-        assert "chatterbox" in VALID_SYSTEMS
-        assert "openvoice" in VALID_SYSTEMS
+        from app.pipeline.partial_spoof.strategies.base_strategy import VALID_ATTACK_SYSTEMS
+        assert "fishgram" in VALID_ATTACK_SYSTEMS
+        assert "qwen" in VALID_ATTACK_SYSTEMS
+        assert "cosyvoice" in VALID_ATTACK_SYSTEMS
+        assert "outetts" in VALID_ATTACK_SYSTEMS
+        assert "chatterbox" in VALID_ATTACK_SYSTEMS
+        assert "openvoice" in VALID_ATTACK_SYSTEMS
 
     def test_mock_strategy_implements_interface(self):
         """Mock strategy satisfies AttackStrategy interface."""

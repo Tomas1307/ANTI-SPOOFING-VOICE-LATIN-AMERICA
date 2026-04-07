@@ -1,4 +1,6 @@
-"""Pipeline steps for the Partial Spoof pipeline."""
+"""
+Step classes for Partial Spoof Pipeline.
+"""
 from app.pipeline.partial_spoof.steps.step_01_transcribe_bonafide import BonafideTranscriber
 from app.pipeline.partial_spoof.steps.step_02_generate_cloned_speech import ClonedSpeechGenerator
 from app.pipeline.partial_spoof.steps.step_03_forced_alignment import ForcedAligner
