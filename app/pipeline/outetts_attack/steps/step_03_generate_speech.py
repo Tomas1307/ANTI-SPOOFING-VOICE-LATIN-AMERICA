@@ -88,7 +88,7 @@ class SpeechGenerator:
         logger.info("Loading OuteTTS model via InterfaceHF...")
         interface = outetts.Interface(
             model_version=settings.OUTETTS_MODEL_VERSION,
-            cfg=outetts.HFModelConfig_v2(
+            cfg=outetts.ModelConfig(
                 model_path=settings.OUTETTS_MODEL_ID,
                 tokenizer_path=settings.OUTETTS_MODEL_ID,
             ),
