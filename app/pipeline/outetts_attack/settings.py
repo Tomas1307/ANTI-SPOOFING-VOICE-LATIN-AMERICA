@@ -94,10 +94,12 @@ class OuteTTSAttackSettings(BaseModel):
 
     # === Generation Parameters ===
     REFERENCE_DURATION_TARGET: float = Field(
-        default=15.0,
+        default=3.0,
         description=(
             "Target duration for reference audio clips in seconds. "
-            "OuteTTS benefits from 10-15s reference for speaker profile extraction."
+            "OuteTTS encodes audio tokens at ~1400 tokens/s via DAC codec, so "
+            "a 3s reference uses ~4200 tokens of the 8192 context window, "
+            "leaving ~4000 tokens (~3s) for generated output."
         )
     )
     SAMPLES_PER_SPEAKER: int = Field(
@@ -145,10 +147,12 @@ class OuteTTSAttackSettings(BaseModel):
         description="Penalty for repeated speech tokens (1.0 = no penalty)"
     )
     MAX_LENGTH: int = Field(
-        default=4096,
+        default=8192,
         description=(
-            "Maximum token length for generation. OuteTTS context window is 8192 tokens; "
-            "4096 leaves room for the speaker profile and prompt overhead."
+            "Maximum token length for generation (input + output combined). "
+            "OuteTTS context window is 8192 tokens. With a 5s reference (~7000 tokens), "
+            "this leaves ~1200 tokens for output (~1s of audio). Short but sufficient "
+            "for validation; production may need even shorter references."
         )
     )
 
