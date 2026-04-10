@@ -86,7 +86,7 @@ class SpeechGenerator:
             prompts = json.load(f)
 
         logger.info("Loading OuteTTS model via InterfaceHF...")
-        interface = outetts.InterfaceHF(
+        interface = outetts.Interface(
             model_version=settings.OUTETTS_MODEL_VERSION,
             cfg=outetts.HFModelConfig_v2(
                 model_path=settings.OUTETTS_MODEL_ID,
@@ -202,7 +202,7 @@ class SpeechGenerator:
     def _generate_single(
         self,
         text: str,
-        interface: outetts.InterfaceHF,
+        interface: outetts.Interface,
         speaker: object,
         output_path: Path,
     ) -> tuple:
