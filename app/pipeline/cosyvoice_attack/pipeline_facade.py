@@ -26,7 +26,7 @@ class CosyVoiceAttackPipeline:
 
     Orchestrates 5 steps:
     1. Prepare reference audio (15s clips from training samples with STT
-       transcription via faster-whisper for zero-shot prompt_text).
+       transcription via Parakeet TDT for zero-shot prompt_text).
     2. Prepare text prompts (Spanish transcripts from Mozilla CV).
     3. Generate synthetic speech (CosyVoice2 zero-shot voice cloning,
        Conditional Flow Matching, trained on 1M hours).

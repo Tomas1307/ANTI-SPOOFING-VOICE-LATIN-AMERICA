@@ -44,10 +44,8 @@ class CosyVoiceAttackSettings(BaseModel):
 
         TEXT_LENGTH_RANGE: Min and max words for text prompts.
 
-        WHISPER_MODEL_SIZE: Whisper model size for reference audio transcription.
-        WHISPER_COMPUTE_TYPE: Whisper compute precision for CTranslate2 backend.
-
-        PARAKEET_MODEL_ID: Parakeet TDT model identifier for STT transcription.
+        PARAKEET_MODEL_ID: Parakeet TDT model identifier for STT transcription
+            (used for both Step 1 reference transcription and Step 4 quality validation).
         WER_MAX_ACCEPTABLE: Hard WER rejection ceiling.
         CER_MAX_ACCEPTABLE: Hard CER rejection ceiling.
         MIN_AUDIO_DURATION: Minimum acceptable audio duration in seconds.
@@ -103,16 +101,6 @@ class CosyVoiceAttackSettings(BaseModel):
     COSYVOICE_LOAD_TRT: bool = Field(
         default=False,
         description="Whether to load TensorRT-optimized model components (requires TRT build)"
-    )
-
-    # === Whisper STT Configuration (for reference transcription) ===
-    WHISPER_MODEL_SIZE: str = Field(
-        default="large-v3",
-        description="Whisper model size for reference audio transcription"
-    )
-    WHISPER_COMPUTE_TYPE: str = Field(
-        default="float16",
-        description="Whisper compute precision (float16, int8_float16, int8)"
     )
 
     # === Audio Processing ===

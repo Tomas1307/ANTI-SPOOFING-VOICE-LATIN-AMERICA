@@ -2,13 +2,14 @@
 Step 1: Prepare Reference Audio with STT Transcription
 
 Creates 15-second reference audio clips for each speaker by concatenating
-training samples, then transcribes them using faster-whisper. CosyVoice
-zero-shot voice cloning requires both the reference audio waveform AND a
-text transcription of that reference (prompt_text parameter) for optimal
-speaker conditioning.
+training samples, then transcribes them using NVIDIA Parakeet TDT 0.6b-v3.
+CosyVoice zero-shot voice cloning requires both the reference audio waveform
+AND a text transcription of that reference (prompt_text parameter) for
+optimal speaker conditioning.
 
 The target duration is 15 seconds because CosyVoice benefits from longer
-reference segments for zero-shot cloning quality.
+reference segments for zero-shot cloning quality. The Parakeet singleton
+is shared with Step 4 quality validation to avoid loading two ASR models.
 """
 import json
 from pathlib import Path
@@ -26,7 +27,7 @@ class ReferenceAudioPreparator:
     """Prepares reference audio clips with STT transcription for CosyVoice.
 
     Concatenates multiple training samples per speaker to create 15-second
-    reference clips, then transcribes them using faster-whisper. The transcripts
+    reference clips, then transcribes them using Parakeet TDT. The transcripts
     are stored in metadata and used by Step 3 as the prompt_text argument to
     CosyVoice2.inference_zero_shot(), which requires both audio and text for
     zero-shot voice cloning.
@@ -59,7 +60,7 @@ class ReferenceAudioPreparator:
 
         For each speaker:
         1. Concatenates up to 5 training audio files into a 15s reference clip.
-        2. Transcribes the reference clip using faster-whisper (Spanish).
+        2. Transcribes the reference clip using Parakeet TDT (Spanish auto-detect).
         3. Stores metadata including the transcript for zero-shot voice cloning.
 
         Returns:

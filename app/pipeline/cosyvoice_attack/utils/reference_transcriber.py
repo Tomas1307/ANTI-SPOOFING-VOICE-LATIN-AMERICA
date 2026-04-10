@@ -1,75 +1,52 @@
 """
-Reference audio transcription using faster-whisper.
+Reference audio transcription using NVIDIA Parakeet TDT.
 
 Transcribes concatenated reference audio clips to provide prompt_text for
 CosyVoice 3.0 zero-shot voice cloning mode (inference_zero_shot requires
 both the reference waveform and its text transcription).
-Uses faster-whisper (CTranslate2 backend) for GPU-accelerated Spanish STT.
+
+Uses the project-wide ParakeetTranscriber singleton so that the same model
+instance is reused by Step 4 quality validation, avoiding the cost and VRAM
+footprint of loading two separate ASR models per pipeline run.
 """
 from pathlib import Path
+
 from loguru import logger
-from faster_whisper import WhisperModel
+
 from app.pipeline.cosyvoice_attack.settings import settings
-
-_whisper_model = None
-
-
-def get_whisper_model() -> WhisperModel:
-    """Lazy-load Whisper model as a module-level singleton.
-
-    Loads the model on first call and caches it for subsequent calls.
-    Uses settings for model size and compute type configuration.
-
-    Returns:
-        Initialized WhisperModel instance ready for transcription.
-    """
-    global _whisper_model
-    if _whisper_model is None:
-        logger.info(
-            f"Loading Whisper model: {settings.WHISPER_MODEL_SIZE} "
-            f"(compute_type={settings.WHISPER_COMPUTE_TYPE})"
-        )
-        device = "cuda" if "cuda" in settings.DEVICE else "cpu"
-        _whisper_model = WhisperModel(
-            settings.WHISPER_MODEL_SIZE,
-            device=device,
-            compute_type=settings.WHISPER_COMPUTE_TYPE,
-        )
-        logger.info("Whisper model loaded successfully")
-    return _whisper_model
+from app.utils.parakeet_transcriber import ParakeetTranscriber
 
 
 def transcribe_audio(audio_path: Path, language: str = "es") -> str:
-    """Transcribe an audio file to text using faster-whisper.
+    """Transcribe an audio file to text using the Parakeet TDT singleton.
+
+    The Parakeet model is loaded on first call and reused thereafter.
+    The language argument is accepted for API compatibility with the previous
+    faster-whisper implementation but is not forwarded: Parakeet TDT 0.6b-v3
+    auto-detects language and supports Spanish natively.
 
     Args:
         audio_path: Path to the audio file to transcribe.
-        language: ISO 639-1 language code (default: 'es' for Spanish).
+        language: ISO 639-1 language code, accepted for API compatibility only.
 
     Returns:
-        Transcribed text as a single string with segments joined by spaces.
+        Transcribed text as a plain string.
 
     Raises:
         FileNotFoundError: If audio_path does not exist.
-        RuntimeError: If Whisper transcription fails.
+        RuntimeError: If Parakeet transcription fails.
     """
     audio_path = Path(audio_path)
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-    model = get_whisper_model()
-    segments, info = model.transcribe(
-        str(audio_path),
-        language=language,
-        beam_size=5,
-    )
+    transcriber = ParakeetTranscriber()
+    transcriber.load(model_id=settings.PARAKEET_MODEL_ID, device=settings.DEVICE)
 
-    transcript = " ".join(segment.text.strip() for segment in segments)
+    transcript = transcriber.transcribe(audio_path)
 
     logger.debug(
-        f"Transcribed {audio_path.name}: "
-        f"{len(transcript)} chars, language={info.language}, "
-        f"probability={info.language_probability:.2f}"
+        f"Transcribed {audio_path.name}: {len(transcript)} chars (Parakeet TDT)"
     )
 
     return transcript
