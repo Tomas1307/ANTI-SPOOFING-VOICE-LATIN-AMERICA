@@ -38,7 +38,6 @@ from app.pipeline.cosyvoice_attack.schemas.generation_result import GenerationRe
 sys.path.insert(0, str(settings.COSYVOICE_REPO_PATH))
 sys.path.insert(0, str(settings.COSYVOICE_REPO_PATH / "third_party" / "Matcha-TTS"))
 from cosyvoice.cli.cosyvoice import CosyVoice2
-from cosyvoice.utils.file_utils import load_wav
 
 
 class SpeechGenerator:
@@ -126,7 +125,7 @@ class SpeechGenerator:
                         f"zero-shot quality may be degraded"
                     )
 
-                prompt_speech = load_wav(str(ref_path), settings.SAMPLE_RATE)
+                prompt_wav_path = str(ref_path)
 
                 for prompt_data in prompts.get(speaker_id, []):
                     text = prompt_data["text"]
@@ -139,7 +138,7 @@ class SpeechGenerator:
                         generation_time, audio_duration = self._generate_single(
                             text=text,
                             prompt_text=ref_text,
-                            prompt_speech=prompt_speech,
+                            prompt_wav_path=prompt_wav_path,
                             model=model,
                             output_path=output_path,
                         )
@@ -196,7 +195,7 @@ class SpeechGenerator:
         self,
         text: str,
         prompt_text: str,
-        prompt_speech: torch.Tensor,
+        prompt_wav_path: str,
         model: CosyVoice2,
         output_path: Path,
     ) -> tuple:
@@ -206,10 +205,13 @@ class SpeechGenerator:
         to collect the final tts_speech tensor, then resample from the model's
         native sample rate to the target 16 kHz.
 
+        CosyVoice2.inference_zero_shot expects a file path string for prompt_wav,
+        not a pre-loaded tensor. It calls load_wav internally.
+
         Args:
             text: Spanish text to synthesise.
             prompt_text: Transcription of the reference audio (for zero-shot conditioning).
-            prompt_speech: Reference audio waveform loaded via load_wav.
+            prompt_wav_path: File path to reference audio WAV (CosyVoice loads it internally).
             model: Loaded CosyVoice2 instance.
             output_path: Path where the 16 kHz WAV file will be saved.
 
@@ -223,7 +225,7 @@ class SpeechGenerator:
 
         tts_audio = None
         for result in model.inference_zero_shot(
-            text, prompt_text, prompt_speech, stream=False
+            text, prompt_text, prompt_wav_path, stream=False
         ):
             tts_audio = result["tts_speech"]
 
