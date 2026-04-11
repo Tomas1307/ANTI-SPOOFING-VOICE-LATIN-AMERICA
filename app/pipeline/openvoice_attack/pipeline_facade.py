@@ -166,3 +166,9 @@ class OpenVoiceAttackPipeline:
         if self.config.run_step_5 and result_5 is not None:
             return result_5.output_directory
         return settings.OUTPUT_DIR
+
+
+if __name__ == "__main__":
+    pipeline = OpenVoiceAttackPipeline()
+    result = pipeline.run()
+    logger.info(f"Pipeline complete. Output: {result}")

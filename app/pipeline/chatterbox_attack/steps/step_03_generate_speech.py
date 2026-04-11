@@ -93,12 +93,19 @@ class SpeechGenerator:
 
         logger.info("Model loaded; watermark bypassed for research use")
 
-        generated = {}
+        gen_metadata_path = self.output_dir / "generation_metadata.json"
+        if gen_metadata_path.exists():
+            with open(gen_metadata_path, "r", encoding="utf-8") as f:
+                generated = json.load(f)
+            logger.info(f"Resuming from checkpoint: {len(generated)} samples already generated")
+        else:
+            generated = {}
+
         failed = []
         rtf_values = []
 
         total_pairs = sum(len(texts) for texts in prompts.values())
-        logger.info(f"Generating {total_pairs} synthetic samples...")
+        logger.info(f"Generating {total_pairs} synthetic samples ({len(generated)} cached)...")
 
         with tqdm(total=total_pairs, desc="Generating") as pbar:
             for speaker_id in sorted(references.keys()):
@@ -116,10 +123,13 @@ class SpeechGenerator:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
+                    output_path = gen_dir / f"CHATTERBOX_{speaker_id}_{text_id}.wav"
+
+                    if sample_id in generated and output_path.exists():
+                        pbar.update(1)
+                        continue
 
                     try:
-                        output_path = gen_dir / f"CHATTERBOX_{speaker_id}_{text_id}.wav"
-
                         generation_time, audio_duration = self._generate_single(
                             text=text,
                             model=model,
@@ -141,6 +151,9 @@ class SpeechGenerator:
                             "split": split,
                         }
 
+                        with open(gen_metadata_path, "w", encoding="utf-8") as f:
+                            json.dump(generated, f, indent=2, ensure_ascii=False)
+
                         logger.debug(
                             f"Generated {sample_id}: {audio_duration:.1f}s "
                             f"in {generation_time:.1f}s (RTF={rtf:.2f})"
@@ -151,10 +164,6 @@ class SpeechGenerator:
                         failed.append(sample_id)
 
                     pbar.update(1)
-
-        gen_metadata_path = self.output_dir / "generation_metadata.json"
-        with open(gen_metadata_path, "w", encoding="utf-8") as f:
-            json.dump(generated, f, indent=2, ensure_ascii=False)
 
         avg_rtf = sum(rtf_values) / len(rtf_values) if rtf_values else 0.0
 

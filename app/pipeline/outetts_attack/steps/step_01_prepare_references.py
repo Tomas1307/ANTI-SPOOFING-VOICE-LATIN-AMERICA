@@ -1,12 +1,14 @@
 """
 Step 1: Prepare Reference Audio
 
-Creates 15-second reference audio clips for each speaker by concatenating
-training samples. OuteTTS creates a speaker profile from the reference audio
-that captures tempo, energy, pitch, and spectral centroid characteristics.
+Creates reference audio clips for each speaker by concatenating training
+samples. OuteTTS creates a speaker profile from the reference audio that
+captures tempo, energy, pitch, and spectral centroid characteristics.
 
-The target duration is 15 seconds because OuteTTS benefits from 10-15 second
-reference clips for high-quality speaker profile extraction via its DAC codec.
+The target duration is 3 seconds (configurable via REFERENCE_DURATION_TARGET)
+because OuteTTS 1.0 encodes audio at ~1400 tokens/s via the DAC codec. A 3s
+reference uses ~4200 tokens of the 8192 context window, leaving ~4000 tokens
+(~3s) for generated output. Longer references overflow the context window.
 """
 import json
 from pathlib import Path

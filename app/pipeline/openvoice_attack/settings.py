@@ -50,7 +50,7 @@ class OpenVoiceAttackSettings(BaseModel):
 
     # === Validation Mode Toggle ===
     VALIDATION_MODE: bool = Field(
-        default=True,
+        default=False,
         description="Validation mode: True=3 speakers, False=all 162 speakers"
     )
     VALIDATION_SPEAKERS: List[str] = Field(
@@ -92,7 +92,7 @@ class OpenVoiceAttackSettings(BaseModel):
         description="Target duration for reference audio clips (seconds)"
     )
     SAMPLES_PER_SPEAKER: int = Field(
-        default=2,
+        default=5,
         description="Texts per speaker (2 for validation, 5 for production)"
     )
     RANDOM_SEED: int = Field(

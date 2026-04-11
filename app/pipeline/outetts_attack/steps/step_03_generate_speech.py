@@ -98,13 +98,20 @@ class SpeechGenerator:
         )
         logger.info("OuteTTS model loaded successfully")
 
-        generated = {}
+        gen_metadata_path = self.output_dir / "generation_metadata.json"
+        if gen_metadata_path.exists():
+            with open(gen_metadata_path, "r", encoding="utf-8") as f:
+                generated = json.load(f)
+            logger.info(f"Resuming from checkpoint: {len(generated)} samples already generated")
+        else:
+            generated = {}
+
         failed = []
         rtf_values = []
         speaker_profiles = {}
 
         total_pairs = sum(len(texts) for texts in prompts.values())
-        logger.info(f"Generating {total_pairs} synthetic samples...")
+        logger.info(f"Generating {total_pairs} synthetic samples ({len(generated)} cached)...")
         logger.info(
             "NOTE: OuteTTS is slow (~2-3 min per 10s audio). "
             "This will take a while."
@@ -122,6 +129,16 @@ class SpeechGenerator:
                     pbar.update(len(prompts.get(speaker_id, [])))
                     continue
 
+                speaker_prompts = prompts.get(speaker_id, [])
+                all_cached = all(
+                    f"{speaker_id}_{p['text_id']}" in generated
+                    and (gen_dir / f"OUTETTS_{speaker_id}_{p['text_id']}.wav").exists()
+                    for p in speaker_prompts
+                )
+                if all_cached:
+                    pbar.update(len(speaker_prompts))
+                    continue
+
                 if speaker_id not in speaker_profiles:
                     try:
                         speaker_profiles[speaker_id] = interface.create_speaker(
@@ -132,20 +149,23 @@ class SpeechGenerator:
                         logger.error(
                             f"Failed to create speaker profile for {speaker_id}: {e}"
                         )
-                        failed.extend([p["text_id"] for p in prompts.get(speaker_id, [])])
-                        pbar.update(len(prompts.get(speaker_id, [])))
+                        failed.extend([p["text_id"] for p in speaker_prompts])
+                        pbar.update(len(speaker_prompts))
                         continue
 
                 speaker = speaker_profiles[speaker_id]
 
-                for prompt_data in prompts.get(speaker_id, []):
+                for prompt_data in speaker_prompts:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
+                    output_path = gen_dir / f"OUTETTS_{speaker_id}_{text_id}.wav"
+
+                    if sample_id in generated and output_path.exists():
+                        pbar.update(1)
+                        continue
 
                     try:
-                        output_path = gen_dir / f"OUTETTS_{speaker_id}_{text_id}.wav"
-
                         generation_time, audio_duration = self._generate_single(
                             text=text,
                             interface=interface,
@@ -167,6 +187,9 @@ class SpeechGenerator:
                             "split": split,
                         }
 
+                        with open(gen_metadata_path, "w", encoding="utf-8") as f:
+                            json.dump(generated, f, indent=2, ensure_ascii=False)
+
                         logger.debug(
                             f"Generated {sample_id}: {audio_duration:.1f}s "
                             f"in {generation_time:.1f}s (RTF={rtf:.2f})"
@@ -177,10 +200,6 @@ class SpeechGenerator:
                         failed.append(sample_id)
 
                     pbar.update(1)
-
-        gen_metadata_path = self.output_dir / "generation_metadata.json"
-        with open(gen_metadata_path, "w", encoding="utf-8") as f:
-            json.dump(generated, f, indent=2, ensure_ascii=False)
 
         avg_rtf = sum(rtf_values) / len(rtf_values) if rtf_values else 0.0
 
