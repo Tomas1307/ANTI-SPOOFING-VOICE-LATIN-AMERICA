@@ -1,13 +1,16 @@
 """
 Step 3: Generate Synthetic Speech with OuteTTS
 
-Generates synthetic Spanish voice cloning attacks using OuteTTS 0.6B
-(Qwen-based LLM backbone with DAC codec for audio tokenization).
+Generates synthetic Spanish voice cloning attacks using OuteTTS 1.0 0.6B
+(Qwen3-based LLM backbone with DAC codec for audio tokenization).
 
 Key implementation details:
   - OuteTTS uses a fundamentally different approach from other TTS systems:
     it treats speech synthesis as a language modeling task, encoding audio
     as discrete tokens via the Descript Audio Codec (DAC).
+  - v1.0 0.6B supports 14 languages including Spanish natively (trained
+    on Multilingual LibriSpeech + Common Voice). v0.3 had codec version
+    mismatch with outetts 0.4.4 library causing CUDA assertion failures.
   - Speaker cloning works by creating a speaker profile (JSON) from a
     reference audio file. This profile captures tempo, energy, pitch,
     and spectral centroid characteristics.
@@ -16,8 +19,9 @@ Key implementation details:
     the speaker profile is included.
   - Output is saved by the outetts library at its native sample rate,
     then resampled to 16 kHz for consistency with all other pipeline stages.
-  - The model is loaded once via InterfaceHF, speaker profiles are cached
-    per speaker, and GPU memory is released after all generation completes.
+  - The model is loaded once via Interface with auto_config (Backend.HF),
+    speaker profiles are cached per speaker, and GPU memory is released
+    after all generation completes.
 """
 import json
 import time
@@ -85,11 +89,11 @@ class SpeechGenerator:
         with open(prompts_path, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-        logger.info("Loading OuteTTS model via InterfaceHF...")
+        logger.info("Loading OuteTTS model via Interface...")
         interface = outetts.Interface(
-            outetts.ModelConfig(
-                model_path=settings.OUTETTS_MODEL_ID,
-                tokenizer_path=settings.OUTETTS_MODEL_ID,
+            outetts.ModelConfig.auto_config(
+                model=outetts.Models.VERSION_1_0_SIZE_0_6B,
+                backend=outetts.Backend.HF,
             )
         )
         logger.info("OuteTTS model loaded successfully")

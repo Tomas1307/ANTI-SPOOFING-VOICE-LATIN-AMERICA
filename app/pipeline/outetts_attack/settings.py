@@ -123,12 +123,16 @@ class OuteTTSAttackSettings(BaseModel):
 
     # === OuteTTS Model Parameters ===
     OUTETTS_MODEL_VERSION: str = Field(
-        default="0.3",
-        description="OuteTTS model version string passed to InterfaceHF"
+        default="1.0",
+        description="OuteTTS model version string (1.0 supports Spanish natively)"
     )
     OUTETTS_MODEL_ID: str = Field(
-        default="OuteAI/OuteTTS-0.3-500M",
-        description="HuggingFace model ID for OuteTTS weights and tokenizer"
+        default="OuteAI/OuteTTS-1.0-0.6B",
+        description=(
+            "HuggingFace model ID for OuteTTS weights and tokenizer. "
+            "v1.0-0.6B is Qwen3-based, trained on 14 languages including Spanish "
+            "(MLS + Common Voice). Replaces v0.3-500M which had codec version mismatch."
+        )
     )
     TOP_K: int = Field(
         default=40,
