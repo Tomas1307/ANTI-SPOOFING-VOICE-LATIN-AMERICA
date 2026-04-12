@@ -70,8 +70,8 @@ class OuteTTSAttackSettings(BaseModel):
 
     # === Directory Paths ===
     BONAFIDE_DIR: Path = Field(
-        default=Path("data/bonafide_dataset_by_speaker"),
-        description="Directory containing HABLA bonafide speakers (162 total)"
+        default=Path("data/bonafide_dataset_by_speaker_v2"),
+        description="Directory containing HABLA v2 bonafide speakers (1,567 total)"
     )
     OUTPUT_DIR: Path = Field(
         default=Path("data/outetts_output"),

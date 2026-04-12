@@ -66,8 +66,8 @@ class ChatterboxAttackSettings(BaseModel):
 
     # === Directory Paths ===
     BONAFIDE_DIR: Path = Field(
-        default=Path("data/bonafide_dataset_by_speaker"),
-        description="Directory containing HABLA bonafide speakers (162 total)"
+        default=Path("data/bonafide_dataset_by_speaker_v2"),
+        description="Directory containing HABLA v2 bonafide speakers (1,567 total)"
     )
     OUTPUT_DIR: Path = Field(
         default=Path("data/chatterbox_output"),
@@ -112,7 +112,7 @@ class ChatterboxAttackSettings(BaseModel):
         description="Text corpus source (mozilla_cv or custom)"
     )
     TEXT_LENGTH_RANGE: Tuple[int, int] = Field(
-        default=(5, 50),
+        default=(5, 100),
         description="Min and max words for text prompts (Chatterbox handles up to ~1000 tokens)"
     )
 
