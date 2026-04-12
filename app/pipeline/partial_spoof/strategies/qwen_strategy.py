@@ -80,6 +80,16 @@ class QwenStrategy(AttackStrategy):
             text=text,
             language=qwen_settings.QWEN_LANGUAGE,
             voice_clone_prompt=self._speaker_prompts[ref_key],
+            max_new_tokens=qwen_settings.MAX_NEW_TOKENS,
+            do_sample=True,
+            top_k=qwen_settings.TOP_K,
+            top_p=qwen_settings.TOP_P,
+            temperature=qwen_settings.TEMPERATURE,
+            repetition_penalty=qwen_settings.REPETITION_PENALTY,
+            subtalker_dosample=True,
+            subtalker_top_k=qwen_settings.SUBTALKER_TOP_K,
+            subtalker_top_p=qwen_settings.SUBTALKER_TOP_P,
+            subtalker_temperature=qwen_settings.SUBTALKER_TEMPERATURE,
         )
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
