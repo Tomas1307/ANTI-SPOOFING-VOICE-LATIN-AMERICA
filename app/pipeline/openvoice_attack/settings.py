@@ -93,7 +93,11 @@ class OpenVoiceAttackSettings(BaseModel):
     )
     SAMPLES_PER_SPEAKER: int = Field(
         default=5,
-        description="Texts per speaker (2 for validation, 5 for production)"
+        description="Texts per speaker (fallback when MATCH_BONAFIDE_COUNT is False)"
+    )
+    MATCH_BONAFIDE_COUNT: bool = Field(
+        default=True,
+        description="When True, generate as many samples as bonafide files per speaker instead of fixed SAMPLES_PER_SPEAKER"
     )
     RANDOM_SEED: int = Field(
         default=42,

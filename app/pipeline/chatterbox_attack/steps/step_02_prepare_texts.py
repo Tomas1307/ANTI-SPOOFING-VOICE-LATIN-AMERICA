@@ -74,7 +74,17 @@ class TextPromptPreparator:
             references = json.load(f)
 
         speaker_ids = sorted(references.keys())
-        logger.info(f"Assigning {self.samples_per_speaker} texts per speaker to {len(speaker_ids)} speakers")
+
+        if settings.MATCH_BONAFIDE_COUNT:
+            logger.info(
+                f"Dynamic sample count mode: matching bonafide_count per speaker "
+                f"for {len(speaker_ids)} speakers"
+            )
+        else:
+            logger.info(
+                f"Assigning {self.samples_per_speaker} texts per speaker "
+                f"to {len(speaker_ids)} speakers"
+            )
 
         np.random.seed(self.random_seed)
 
@@ -82,14 +92,25 @@ class TextPromptPreparator:
         text_counter = 1
 
         for speaker_id in speaker_ids:
-            if len(transcripts) < self.samples_per_speaker:
-                logger.warning(f"Not enough transcripts ({len(transcripts)}), allowing repeats")
+            if settings.MATCH_BONAFIDE_COUNT:
+                n_samples = references[speaker_id].get(
+                    "bonafide_count", self.samples_per_speaker
+                )
+                n_samples = max(1, n_samples)
+            else:
+                n_samples = self.samples_per_speaker
+
+            if len(transcripts) < n_samples:
+                logger.warning(
+                    f"Not enough transcripts ({len(transcripts)}) "
+                    f"for {speaker_id} ({n_samples} needed), allowing repeats"
+                )
                 speaker_texts = np.random.choice(
-                    transcripts, size=self.samples_per_speaker, replace=True
+                    transcripts, size=n_samples, replace=True
                 ).tolist()
             else:
                 speaker_texts = np.random.choice(
-                    transcripts, size=self.samples_per_speaker, replace=False
+                    transcripts, size=n_samples, replace=False
                 ).tolist()
 
             speaker_prompts = []
