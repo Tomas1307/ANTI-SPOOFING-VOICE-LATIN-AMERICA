@@ -80,7 +80,10 @@ class BonafideTranscriber:
                 if not split_dir.exists():
                     continue
 
-                audio_files = sorted(split_dir.glob("*.wav")) + sorted(split_dir.glob("*.flac"))
+                audio_files = sorted(
+                    f for ext in ("*.wav", "*.flac", "*.mp3")
+                    for f in split_dir.glob(ext)
+                )
                 for audio_path in audio_files:
                     text, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
                     word_count = len(text.split())

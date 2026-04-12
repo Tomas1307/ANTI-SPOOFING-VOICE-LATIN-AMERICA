@@ -180,3 +180,9 @@ class PartialSpoofPipeline:
         except Exception as exc:
             logger.exception(f"Partial spoof pipeline failed: {exc}")
             raise
+
+
+if __name__ == "__main__":
+    config = PartialSpoofPipelineConfig(attack_system="qwen")
+    pipeline = PartialSpoofPipeline(config=config)
+    pipeline.run()

@@ -191,7 +191,10 @@ class ClonedSpeechGenerator:
             logger.warning(f"No training data for speaker {speaker_id}")
             return None
 
-        audio_files = sorted(speaker_dir.glob("*.wav")) + sorted(speaker_dir.glob("*.flac"))
+        audio_files = sorted(
+            f for ext in ("*.wav", "*.flac", "*.mp3")
+            for f in speaker_dir.glob(ext)
+        )
         if not audio_files:
             logger.warning(f"No audio files in {speaker_dir}")
             return None

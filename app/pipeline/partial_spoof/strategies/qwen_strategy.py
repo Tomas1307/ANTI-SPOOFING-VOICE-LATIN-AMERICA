@@ -35,7 +35,7 @@ class QwenStrategy(AttackStrategy):
         Args:
             device: PyTorch device string.
         """
-        from qwen3_tts import Qwen3TTSModel
+        from qwen_tts import Qwen3TTSModel
 
         dtype = getattr(torch, qwen_settings.DTYPE)
         self.model = Qwen3TTSModel.from_pretrained(
