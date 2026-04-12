@@ -18,7 +18,7 @@ from tqdm import tqdm
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.schemas.cloned_generation_result import ClonedGenerationResult
 from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy
-from app.pipeline.chatterbox_attack.utils.audio_concatenation import (
+from app.pipeline.partial_spoof.utils.audio_concatenation import (
     concatenate_with_padding,
 )
 
