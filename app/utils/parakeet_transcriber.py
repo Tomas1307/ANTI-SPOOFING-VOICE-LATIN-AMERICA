@@ -100,6 +100,18 @@ class ParakeetTranscriber:
         self._model.change_decoding_strategy(self._model.cfg.decoding)
         logger.debug("CUDA graph decoder disabled, timestamps pre-enabled.")
 
+    def _ensure_timestamps_enabled(self) -> None:
+        """Re-disable CUDA graphs before a timestamps=True call.
+
+        NeMo's transcribe(timestamps=True) internally calls
+        change_decoding_strategy which re-enables use_cuda_graph_decoder.
+        This method ensures CUDA graphs stay disabled for each call.
+        """
+        from omegaconf import open_dict
+
+        with open_dict(self._model.cfg.decoding):
+            self._model.cfg.decoding.greedy.use_cuda_graph_decoder = False
+
     def transcribe(self, audio_path: Path) -> str:
         """Transcribe a single audio file to text.
 
@@ -149,13 +161,15 @@ class ParakeetTranscriber:
         if not audio_path.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        results = self._model.transcribe([str(audio_path)])
+        self._ensure_timestamps_enabled()
+        results = self._model.transcribe([str(audio_path)], timestamps=True)
         result = results[0]
         text = result.text if hasattr(result, "text") else str(result)
 
         timestamps: List[WordTimestamp] = []
         if hasattr(result, "timestamp") and result.timestamp:
-            for wt in result.timestamp.get("word", []):
+            word_ts = result.timestamp if isinstance(result.timestamp, list) else result.timestamp.get("word", [])
+            for wt in word_ts:
                 timestamps.append(
                     WordTimestamp(
                         word=wt["word"],
