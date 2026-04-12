@@ -85,7 +85,10 @@ class ReferenceAudioPreparator:
                 logger.warning(f"No train directory for {speaker_id}, skipping")
                 continue
 
-            audio_files = sorted(train_dir.glob("*.wav"))[:5]
+            audio_files = sorted(
+                f for ext in ("*.wav", "*.flac", "*.mp3")
+                for f in train_dir.glob(ext)
+            )[:5]
 
             if not audio_files:
                 logger.warning(f"No audio files for {speaker_id}, skipping")
@@ -144,9 +147,18 @@ class ReferenceAudioPreparator:
         Returns:
             Split name ('train', 'val', or 'test').
         """
-        train_count = len(list((speaker_dir / "train").glob("*.wav"))) if (speaker_dir / "train").exists() else 0
-        val_count = len(list((speaker_dir / "val").glob("*.wav"))) if (speaker_dir / "val").exists() else 0
-        test_count = len(list((speaker_dir / "test").glob("*.wav"))) if (speaker_dir / "test").exists() else 0
+        train_count = sum(
+            len(list((speaker_dir / "train").glob(ext)))
+            for ext in ("*.wav", "*.flac", "*.mp3")
+        ) if (speaker_dir / "train").exists() else 0
+        val_count = sum(
+            len(list((speaker_dir / "val").glob(ext)))
+            for ext in ("*.wav", "*.flac", "*.mp3")
+        ) if (speaker_dir / "val").exists() else 0
+        test_count = sum(
+            len(list((speaker_dir / "test").glob(ext)))
+            for ext in ("*.wav", "*.flac", "*.mp3")
+        ) if (speaker_dir / "test").exists() else 0
 
         if train_count >= val_count and train_count >= test_count:
             return "train"
