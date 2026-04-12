@@ -153,10 +153,10 @@ class PartialSpoofPipeline:
                 step_6 = SpliceQualityValidator()
                 result_6 = step_6.execute()
                 logger.info(
-                    f"Step 6 result: {result_6.total_validated} validated. "
-                    f"Avg flux={result_6.avg_spectral_flux:.4f}, "
-                    f"F0={result_6.avg_f0_delta:.2f}, "
-                    f"Energy={result_6.avg_energy_delta:.4f}"
+                    f"Step 6 result: {result_6.total_validated} passed, "
+                    f"{result_6.total_rejected} rejected. "
+                    f"Avg WER={result_6.avg_wer:.4f}, CER={result_6.avg_cer:.4f}, "
+                    f"NISQA={result_6.avg_nisqa:.2f}, Sim={result_6.avg_speaker_similarity:.3f}"
                 )
 
             # === STEP 7: Format output ===
