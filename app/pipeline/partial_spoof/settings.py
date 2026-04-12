@@ -152,6 +152,11 @@ class PartialSpoofSettings(BaseModel):
     )
 
     # === Reference Audio (Step 2) ===
+    MAX_SAMPLES: int = Field(
+        default=0,
+        description="Maximum total samples to process (0=unlimited). Useful for quick tests.",
+    )
+
     REFERENCE_DURATION_TARGET: float = Field(
         default=15.0,
         description="Target duration for reference audio clips in seconds",

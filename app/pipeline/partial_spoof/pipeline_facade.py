@@ -183,6 +183,7 @@ class PartialSpoofPipeline:
 
 
 if __name__ == "__main__":
+    settings.MAX_SAMPLES = 5
     config = PartialSpoofPipelineConfig(attack_system="qwen")
     pipeline = PartialSpoofPipeline(config=config)
     pipeline.run()

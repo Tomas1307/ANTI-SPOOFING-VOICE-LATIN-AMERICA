@@ -73,9 +73,14 @@ class BonafideTranscriber:
         total_transcribed = 0
         skipped_short = 0
 
+        max_reached = False
         for speaker_dir in tqdm(speaker_dirs, desc="Transcribing speakers"):
+            if max_reached:
+                break
             speaker_id = speaker_dir.name
             for split in ["train", "val", "test"]:
+                if max_reached:
+                    break
                 split_dir = speaker_dir / split
                 if not split_dir.exists():
                     continue
@@ -85,6 +90,10 @@ class BonafideTranscriber:
                     for f in split_dir.glob(ext)
                 )
                 for audio_path in audio_files:
+                    if settings.MAX_SAMPLES > 0 and total_transcribed >= settings.MAX_SAMPLES:
+                        max_reached = True
+                        break
+
                     text, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
                     word_count = len(text.split())
 
