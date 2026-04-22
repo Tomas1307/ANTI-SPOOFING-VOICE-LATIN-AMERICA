@@ -1,0 +1,45 @@
+<section class="slide">
+  <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
+  <div class="inner">
+    <div class="eyebrow">What's next</div>
+    <h2>Next steps</h2>
+    <div class="div"></div>
+
+    <div style="display:flex; flex-direction:column; max-width:700px;">
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px; background:rgba(62,255,139,0.15); color:var(--green);">01</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production runs — FishGram + Qwen + OpenVoice <span class="tag green">Complete</span></div>
+          <div class="step-desc" style="font-size:15px;">3 of 5 attack pipelines at production scale (~35K samples each, 1,567 speakers). FishGram: 95.2% pass rate. Qwen3-TTS: 87.9%. OpenVoice: 83.4%. Full metrics in slides 14-17.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">02</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — Chatterbox + OuteTTS <span class="tag amber">In Progress</span></div>
+          <div class="step-desc" style="font-size:15px;">Chatterbox running on GPU 2 (~35,927 samples, ~40h estimated). OuteTTS queued next. Both use MATCH_BONAFIDE_COUNT for 1:1 bonafide ratio. Checkpoint/resume enabled for crash recovery.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0;">
+        <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">03</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Partial spoof pipeline — production run <span class="tag amber">Testing</span></div>
+          <div class="step-desc" style="font-size:15px;">7-step pipeline validated end-to-end with Qwen strategy. Clone quality being refined. Next: production run across all speakers with multiple attack backends. Novel contribution — first partial spoof for Latin American Spanish.</div>
+        </div>
+      </div>
+      <div class="step" style="padding:24px 0; border-bottom:none;">
+        <div class="step-num" style="font-size:14px;">04</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Start writing the paper</div>
+          <div class="step-desc" style="font-size:15px;">Begin drafting the thesis paper with dataset description (HABLA 2.0 structure, speaker demographics, accent distribution), attack pipeline methodology (6 TTS systems + partial spoof), quality validation framework (WER/CER/NISQA/SIM), and comparison with related work (HISPASpoof, LRLSpoof, SpeechFake-MD).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+    <div style="display:flex; justify-content:space-between;">
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 · Universidad de los Andes · April 2026</div>
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace;">Tomas Acosta</div>
+    </div>
+  </div>
+</section>

@@ -5,9 +5,12 @@ Orchestrates the 7-step partial spoof generation pipeline that creates
 partially spoofed Latin American Spanish audio by replacing individual
 words in bonafide HABLA utterances with voice-cloned versions.
 
-This pipeline receives an attack system as a Strategy and produces
-ASVspoof2019 LA formatted output with the 'partial_spoof' label.
+Includes a two-level retry system:
+  Level 1 (free): Smart word re-selection within the same clone.
+  Level 2 (expensive): Regenerate the clone with a different TTS seed,
+    re-align, and retry splicing. Up to MAX_REGENERATIONS attempts.
 """
+import json
 from pathlib import Path
 
 from loguru import logger
@@ -23,17 +26,17 @@ from app.pipeline.partial_spoof.steps.step_06_validate_splice import SpliceQuali
 from app.pipeline.partial_spoof.steps.step_07_format_output import OutputFormatter
 from app.pipeline.partial_spoof.utils.strategy_factory import create_attack_strategy
 
+MAX_REGENERATIONS = 3
+
 
 class PartialSpoofPipeline:
     """Facade for the Partial Spoof generation pipeline.
 
-    Orchestrates 7 sequential steps to produce partially spoofed audio:
-    1. Transcribe bonafide audio (Parakeet TDT)
-    2. Generate cloned speech (attack Strategy)
-    3. Forced alignment on both versions
-    4. Select words to replace per tier (W1/W2/W3)
-    5. Splice cloned word segments into bonafide audio
-    6. Validate splice quality (placeholder)
+    Orchestrates 7 sequential steps with a regeneration loop:
+    1. Transcribe bonafide audio (Parakeet TDT) — runs once
+    2-5. Generate -> Align -> Select -> Splice — runs in a loop
+         with regeneration for samples that fail word matching
+    6. Validate splice quality
     7. Format output to ASVspoof2019 LA structure
 
     Attributes:
@@ -42,9 +45,6 @@ class PartialSpoofPipeline:
 
     def __init__(self, config: PartialSpoofPipelineConfig | None = None) -> None:
         """Initialize the Partial Spoof pipeline.
-
-        Applies configuration overrides to module-level settings and
-        sets the output directory based on the attack system name.
 
         Args:
             config: Optional runtime configuration. Uses defaults if None.
@@ -81,12 +81,13 @@ class PartialSpoofPipeline:
         logger.info(f"Attack system: {self.config.attack_system}")
         logger.info(f"Tiers: {self.config.tiers}")
         logger.info(f"Output: {settings.OUTPUT_DIR}")
+        logger.info(f"Max regenerations: {MAX_REGENERATIONS}")
         logger.info("=" * 80)
 
         try:
             strategy = create_attack_strategy(self.config.attack_system)
 
-            # === STEP 1: Transcribe bonafide audio ===
+            # === STEP 1: Transcribe bonafide audio (runs once) ===
             if self.config.run_step_1:
                 logger.info("-" * 40)
                 step_1 = BonafideTranscriber()
@@ -97,55 +98,10 @@ class PartialSpoofPipeline:
                     f"Distribution: {result_1.word_count_distribution}"
                 )
 
-            # === STEP 2: Generate cloned speech ===
+            # === STEPS 2-5: Generate -> Align -> Select -> Splice ===
+            # Runs in a regeneration loop for failed samples
             if self.config.run_step_2:
-                logger.info("-" * 40)
-                step_2 = ClonedSpeechGenerator(
-                    strategy=strategy,
-                    skip_existing=self.config.skip_existing,
-                )
-                result_2 = step_2.execute()
-                logger.info(
-                    f"Step 2 result: {result_2.total_generated} generated, "
-                    f"{len(result_2.failed_generations)} failed, "
-                    f"avg RTF={result_2.avg_rtf:.3f}"
-                )
-
-            # === STEP 3: Forced alignment ===
-            if self.config.run_step_3:
-                logger.info("-" * 40)
-                step_3 = ForcedAligner()
-                result_3 = step_3.execute()
-                logger.info(
-                    f"Step 3 result: {result_3.total_aligned} aligned, "
-                    f"{len(result_3.failed_alignments)} failed, "
-                    f"avg {result_3.avg_words_per_utterance:.1f} words/utt"
-                )
-
-            # === STEP 4: Select words ===
-            if self.config.run_step_4:
-                logger.info("-" * 40)
-                step_4 = WordSelector(
-                    enabled_tiers=self.config.tiers,
-                )
-                result_4 = step_4.execute()
-                logger.info(
-                    f"Step 4 result: {result_4.total_selections} selections. "
-                    f"Tiers: {result_4.tier_counts}"
-                )
-
-            # === STEP 5: Splice audio ===
-            if self.config.run_step_5:
-                logger.info("-" * 40)
-                step_5 = AudioSplicer(
-                    attack_system_name=strategy.name(),
-                )
-                result_5 = step_5.execute()
-                logger.info(
-                    f"Step 5 result: {result_5.total_spliced} spliced, "
-                    f"{len(result_5.failed_splices)} failed. "
-                    f"Avg spoof ratio: {result_5.avg_spoof_duration_ratio:.3f}"
-                )
+                self._run_generation_loop(strategy)
 
             # === STEP 6: Validate splice quality ===
             if self.config.run_step_6:
@@ -180,6 +136,149 @@ class PartialSpoofPipeline:
         except Exception as exc:
             logger.exception(f"Partial spoof pipeline failed: {exc}")
             raise
+
+    def _run_generation_loop(self, strategy) -> None:
+        """Run Steps 2-5 with regeneration for failed samples.
+
+        Level 1 retry (smart selection) happens inside Step 5.
+        Level 2 retry (regeneration) happens here — re-runs Steps 2-3-4-5
+        for samples that exhausted all word selection candidates.
+
+        Args:
+            strategy: The loaded attack strategy for TTS generation.
+        """
+        all_regeneration_history = {}
+
+        for regen_round in range(MAX_REGENERATIONS + 1):
+            is_retry = regen_round > 0
+            round_label = f"[Regen {regen_round}] " if is_retry else ""
+
+            # --- Step 2: Generate cloned speech ---
+            logger.info("-" * 40)
+            logger.info(f"{round_label}STEP 2: Generate Cloned Speech")
+
+            seed_offset = regen_round * 1000
+            step_2 = ClonedSpeechGenerator(
+                strategy=strategy,
+                skip_existing=not is_retry,
+                seed_offset=seed_offset,
+                regenerate_keys=self._get_regen_keys(regen_round) if is_retry else None,
+            )
+            result_2 = step_2.execute()
+            logger.info(
+                f"{round_label}Step 2: {result_2.total_generated} generated, "
+                f"{len(result_2.failed_generations)} failed, "
+                f"avg RTF={result_2.avg_rtf:.3f}"
+            )
+
+            # --- Step 3: Forced alignment ---
+            if self.config.run_step_3:
+                logger.info("-" * 40)
+                logger.info(f"{round_label}STEP 3: Forced Alignment")
+                step_3 = ForcedAligner()
+                result_3 = step_3.execute()
+                logger.info(
+                    f"{round_label}Step 3: {result_3.total_aligned} aligned, "
+                    f"{len(result_3.failed_alignments)} failed, "
+                    f"avg {result_3.avg_words_per_utterance:.1f} words/utt"
+                )
+
+            # --- Step 4: Select words ---
+            if self.config.run_step_4:
+                logger.info("-" * 40)
+                logger.info(f"{round_label}STEP 4: Select Words")
+                step_4 = WordSelector(enabled_tiers=self.config.tiers)
+                result_4 = step_4.execute()
+                logger.info(
+                    f"{round_label}Step 4: {result_4.total_selections} selections. "
+                    f"Tiers: {result_4.tier_counts}"
+                )
+
+            # --- Step 5: Splice audio ---
+            if self.config.run_step_5:
+                logger.info("-" * 40)
+                logger.info(f"{round_label}STEP 5: Splice Audio")
+                step_5 = AudioSplicer(attack_system_name=strategy.name())
+                result_5 = step_5.execute()
+                logger.info(
+                    f"{round_label}Step 5: {result_5.total_spliced} spliced, "
+                    f"{len(result_5.failed_splices)} failed. "
+                    f"Avg spoof ratio: {result_5.avg_spoof_duration_ratio:.3f}"
+                )
+
+            # Check if any samples need regeneration
+            rejected_path = settings.OUTPUT_DIR / "splice_rejected.json"
+            if rejected_path.exists():
+                with open(rejected_path, "r", encoding="utf-8") as f:
+                    rejected = json.load(f)
+
+                needs_regen = {
+                    k: v for k, v in rejected.items()
+                    if v.get("best_achieved", 0) < v.get("expected_words", 1)
+                }
+
+                if not needs_regen:
+                    logger.info(f"{round_label}No samples need regeneration. Done.")
+                    break
+
+                all_regeneration_history[f"round_{regen_round}"] = {
+                    "rejected_count": len(needs_regen),
+                    "sample_ids": list(needs_regen.keys()),
+                }
+
+                if regen_round < MAX_REGENERATIONS:
+                    sample_keys = set()
+                    for key in needs_regen:
+                        base_key = key.rsplit("_W", 1)[0]
+                        sample_keys.add(base_key)
+
+                    logger.info(
+                        f"{round_label}{len(needs_regen)} samples need regeneration "
+                        f"({len(sample_keys)} unique utterances). "
+                        f"Starting regen round {regen_round + 1}..."
+                    )
+                    self._save_regen_keys(regen_round + 1, list(sample_keys))
+                else:
+                    logger.warning(
+                        f"Max regenerations ({MAX_REGENERATIONS}) reached. "
+                        f"{len(needs_regen)} samples remain unresolved."
+                    )
+            else:
+                logger.info(f"{round_label}No rejections. Done.")
+                break
+
+        # Save regeneration history
+        if all_regeneration_history:
+            history_path = settings.OUTPUT_DIR / "regeneration_history.json"
+            with open(history_path, "w", encoding="utf-8") as f:
+                json.dump(all_regeneration_history, f, ensure_ascii=False, indent=2)
+            logger.info(f"Regeneration history saved to {history_path}")
+
+    def _save_regen_keys(self, round_num: int, sample_keys: list) -> None:
+        """Save sample keys that need regeneration for the next round.
+
+        Args:
+            round_num: The regeneration round number.
+            sample_keys: List of base sample keys (without tier suffix).
+        """
+        regen_path = settings.OUTPUT_DIR / f"regen_keys_round_{round_num}.json"
+        with open(regen_path, "w", encoding="utf-8") as f:
+            json.dump(sample_keys, f)
+
+    def _get_regen_keys(self, round_num: int) -> list | None:
+        """Load sample keys that need regeneration for this round.
+
+        Args:
+            round_num: The current regeneration round number.
+
+        Returns:
+            List of sample keys, or None if file not found.
+        """
+        regen_path = settings.OUTPUT_DIR / f"regen_keys_round_{round_num}.json"
+        if regen_path.exists():
+            with open(regen_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return None
 
 
 if __name__ == "__main__":

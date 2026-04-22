@@ -1,0 +1,46 @@
+<script>
+const N = __SLIDE_COUNT__;
+let cur = 1;
+
+const dotsEl = document.getElementById('dots');
+for (let i = 1; i <= N; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 1 ? ' active' : '');
+  d.onclick = () => jump(i);
+  dotsEl.appendChild(d);
+}
+
+function jump(n) {
+  n = Math.max(1, Math.min(N, n));
+  cur = n;
+  document.getElementById('s' + n).scrollIntoView({ behavior: 'smooth' });
+  update();
+}
+
+function go(d) { jump(cur + d); }
+
+function update() {
+  document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i + 1 === cur));
+  document.getElementById('counter').textContent = cur + ' / ' + N;
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && e.intersectionRatio >= 0.25) {
+      const m = e.target.id.match(/s(\d+)/);
+      if (m) { cur = +m[1]; update(); }
+    }
+  });
+}, { threshold: 0.25 });
+
+document.querySelectorAll('.slide').forEach(s => obs.observe(s));
+
+document.addEventListener('keydown', e => {
+  if (['ArrowRight','ArrowDown','PageDown'].includes(e.key)) go(1);
+  if (['ArrowLeft','ArrowUp','PageUp'].includes(e.key)) go(-1);
+});
+
+update();
+</script>
+</body>
+</html>

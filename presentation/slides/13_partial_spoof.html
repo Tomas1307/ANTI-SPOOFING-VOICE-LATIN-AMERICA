@@ -1,0 +1,115 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Novel Contribution — Partial Spoof</div>
+    <h2>Word-level partial spoof for Spanish</h2>
+    <p style="margin-bottom:28px; max-width:680px;">First partial spoof dataset for Latin American Spanish. Unlike full-synthesis attacks, partial spoof replaces <strong style="color:var(--white);">1-3 individual words</strong> in bonafide audio with voice-cloned versions — making detection significantly harder. Inspired by Zhang et al. (IEEE/ACM TASLP 2023) but adapted for Spanish with modern TTS systems.</p>
+
+    <div class="two" style="gap:40px; margin-bottom:28px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Word replacement tiers</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Tier</th><th>Words replaced</th><th>Min sentence</th><th>Max spoof ratio</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong style="color:var(--green);">W1</strong></td><td>1 word</td><td>4 words</td><td>25%</td></tr>
+            <tr><td><strong style="color:var(--amber);">W2</strong></td><td>2 words</td><td>8 words</td><td>25%</td></tr>
+            <tr><td><strong style="color:var(--red);">W3</strong></td><td>3 words</td><td>12 words</td><td>25%</td></tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px; background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:12px;">Example — W2 splice</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:2;">
+            <span style="color:var(--muted);">Los </span><span style="background:rgba(245,166,35,0.2); color:var(--amber); padding:2px 4px; border-radius:3px;">presidentes</span><span style="color:var(--muted);"> estan muy peleados por el </span><span style="background:rgba(245,166,35,0.2); color:var(--amber); padding:2px 4px; border-radius:3px;">ultimo</span><span style="color:var(--muted);"> caso de corrupcion.</span>
+          </div>
+          <div style="font-size:11px; color:var(--muted2); margin-top:8px;">Highlighted words extracted from TTS clone and spliced into bonafide audio with 5ms crossfade</div>
+        </div>
+
+        <div style="margin-top:16px;" class="callout hi">
+          <strong style="color:var(--white);">Why full-sentence cloning first?</strong> Words generated in isolation have flat, citation-form prosody. By cloning the full sentence, then extracting target words via forced alignment, the spliced words carry natural in-context prosody — making the partial spoof harder to detect and scientifically more valuable.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">7-step pipeline</h3>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">01</div>
+            <div>
+              <div class="step-title">Transcribe bonafide</div>
+              <div class="step-desc">Parakeet TDT 0.6b-v3 with word-level timestamps</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">02</div>
+            <div>
+              <div class="step-title">Clone full sentence</div>
+              <div class="step-desc">6 attack strategies (Factory pattern): FishGram, Qwen, Chatterbox, OpenVoice, OuteTTS, CosyVoice</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">03</div>
+            <div>
+              <div class="step-title">Forced alignment</div>
+              <div class="step-desc">Word timestamps for both bonafide and cloned versions</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">04</div>
+            <div>
+              <div class="step-title">Select words</div>
+              <div class="step-desc">Random non-adjacent selection per tier (seeded RNG)</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">05</div>
+            <div>
+              <div class="step-title">Splice audio</div>
+              <div class="step-desc">Right-to-left processing, duration mismatch handling, 5ms crossfade</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">06</div>
+            <div>
+              <div class="step-title">Validate quality</div>
+              <div class="step-desc">Parakeet WER/CER + NISQA MOS + ECAPA-TDNN speaker similarity</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">07</div>
+            <div>
+              <div class="step-title">Format to ASVspoof2019 LA</div>
+              <div class="step-desc">FLAC output with <code style="color:var(--amber);">partial_spoof</code> label in protocol</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:32px;">
+      <div class="callout hi">
+        <strong style="color:var(--white);">vs PartialSpoof (Zhang et al., 2023):</strong> English-only (VCTK), segment-level splicing from ASVspoof 2019 LA systems. We use word-level extraction from modern TTS (2024-2026), across 7 Latin American accents with 1,567 speakers. First partial spoof dataset for any variety of Spanish.
+      </div>
+      <div style="display:flex; gap:20px;">
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; flex:1; text-align:center;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Status</div>
+          <div style="font-size:18px; font-weight:700; color:var(--amber);">Testing</div>
+          <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Qwen strategy validated</div>
+        </div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; flex:1; text-align:center;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Tiers</div>
+          <div style="font-size:18px; font-weight:700; color:var(--white);">W1 / W2 / W3</div>
+          <div style="font-size:10px; color:var(--muted2); margin-top:4px;">1, 2, or 3 words replaced</div>
+        </div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; flex:1; text-align:center;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Backends</div>
+          <div style="font-size:18px; font-weight:700; color:var(--white);">6</div>
+          <div style="font-size:10px; color:var(--muted2); margin-top:4px;">Attack strategies</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

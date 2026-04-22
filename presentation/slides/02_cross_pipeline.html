@@ -1,0 +1,98 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Production Scale — All 5 Attack Pipelines</div>
+    <h2>Cross-pipeline comparison</h2>
+    <p style="margin-bottom:32px; max-width:640px;">Production metrics from ~35K samples each (1,567 speakers). FishGram, Qwen3-TTS, and OpenVoice complete. Chatterbox in progress. OuteTTS from validation run (6 samples). CosyVoice dropped (no Spanish).</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>FishGram</th>
+          <th>Qwen3TTS</th>
+          <th>OpenVoice</th>
+          <th>Chatterbox</th>
+          <th>OuteTTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td>
+          <td>VQGAN vocoder</td>
+          <td>Dual-Track codec</td>
+          <td>VITS tone-color</td>
+          <td>Flow-matching</td>
+          <td>LLM + DAC codec</td>
+        </tr>
+        <tr>
+          <td>Model size</td>
+          <td><strong>4B</strong></td>
+          <td>1.7B</td>
+          <td>~200M</td>
+          <td>500M</td>
+          <td>0.6B</td>
+        </tr>
+        <tr>
+          <td>Samples</td>
+          <td>34,197</td>
+          <td>31,568</td>
+          <td>29,626</td>
+          <td style="color:var(--amber);">running...</td>
+          <td style="color:var(--muted);">5 (val)</td>
+        </tr>
+        <tr>
+          <td>Pass rate</td>
+          <td class="pass"><strong>95.2%</strong></td>
+          <td class="pass">87.9%</td>
+          <td class="warn">83.4%</td>
+          <td>—</td>
+          <td class="pass">83.3%</td>
+        </tr>
+        <tr>
+          <td>Avg WER</td>
+          <td>2.17%</td>
+          <td class="pass"><strong>1.46%</strong></td>
+          <td class="pass">1.50%</td>
+          <td>—</td>
+          <td class="pass">4.04%</td>
+        </tr>
+        <tr>
+          <td>Avg CER</td>
+          <td>0.70%</td>
+          <td class="pass">0.59%</td>
+          <td class="pass"><strong>0.45%</strong></td>
+          <td>—</td>
+          <td class="pass">1.60%</td>
+        </tr>
+        <tr>
+          <td>Avg NISQA MOS</td>
+          <td><strong>4.571</strong></td>
+          <td>4.371</td>
+          <td>4.409</td>
+          <td>—</td>
+          <td class="pass"><strong>4.620</strong></td>
+        </tr>
+        <tr>
+          <td>Avg speaker similarity</td>
+          <td>0.602</td>
+          <td class="pass"><strong>0.720</strong></td>
+          <td class="fail">0.394</td>
+          <td>—</td>
+          <td class="warn">0.468</td>
+        </tr>
+        <tr>
+          <td>Total audio</td>
+          <td>36.1h</td>
+          <td>40.1h</td>
+          <td>37.2h</td>
+          <td>—</td>
+          <td style="color:var(--muted);">—</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top:24px;" class="callout hi">
+      <strong style="color:var(--white);">Production-scale findings.</strong> Qwen3-TTS is the most dangerous attack: highest speaker fidelity (0.720) with lowest WER (1.46%). FishGram achieves the best pass rate (95.2%) and NISQA (4.571). OpenVoice has the best intelligibility (0.45% CER) but weakest voice cloning (0.394 similarity) — easiest for embedding-based detectors. OuteTTS shows the highest NISQA (4.62) but from validation only.
+    </div>
+  </div>
+</section>

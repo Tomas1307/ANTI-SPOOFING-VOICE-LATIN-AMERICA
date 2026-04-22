@@ -1,0 +1,51 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Negative Finding — CosyVoice 2</div>
+    <h2>CosyVoice: no Spanish support</h2>
+    <p style="margin-bottom:36px; max-width:640px;">CosyVoice 2 (0.5B, Conditional Flow Matching) was evaluated as a potential attack system. Despite near real-time generation speed (RTF 0.77-0.99), it <strong style="color:var(--red);">does not support Spanish</strong>. The model generates Chinese-sounding audio when given Spanish text input. Dropped from the attack suite.</p>
+
+    <div class="two" style="gap:32px; margin-bottom:28px;">
+      <div class="audio-card">
+        <div>
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Original · Bonafide</div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">Argentina · Female · Spanish</div>
+        </div>
+        <audio controls src="data/attacks/cosyvoice_output/references/arf_00295_ref.wav"></audio>
+      </div>
+
+      <div class="audio-card reject">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--red);">Failed · Chinese Output</div>
+            <span class="tag red" style="margin-left:0;">COSYVOICE</span>
+          </div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295 — attempted clone</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">CosyVoice2-0.5B · generates Chinese, not Spanish</div>
+        </div>
+        <audio controls src="data/attacks/cosyvoice_output/generated/COSYVOICE_arf_00295_COSYVOICE_TEXT_00002.wav"></audio>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:32px;">
+      <div class="callout danger">
+        <strong style="color:var(--red);">Why it failed:</strong> CosyVoice2-0.5B only supports 5 languages: Chinese (zh), English (en), Japanese (ja), Cantonese (yue), and Korean (ko). When given Spanish text, the model maps phonemes to its Chinese acoustic space, producing Chinese-sounding speech. This is a fundamental model limitation, not a configuration issue.
+      </div>
+      <div>
+        <h3 style="margin-bottom:12px;">CosyVoice summary</h3>
+        <table style="font-size:13px;">
+          <tbody>
+            <tr><td>Model</td><td><strong>CosyVoice2-0.5B</strong></td></tr>
+            <tr><td>Architecture</td><td>Conditional Flow Matching</td></tr>
+            <tr><td>Languages</td><td style="color:var(--red);">zh, en, ja, yue, ko only</td></tr>
+            <tr><td>Speed (RTF)</td><td class="pass">0.77-0.99 (near real-time)</td></tr>
+            <tr><td>Status</td><td style="color:var(--red);"><strong>DROPPED</strong></td></tr>
+            <tr><td>Reason</td><td>Oriental accent bias, no Spanish</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,157 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Production — Rejection Analysis</div>
+    <h2>Rejected samples across pipelines</h2>
+    <p style="margin-bottom:32px; max-width:640px;">Examples of rejected samples from FishGram, Chatterbox, Qwen3-TTS, and OpenVoice. Each pipeline struggles with different text — proper nouns, foreign words, and complex vocabulary cause the highest WER.</p>
+
+    <!-- Bonafide reference -->
+    <div style="margin-bottom:28px;">
+      <h3>Bonafide reference — arf_00295</h3>
+      <div class="audio-card">
+        <div style="display:flex; align-items:center; gap:16px;">
+          <div>
+            <div style="font-size:15px; font-weight:600; color:var(--white);">arf_00295</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); margin-top:4px;">Argentina · Female · 15s reference clip</div>
+          </div>
+          <span class="tag green" style="margin-left:auto;">Bonafide</span>
+        </div>
+        <audio controls src="data/attacks/chatterbox_output/references/arf_00295_ref.wav"></audio>
+      </div>
+    </div>
+
+    <!-- Row 1: Chatterbox + FishGram (same text) -->
+    <div style="margin-bottom:12px;">
+      <h3>Rejected — "Euridice" proper noun</h3>
+      <div class="callout" style="margin-bottom:16px; font-style:italic; font-size:14px;">
+        "Euridice huyo, pero fue capturada y hecha prisionera."
+      </div>
+    </div>
+
+    <div class="two" style="gap:28px; margin-bottom:28px;">
+      <div class="audio-card reject">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tag red" style="margin-left:0;">Rejected</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">CHATTERBOX · arf_00295</span>
+        </div>
+        <audio controls src="data/attacks/chatterbox_output/generated/CHATTERBOX_arf_00295_CHATTERBOX_TEXT_00001.wav"></audio>
+        <div>
+          <div style="font-size:11px; color:var(--muted2); margin-bottom:4px;">ASR heard:</div>
+          <div style="font-size:13px; color:var(--red); font-style:italic;">"<strong>Eury se</strong> huyo pero fue capturada y hecha prisionera."</div>
+        </div>
+        <div style="display:flex; gap:24px;">
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">WER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--red);">25.0%</div>
+          </div>
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">Threshold</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--muted);">15.0%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="audio-card reject">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tag red" style="margin-left:0;">Rejected</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">FISHGRAM · arf_00295</span>
+        </div>
+        <audio controls src="data/attacks/fishgram_output/generated/FISHGRAM_arf_00295_FISHGRAM_TEXT_00001.wav"></audio>
+        <div>
+          <div style="font-size:11px; color:var(--muted2); margin-bottom:4px;">ASR heard:</div>
+          <div style="font-size:13px; color:var(--red); font-style:italic;">"<strong>Yobidi se</strong> huyo pero fue capturada y hecha prisionera."</div>
+        </div>
+        <div style="display:flex; gap:24px;">
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">WER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--red);">25.0%</div>
+          </div>
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">Threshold</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--muted);">15.0%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Qwen + OpenVoice (different texts from production) -->
+    <div style="margin-bottom:12px;">
+      <h3>Rejected — production run examples</h3>
+    </div>
+
+    <div class="two" style="gap:28px; margin-bottom:28px;">
+      <div class="audio-card reject">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tag red" style="margin-left:0;">Rejected</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">QWEN3TTS · arf_00295</span>
+        </div>
+        <audio controls src="data/attacks/rejected/QWEN3TTS_arf_00295_QWEN_TEXT_00103.wav"></audio>
+        <div>
+          <div style="font-size:11px; color:var(--muted2); margin-bottom:4px;">ASR heard:</div>
+          <div style="font-size:13px; color:var(--red); font-style:italic;">"In la cocina, <strong>Onsen Riori</strong>, la sopa miso, la sopa principal."</div>
+        </div>
+        <div style="display:flex; gap:24px;">
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">WER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--red);">36.4%</div>
+          </div>
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">CER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--red);">10.3%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="audio-card reject">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="tag red" style="margin-left:0;">Rejected</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">OPENVOICE · arf_00295</span>
+        </div>
+        <audio controls src="data/attacks/rejected/OPENVOICE_arf_00295_OPENVOICE_TEXT_00015.wav"></audio>
+        <div>
+          <div style="font-size:11px; color:var(--muted2); margin-bottom:4px;">ASR heard:</div>
+          <div style="font-size:13px; color:var(--red); font-style:italic;">"Tuvo de defensa y su ultimo equipo fue el <strong>Motawa</strong>."</div>
+        </div>
+        <div style="display:flex; gap:24px;">
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">WER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--red);">20.0%</div>
+          </div>
+          <div>
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2);">CER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600; color:var(--muted);">8.2%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two" style="gap:28px;">
+      <div class="callout warn">
+        <strong style="color:var(--amber);">Common pattern.</strong> Rejections cluster around proper nouns, foreign words, and rare vocabulary. Chatterbox/FishGram split "Euridice" differently. Qwen mangles Japanese cuisine terms ("Onsen Riori"). OpenVoice mishandles sports team names ("Motawa"). The WER threshold (15%) catches these consistently across all pipelines.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <div class="card-sm">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Production pass rates</div>
+          <div style="display:flex; gap:16px; margin-top:6px;">
+            <div style="text-align:center;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--green);">95.2%</div>
+              <div style="font-size:9px; color:var(--muted2);">FishGram</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--green);">87.9%</div>
+              <div style="font-size:9px; color:var(--muted2);">Qwen</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--amber);">83.4%</div>
+              <div style="font-size:9px; color:var(--muted2);">OpenVoice</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Primary rejection cause</div>
+          <div style="font-size:14px; font-weight:500; color:var(--white);">WER-based (all pipelines)</div>
+          <div style="font-size:12px; color:var(--muted2); margin-top:4px;">Proper nouns and out-of-vocabulary terms drive most rejections</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

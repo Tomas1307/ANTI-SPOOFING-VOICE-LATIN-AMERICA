@@ -1,0 +1,54 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Demo — Pipeline 06</div>
+    <h2>Bonafide vs OuteTTS</h2>
+    <p style="margin-bottom:36px; max-width:600px;">OuteTTS 1.0 0.6B uses a Qwen3 backbone with DAC audio codec. Trained on 14 languages including Spanish (MLS + Common Voice). High audio quality but moderate speaker similarity due to short 3s reference constraint.</p>
+
+    <div class="two" style="gap:32px; margin-bottom:28px;">
+      <div class="audio-card">
+        <div>
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Original · Bonafide</div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">Argentina · Female · 3s reference</div>
+        </div>
+        <audio controls src="data/attacks/outetts_output/references/arf_00295_ref.wav"></audio>
+      </div>
+
+      <div class="audio-card" style="border-color:rgba(77,159,255,0.2); background:rgba(77,159,255,0.03);">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--blue);">Synthetic · Spoof</div>
+            <span class="tag blue" style="margin-left:0;">OUTETTS</span>
+          </div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295 — clone</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">Qwen3 0.6B · DAC codec · temp=0.4</div>
+        </div>
+        <audio controls src="data/attacks/outetts_output/generated/OUTETTS_arf_00295_OUTETTS_TEXT_00002.wav"></audio>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="three">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Speaker similarity</div>
+        <div style="font-size:28px; font-weight:700; color:var(--amber);">0.534</div>
+        <div style="font-size:11px; color:var(--muted2); margin-top:4px;">ECAPA-TDNN cosine · moderate</div>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">NISQA MOS</div>
+        <div style="font-size:28px; font-weight:700; color:var(--white);">4.46</div>
+        <div style="font-size:11px; color:var(--muted2); margin-top:4px;">High perceived quality</div>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px;">
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">WER</div>
+        <div style="font-size:28px; font-weight:700; color:var(--green);">0.00%</div>
+        <div style="font-size:11px; color:var(--muted2); margin-top:4px;">Perfect intelligibility</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;" class="callout hi">
+      <strong style="color:var(--white);">OuteTTS trade-off:</strong> Excellent audio quality (NISQA 4.46-4.76 across validation) and good intelligibility (0% WER on this sample), but moderate speaker similarity (avg 0.47). The 3-second reference window — constrained by the 8,192-token context — limits how much speaker identity can be captured. Generation is slow (~6x RTF) due to autoregressive LLM decoding. Still, it represents a novel LLM+codec architecture absent from LRLSpoof and HispaSpoof.
+    </div>
+  </div>
+</section>

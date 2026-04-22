@@ -43,6 +43,8 @@ class ClonedSpeechGenerator:
         output_dir: Path | None = None,
         reference_duration: float | None = None,
         skip_existing: bool = False,
+        seed_offset: int = 0,
+        regenerate_keys: list | None = None,
     ) -> None:
         """Initialize cloned speech generator.
 
@@ -51,11 +53,16 @@ class ClonedSpeechGenerator:
             output_dir: Output directory (default: from settings).
             reference_duration: Target reference clip duration (default: from settings).
             skip_existing: Skip samples with existing output files.
+            seed_offset: Offset added to TTS seed for regeneration rounds.
+            regenerate_keys: If set, only regenerate these sample keys
+                (deletes existing cloned files for these keys first).
         """
         self.strategy = strategy
         self.output_dir = output_dir or settings.OUTPUT_DIR
         self.reference_duration = reference_duration or settings.REFERENCE_DURATION_TARGET
         self.skip_existing = skip_existing
+        self.seed_offset = seed_offset
+        self.regenerate_keys = set(regenerate_keys) if regenerate_keys else None
 
     def execute(self) -> ClonedGenerationResult:
         """Generate cloned speech for all transcribed bonafide utterances.
@@ -96,11 +103,20 @@ class ClonedSpeechGenerator:
             speaker_id = entry["speaker_id"]
             text = entry["transcript"]
 
+            if self.regenerate_keys is not None and sample_key not in self.regenerate_keys:
+                if sample_key in generation_metadata:
+                    total_generated += 1
+                continue
+
             if speaker_id not in reference_cache:
                 failed_generations.append(sample_key)
                 continue
 
             output_path = cloned_dir / f"{self.strategy.name()}_{sample_key}.wav"
+
+            if self.regenerate_keys is not None and output_path.exists():
+                output_path.unlink()
+                logger.debug(f"Deleted old clone for regeneration: {sample_key}")
 
             if self.skip_existing and output_path.exists():
                 info = sf.info(str(output_path))
@@ -127,6 +143,7 @@ class ClonedSpeechGenerator:
                     reference_audio_path=reference_cache[speaker_id],
                     output_path=output_path,
                     reference_text=ref_text,
+                    seed=self.seed_offset + hash(sample_key) % (2**31) if self.seed_offset > 0 else None,
                 )
 
                 info = sf.info(str(output_path))

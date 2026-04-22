@@ -13,6 +13,47 @@ from typing import Dict, List, Tuple
 from app.pipeline.partial_spoof.utils.crossfade import apply_crossfade
 
 
+def _normalize_word(word: str) -> str:
+    """Normalize a word for text-based matching.
+
+    Strips punctuation, lowercases, and removes diacritical marks
+    (accents) to handle differences like 'hotel.' vs 'hotel',
+    'Hay' vs 'hay', or 'Como' vs 'Cómo'.
+
+    Args:
+        word: Raw word string from ASR timestamps.
+
+    Returns:
+        Normalized lowercase word without punctuation or accents.
+    """
+    import unicodedata
+
+    stripped = word.lower().strip(".,;:!?()[]{}\"'¿¡")
+    nfkd = unicodedata.normalize("NFKD", stripped)
+    return "".join(c for c in nfkd if not unicodedata.combining(c))
+
+
+def _build_cloned_word_map(cloned_words: List[Dict]) -> Dict[str, List[Dict]]:
+    """Build a lookup map from normalized word text to cloned timestamp entries.
+
+    Groups by normalized word text so that duplicate words (e.g. two
+    occurrences of 'de') can each be consumed once in order.
+
+    Args:
+        cloned_words: Word-level timestamps from cloned audio.
+
+    Returns:
+        Dict mapping normalized word text to a list of timestamp dicts.
+    """
+    word_map: Dict[str, List[Dict]] = {}
+    for cw in cloned_words:
+        key = _normalize_word(cw["word"])
+        if key not in word_map:
+            word_map[key] = []
+        word_map[key].append(cw)
+    return word_map
+
+
 def splice_words(
     bonafide_audio: np.ndarray,
     cloned_audio: np.ndarray,
@@ -25,6 +66,10 @@ def splice_words(
     max_stretch_ratio: float,
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
+
+    Uses text-based matching to find the corresponding word in the cloned
+    audio rather than positional index matching. This prevents splicing
+    wrong word content when the clone has fewer or different words.
 
     Processes word replacements in reverse order (right-to-left) so that
     earlier splices do not shift sample positions of later words.
@@ -50,19 +95,28 @@ def splice_words(
     crossfade_samples = int(crossfade_ms * sample_rate / 1000)
     max_silence_steal_samples = int(max_silence_steal_ms * sample_rate / 1000)
 
+    cloned_map = _build_cloned_word_map(cloned_words)
+
     result = bonafide_audio.copy()
     splice_details = []
 
     for idx in sorted(selected_indices, reverse=True):
-        if idx >= len(bonafide_words) or idx >= len(cloned_words):
+        if idx >= len(bonafide_words):
             logger.warning(
-                f"Word index {idx} out of range (bonafide={len(bonafide_words)}, "
-                f"cloned={len(cloned_words)}). Skipping."
+                f"Word index {idx} out of range for bonafide ({len(bonafide_words)} words). Skipping."
             )
             continue
 
         bw = bonafide_words[idx]
-        cw = cloned_words[idx]
+        target_key = _normalize_word(bw["word"])
+
+        if target_key not in cloned_map or len(cloned_map[target_key]) == 0:
+            logger.warning(
+                f"Word '{bw['word']}' (index {idx}) not found in cloned audio. Skipping."
+            )
+            continue
+
+        cw = cloned_map[target_key].pop(0)
 
         b_start = _clamp(int(bw["start"] * sample_rate), 0, len(result))
         b_end = _clamp(int(bw["end"] * sample_rate), b_start, len(result))
