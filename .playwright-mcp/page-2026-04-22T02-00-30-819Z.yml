@@ -1,0 +1,168 @@
+- generic [active] [ref=e1]:
+  - heading "Splice Boundary Visualization" [level=1] [ref=e2]
+  - paragraph [ref=e3]: Comparing bonafide, cloned, old spliced (5ms linear), and new respliced (20ms cosine + zero-crossing + energy norm) at each splice boundary.
+  - generic [ref=e4]:
+    - heading "arf_00295_arf_00295_00001008290_W1" [level=2] [ref=e5]
+    - generic [ref=e6]: "Transcript: Dame únicamente el dato más relevante."
+    - generic [ref=e7]:
+      - text: "Spliced word: \""
+      - strong [ref=e8]: únicamente
+      - text: "\" [1.04s - 1.68s] ratio=0.750"
+    - generic [ref=e9]: Bonafide (original)
+    - img [ref=e10]
+    - generic [ref=e12]: Cloned (Qwen TTS)
+    - img [ref=e13]
+    - generic [ref=e15]: Old spliced (5ms linear crossfade)
+    - img [ref=e16]
+    - generic [ref=e18]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e19]
+    - generic [ref=e21]:
+      - generic [ref=e23]: Bonafide
+      - generic [ref=e26]: Old (5ms)
+      - generic [ref=e29]: New (20ms)
+  - generic [ref=e31]:
+    - heading "arf_00295_arf_00295_00020689215_W1" [level=2] [ref=e32]
+    - generic [ref=e33]: "Transcript: Hay varios cines cerca de tu hotel.¿Estás buscando algo en especial?"
+    - generic [ref=e34]:
+      - text: "Spliced word: \""
+      - strong [ref=e35]: tu
+      - text: "\" [2.32s - 2.48s] ratio=1.500"
+    - generic [ref=e36]: Bonafide (original)
+    - img [ref=e37]
+    - generic [ref=e39]: Cloned (Qwen TTS)
+    - img [ref=e40]
+    - generic [ref=e42]: Old spliced (5ms linear crossfade)
+    - img [ref=e43]
+    - generic [ref=e45]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e46]
+    - generic [ref=e48]:
+      - generic [ref=e50]: Bonafide
+      - generic [ref=e53]: Old (5ms)
+      - generic [ref=e56]: New (20ms)
+  - generic [ref=e58]:
+    - heading "arf_00295_arf_00295_00020689215_W2" [level=2] [ref=e59]
+    - generic [ref=e60]: "Transcript: Hay varios cines cerca de tu hotel.¿Estás buscando algo en especial?"
+    - generic [ref=e61]:
+      - text: "Spliced word: \""
+      - strong [ref=e62]: cerca
+      - text: "\" [2.00s - 2.24s] ratio=1.000"
+    - generic [ref=e63]: Bonafide (original)
+    - img [ref=e64]
+    - generic [ref=e66]: Cloned (Qwen TTS)
+    - img [ref=e67]
+    - generic [ref=e69]: Old spliced (5ms linear crossfade)
+    - img [ref=e70]
+    - generic [ref=e72]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e73]
+    - generic [ref=e75]:
+      - generic [ref=e77]: Bonafide
+      - generic [ref=e80]: Old (5ms)
+      - generic [ref=e83]: New (20ms)
+    - generic [ref=e85]:
+      - text: "Spliced word: \""
+      - strong [ref=e86]: buscando
+      - text: "\" [3.36s - 3.68s] ratio=1.500"
+    - generic [ref=e87]: Bonafide (original)
+    - img [ref=e88]
+    - generic [ref=e90]: Cloned (Qwen TTS)
+    - img [ref=e91]
+    - generic [ref=e93]: Old spliced (5ms linear crossfade)
+    - img [ref=e94]
+    - generic [ref=e96]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e97]
+    - generic [ref=e99]:
+      - generic [ref=e101]: Bonafide
+      - generic [ref=e104]: Old (5ms)
+      - generic [ref=e107]: New (20ms)
+  - generic [ref=e109]:
+    - heading "arf_00295_arf_00295_00023658548_W1" [level=2] [ref=e110]
+    - generic [ref=e111]: "Transcript: Los niños tienen mucha imaginación."
+    - generic [ref=e112]:
+      - text: "Spliced word: \""
+      - strong [ref=e113]: niños
+      - text: "\" [1.20s - 1.68s] ratio=1.167"
+    - generic [ref=e114]: Bonafide (original)
+    - img [ref=e115]
+    - generic [ref=e117]: Cloned (Qwen TTS)
+    - img [ref=e118]
+    - generic [ref=e120]: Old spliced (5ms linear crossfade)
+    - img [ref=e121]
+    - generic [ref=e123]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e124]
+    - generic [ref=e126]:
+      - generic [ref=e128]: Bonafide
+      - generic [ref=e131]: Old (5ms)
+      - generic [ref=e134]: New (20ms)
+  - generic [ref=e136]:
+    - heading "arf_00295_arf_00295_00075310490_W1" [level=2] [ref=e137]
+    - generic [ref=e138]: "Transcript: Los presidentes están muy peleados por el último caso de corrupción."
+    - generic [ref=e139]:
+      - text: "Spliced word: \""
+      - strong [ref=e140]: están
+      - text: "\" [1.36s - 1.52s] ratio=1.500"
+    - generic [ref=e141]: Bonafide (original)
+    - img [ref=e142]
+    - generic [ref=e144]: Cloned (Qwen TTS)
+    - img [ref=e145]
+    - generic [ref=e147]: Old spliced (5ms linear crossfade)
+    - img [ref=e148]
+    - generic [ref=e150]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e151]
+    - generic [ref=e153]:
+      - generic [ref=e155]: Bonafide
+      - generic [ref=e158]: Old (5ms)
+      - generic [ref=e161]: New (20ms)
+  - generic [ref=e163]:
+    - heading "arf_00295_arf_00295_00075310490_W2" [level=2] [ref=e164]
+    - generic [ref=e165]: "Transcript: Los presidentes están muy peleados por el último caso de corrupción."
+    - generic [ref=e166]:
+      - text: "Spliced word: \""
+      - strong [ref=e167]: presidentes
+      - text: "\" [0.64s - 1.36s] ratio=1.111"
+    - generic [ref=e168]: Bonafide (original)
+    - img [ref=e169]
+    - generic [ref=e171]: Cloned (Qwen TTS)
+    - img [ref=e172]
+    - generic [ref=e174]: Old spliced (5ms linear crossfade)
+    - img [ref=e175]
+    - generic [ref=e177]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e178]
+    - generic [ref=e180]:
+      - generic [ref=e182]: Bonafide
+      - generic [ref=e185]: Old (5ms)
+      - generic [ref=e188]: New (20ms)
+    - generic [ref=e190]:
+      - text: "Spliced word: \""
+      - strong [ref=e191]: de
+      - text: "\" [3.12s - 3.28s] ratio=1.500"
+    - generic [ref=e192]: Bonafide (original)
+    - img [ref=e193]
+    - generic [ref=e195]: Cloned (Qwen TTS)
+    - img [ref=e196]
+    - generic [ref=e198]: Old spliced (5ms linear crossfade)
+    - img [ref=e199]
+    - generic [ref=e201]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e202]
+    - generic [ref=e204]:
+      - generic [ref=e206]: Bonafide
+      - generic [ref=e209]: Old (5ms)
+      - generic [ref=e212]: New (20ms)
+  - generic [ref=e214]:
+    - heading "arf_00295_arf_00295_00091439585_W1" [level=2] [ref=e215]
+    - generic [ref=e216]: "Transcript: ¿Cómo es tu estado psicológico?"
+    - generic [ref=e217]:
+      - text: "Spliced word: \""
+      - strong [ref=e218]: tu
+      - text: "\" [1.28s - 1.52s] ratio=1.000"
+    - generic [ref=e219]: Bonafide (original)
+    - img [ref=e220]
+    - generic [ref=e222]: Cloned (Qwen TTS)
+    - img [ref=e223]
+    - generic [ref=e225]: Old spliced (5ms linear crossfade)
+    - img [ref=e226]
+    - generic [ref=e228]: New respliced (20ms cosine + zero-crossing + energy norm)
+    - img [ref=e229]
+    - generic [ref=e231]:
+      - generic [ref=e233]: Bonafide
+      - generic [ref=e236]: Old (5ms)
+      - generic [ref=e239]: New (20ms)

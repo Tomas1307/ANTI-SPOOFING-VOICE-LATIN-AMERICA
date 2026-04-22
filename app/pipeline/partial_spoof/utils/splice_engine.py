@@ -10,7 +10,11 @@ import numpy as np
 from loguru import logger
 from typing import Dict, List, Tuple
 
-from app.pipeline.partial_spoof.utils.crossfade import apply_crossfade
+from app.pipeline.partial_spoof.utils.crossfade import (
+    apply_crossfade,
+    find_nearest_zero_crossing,
+    normalize_energy,
+)
 
 
 def _normalize_word(word: str) -> str:
@@ -33,24 +37,25 @@ def _normalize_word(word: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c))
 
 
-def _build_cloned_word_map(cloned_words: List[Dict]) -> Dict[str, List[Dict]]:
-    """Build a lookup map from normalized word text to cloned timestamp entries.
+def _build_cloned_word_map(cloned_words: List[Dict]) -> Dict[str, List[Tuple[int, Dict]]]:
+    """Build a lookup map from normalized word text to (index, entry) pairs.
 
     Groups by normalized word text so that duplicate words (e.g. two
     occurrences of 'de') can each be consumed once in order.
+    Stores the original index for gap calculation.
 
     Args:
         cloned_words: Word-level timestamps from cloned audio.
 
     Returns:
-        Dict mapping normalized word text to a list of timestamp dicts.
+        Dict mapping normalized word text to a list of (index, timestamp_dict) tuples.
     """
-    word_map: Dict[str, List[Dict]] = {}
-    for cw in cloned_words:
+    word_map: Dict[str, List[Tuple[int, Dict]]] = {}
+    for i, cw in enumerate(cloned_words):
         key = _normalize_word(cw["word"])
         if key not in word_map:
             word_map[key] = []
-        word_map[key].append(cw)
+        word_map[key].append((i, cw))
     return word_map
 
 
@@ -116,14 +121,36 @@ def splice_words(
             )
             continue
 
-        cw = cloned_map[target_key].pop(0)
+        cw_idx, cw = cloned_map[target_key].pop(0)
 
-        b_start = _clamp(int(bw["start"] * sample_rate), 0, len(result))
-        b_end = _clamp(int(bw["end"] * sample_rate), b_start, len(result))
-        c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
-        c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
+        b_start_raw = _clamp(int(bw["start"] * sample_rate), 0, len(result))
+        b_end_raw = _clamp(int(bw["end"] * sample_rate), b_start_raw, len(result))
+        c_start_raw = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
+        c_end_raw = _clamp(int(cw["end"] * sample_rate), c_start_raw, len(cloned_audio))
+
+        b_start = find_nearest_zero_crossing(result, b_start_raw)
+        b_end = find_nearest_zero_crossing(result, b_end_raw)
+
+        if b_start >= b_end:
+            b_start, b_end = b_start_raw, b_end_raw
+
+        prev_end = int(cloned_words[cw_idx - 1]["end"] * sample_rate) if cw_idx > 0 else 0
+        next_start = int(cloned_words[cw_idx + 1]["start"] * sample_rate) if cw_idx < len(cloned_words) - 1 else len(cloned_audio)
+        gap_before = c_start_raw - prev_end
+        gap_after = next_start - c_end_raw
+        margin_before = min(crossfade_samples, max(0, gap_before))
+        margin_after = min(crossfade_samples, max(0, gap_after))
+
+        c_start_margin = _clamp(c_start_raw - margin_before, 0, len(cloned_audio))
+        c_end_margin = _clamp(c_end_raw + margin_after, 0, len(cloned_audio))
+        c_start = find_nearest_zero_crossing(cloned_audio, c_start_margin)
+        c_end = find_nearest_zero_crossing(cloned_audio, c_end_margin)
+
+        if c_start >= c_end:
+            c_start, c_end = c_start_margin, c_end_margin
 
         bf_len = b_end - b_start
+        bonafide_region = result[b_start:b_end].copy()
         cloned_segment = cloned_audio[c_start:c_end].copy()
         cl_len = len(cloned_segment)
 
@@ -131,13 +158,7 @@ def splice_words(
             logger.warning(f"Zero-length segment for word index {idx}, skipping.")
             continue
 
-        duration_diff = cl_len - bf_len
-
-        if duration_diff > 0:
-            cloned_segment = _resolve_duration_mismatch(
-                result, cloned_segment, b_end, bf_len, duration_diff,
-                max_silence_steal_samples, max_stretch_ratio, sample_rate, idx,
-            )
+        cloned_segment = normalize_energy(cloned_segment, bonafide_region)
 
         cf = min(crossfade_samples, b_start, len(cloned_segment) // 2)
 

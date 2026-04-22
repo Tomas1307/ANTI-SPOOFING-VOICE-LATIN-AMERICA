@@ -129,8 +129,8 @@ class PartialSpoofSettings(BaseModel):
 
     # === Splicing Parameters (Step 5) ===
     CROSSFADE_MS: float = Field(
-        default=5.0,
-        description="Crossfade duration at splice boundaries in milliseconds",
+        default=20.0,
+        description="Crossfade duration at splice boundaries in milliseconds (raised-cosine window)",
     )
     MAX_SILENCE_STEAL_MS: float = Field(
         default=50.0,
