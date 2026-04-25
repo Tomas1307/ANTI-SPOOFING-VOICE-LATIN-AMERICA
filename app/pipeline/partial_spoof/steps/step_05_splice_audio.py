@@ -158,7 +158,7 @@ class AudioSplicer:
                             crossfade_min_ms=settings.CROSSFADE_MIN_MS,
                             crossfade_max_ms=settings.CROSSFADE_MAX_MS,
                             max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
-                            max_stretch_ratio=settings.MAX_DURATION_STRETCH_RATIO,
+                            max_stretch_ratio=settings.MAX_STRETCH_RATIO,
                             splice_seed=settings.RANDOM_SEED + hash(splice_key),
                         )
                     except Exception as exc:
