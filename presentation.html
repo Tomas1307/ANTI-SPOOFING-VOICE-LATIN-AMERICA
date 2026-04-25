@@ -1223,9 +1223,162 @@ audio {
 </section>
 
 <!-- ==================================================
-     11 - 07_rejected_samples
+     11 - 06b_chatterbox_production
 ================================================== -->
-<section class="slide tall" id="s11">
+<section class="slide" id="s11">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Pipeline 06 &mdash; Chatterbox Production Run</div>
+    <h2>Chatterbox (Resemble.ai) <span class="tag amber" style="font-size:12px; vertical-align:middle;">IN PROGRESS</span></h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers on GPU 2. Chatterbox uses a GPT-style autoregressive decoder with classifier-free guidance (cfg=0.5) and a watermark removal step. Significantly slower than other pipelines due to high RTF.</p>
+
+    <div class="four" style="margin-bottom:32px;">
+      <div class="stat-card">
+        <div class="num" style="color:var(--amber);">14,818</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">of 35,927 target</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">41%</div>
+        <div class="sub">Progress</div>
+        <div class="detail">Started April 12</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">31-45x</div>
+        <div class="sub">RTF range</div>
+        <div class="detail">Slowest pipeline</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~May 13</div>
+        <div class="sub">ETA</div>
+        <div class="detail">~18 days remaining</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--muted);">Production progress</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber);">14,818 / 35,927</span>
+      </div>
+      <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
+        <div style="width:41%; height:100%; background:linear-gradient(90deg, var(--amber), #e89520); border-radius:6px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
+        <span>GPU 2 &mdash; NVIDIA A40</span>
+        <span>Current speaker: com_07049 (93/1000)</span>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <h3 style="margin-bottom:14px;">Pipeline characteristics</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Architecture</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">GPT-style autoregressive TTS with CFG (classifier-free guidance). Generates EnCodec tokens then decodes via Vocos vocoder.</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Voice cloning</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Zero-shot via 15s reference audio + speaker embedding. No fine-tuning required. Watermark removal enabled.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px;">Observations so far</h3>
+        <div class="callout warn">
+          <strong style="color:var(--amber);">RTF 31-45x is prohibitive.</strong> A 5-second utterance takes 150-225 seconds to generate. At this rate, the full 35,927 samples require ~31 days of continuous GPU time. Chatterbox is the slowest of all 5 pipelines by a wide margin (FishGram: 2-3x, Qwen: 3-5x, OpenVoice: 0.07-0.10x).
+        </div>
+        <div class="callout hi" style="margin-top:10px;">
+          <strong style="color:var(--white);">Quality expectations:</strong> Resemble.ai reports high naturalness in English. Spanish quality is unvalidated until the run completes. Early samples show reasonable intelligibility but speaker similarity is TBD.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     12 - 06c_outetts_production
+================================================== -->
+<section class="slide" id="s12">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
+    <h2>OuteTTS <span class="tag green" style="font-size:12px; vertical-align:middle;">66% COMPLETE</span></h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers on GPU 2. OuteTTS uses a Llama-based language model that generates WavTokenizer codes directly from text, with zero-shot voice cloning via speaker prompt tokens. Moderate RTF of ~5.6x.</p>
+
+    <div class="four" style="margin-bottom:32px;">
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">23,561</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">of 35,927 target</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">66%</div>
+        <div class="sub">Progress</div>
+        <div class="detail">Started April 13</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~5.6x</div>
+        <div class="sub">RTF (consistent)</div>
+        <div class="detail">5th fastest pipeline</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~May 1</div>
+        <div class="sub">ETA</div>
+        <div class="detail">~6 days remaining</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--muted);">Production progress</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--green);">23,561 / 35,927</span>
+      </div>
+      <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
+        <div style="width:66%; height:100%; background:linear-gradient(90deg, var(--green), #2ecc71); border-radius:6px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
+        <span>GPU 2 &mdash; NVIDIA A40</span>
+        <span>Current speaker: mxf_00089</span>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <h3 style="margin-bottom:14px;">Pipeline characteristics</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Architecture</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Llama 3.1-based LM (500M params) that generates WavTokenizer discrete codes autoregressively from text. No vocoder &mdash; tokens decode directly to waveform via WavTokenizer decoder.</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Voice cloning</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Zero-shot via speaker prompt: 15s reference audio encoded as WavTokenizer tokens, prepended to the text token sequence. Speaker identity carried through autoregressive generation.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px;">Observations so far</h3>
+        <div class="callout hi">
+          <strong style="color:var(--white);">Consistent RTF.</strong> Unlike Chatterbox (31-45x range), OuteTTS maintains a steady ~5.6x RTF across all speakers. The LM architecture produces predictable generation times proportional to output length.
+        </div>
+        <div style="margin-top:10px;" class="card-sm">
+          <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">Known issue: "Possible clipped samples"</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">PyLoudNorm raises UserWarning about clipping during loudness normalization. Output samples may have slight amplitude clipping at peaks. Quality impact TBD after validation.</div>
+        </div>
+        <div style="margin-top:10px;" class="card-sm">
+          <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">RepetitionPenaltyLogitsProcessor</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Using patched processor with penalty_last_n=64 to prevent token repetition loops, a known issue with LM-based TTS.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     13 - 07_rejected_samples
+================================================== -->
+<section class="slide tall" id="s13">
   <div class="inner">
     <div class="eyebrow">Production — Rejection Analysis</div>
     <h2>Rejected samples across pipelines</h2>
@@ -1384,9 +1537,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     12 - 08_demo_outetts
+     14 - 08_demo_outetts
 ================================================== -->
-<section class="slide" id="s12">
+<section class="slide" id="s14">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 06</div>
     <h2>Bonafide vs OuteTTS</h2>
@@ -1442,9 +1595,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     13 - 09_demo_cosyvoice
+     15 - 09_demo_cosyvoice
 ================================================== -->
-<section class="slide" id="s13">
+<section class="slide" id="s15">
   <div class="inner">
     <div class="eyebrow">Negative Finding — CosyVoice 2</div>
     <h2>CosyVoice: no Spanish support</h2>
@@ -1497,9 +1650,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     14 - 09b_datasets_intro
+     16 - 09b_datasets_intro
 ================================================== -->
-<section class="slide" id="s14">
+<section class="slide" id="s16">
   <div class="inner">
     <div class="eyebrow">Literature Review</div>
     <h2>Datasets investigation</h2>
@@ -1565,9 +1718,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     15 - 10_lrlspoof
+     17 - 10_lrlspoof
 ================================================== -->
-<section class="slide tall" id="s15">
+<section class="slide tall" id="s17">
   <div class="inner">
     <div class="eyebrow">Related Work — LRLSpoof</div>
     <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
@@ -1630,9 +1783,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     16 - 11_speechfake
+     18 - 11_speechfake
 ================================================== -->
-<section class="slide" id="s16">
+<section class="slide" id="s18">
   <div class="inner">
     <div class="eyebrow">Related Work — SpeechFake-MD</div>
     <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
@@ -1731,9 +1884,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     17 - 12_hispaspoof
+     19 - 12_hispaspoof
 ================================================== -->
-<section class="slide tall" id="s17">
+<section class="slide tall" id="s19">
   <div class="inner">
     <div class="eyebrow">Related Work — HISPASpoof</div>
     <h2>HISPASpoof: Spanish Speech Forensics</h2>
@@ -1840,9 +1993,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     18 - 12b_partial_spoof_intro
+     20 - 12b_partial_spoof_intro
 ================================================== -->
-<section class="slide" id="s18">
+<section class="slide" id="s20">
   <div class="glow" style="width:600px;height:600px;background:var(--amber);bottom:-250px;left:-150px;"></div>
   <div class="inner" style="max-width:800px;">
     <div class="eyebrow">Novel Contribution</div>
@@ -1887,9 +2040,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     19 - 13_partial_spoof
+     21 - 13_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s19">
+<section class="slide tall" id="s21">
   <div class="inner">
     <div class="eyebrow">Novel Contribution — Partial Spoof</div>
     <h2>Word-level partial spoof for Spanish</h2>
@@ -1914,7 +2067,7 @@ audio {
           <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:2;">
             <span style="color:var(--muted);">Los </span><span style="background:rgba(245,166,35,0.2); color:var(--amber); padding:2px 4px; border-radius:3px;">presidentes</span><span style="color:var(--muted);"> estan muy peleados por el </span><span style="background:rgba(245,166,35,0.2); color:var(--amber); padding:2px 4px; border-radius:3px;">ultimo</span><span style="color:var(--muted);"> caso de corrupcion.</span>
           </div>
-          <div style="font-size:11px; color:var(--muted2); margin-top:8px;">Highlighted words extracted from TTS clone and spliced into bonafide audio with 5ms crossfade</div>
+          <div style="font-size:11px; color:var(--muted2); margin-top:8px;">Highlighted words extracted from TTS clone and spliced into bonafide audio with 30-80ms crossfade (7 techniques)</div>
         </div>
 
         <div style="margin-top:16px;" class="callout hi">
@@ -1957,7 +2110,7 @@ audio {
             <div class="step-num">05</div>
             <div>
               <div class="step-title">Splice audio</div>
-              <div class="step-desc">Right-to-left processing, duration mismatch handling, 5ms crossfade</div>
+              <div class="step-desc">7 splice techniques, 30-80ms overlap, per-splice random selection</div>
             </div>
           </div>
           <div class="step">
@@ -2006,9 +2159,812 @@ audio {
 </section>
 
 <!-- ==================================================
-     20 - 14_next_steps
+     22 - 13a_partial_spoof_visual
 ================================================== -->
-<section class="slide" id="s20">
+<section class="slide" id="s22">
+  <div class="glow" style="width:500px;height:500px;background:var(--amber);top:-200px;right:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof Pipeline</div>
+    <h2>How word-level splicing works</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Clone the full sentence with a TTS system, align both signals at word level, then surgically replace selected words in the bonafide audio with their cloned counterparts.</p>
+
+    <!-- Step 1: Bonafide audio with word boundaries -->
+    <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag green" style="font-size:9px;">BONAFIDE</span>
+          <span style="font-size:10px; color:var(--muted2);">Step 1 &mdash; Transcribe with Parakeet TDT + word timestamps</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">Los<br><span style="font-size:8px; color:var(--muted2);">0.00-0.18s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes<br><span style="font-size:8px; color:var(--muted2);">0.18-0.62s</span></span>
+          <span style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 8px; border-radius:3px; color:var(--white);">estan<br><span style="font-size:8px; color:var(--muted2);">0.65-0.88s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">muy<br><span style="font-size:8px; color:var(--muted2);">0.90-1.02s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados<br><span style="font-size:8px; color:var(--muted2);">1.05-1.48s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">por<br><span style="font-size:8px; color:var(--muted2);">1.50-1.62s</span></span>
+          <span style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 8px; border-radius:3px; color:var(--white);">el<br><span style="font-size:8px; color:var(--muted2);">1.65-1.72s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">caso<br><span style="font-size:8px; color:var(--muted2);">1.75-2.02s</span></span>
+        </div>
+      </div>
+
+      <!-- Step 2: TTS clone with alignment -->
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag amber" style="font-size:9px;">TTS CLONE</span>
+          <span style="font-size:10px; color:var(--muted2);">Step 2+3 &mdash; Clone full sentence, then force-align both</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">Los<br><span style="font-size:8px; color:var(--muted2);">0.00-0.15s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes<br><span style="font-size:8px; color:var(--muted2);">0.16-0.55s</span></span>
+          <span style="background:rgba(245,166,35,0.15); border:1px solid rgba(245,166,35,0.35); padding:6px 8px; border-radius:3px; color:var(--amber);">estan<br><span style="font-size:8px; color:var(--amber);">0.57-0.82s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">muy<br><span style="font-size:8px; color:var(--muted2);">0.84-0.95s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados<br><span style="font-size:8px; color:var(--muted2);">0.97-1.40s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">por<br><span style="font-size:8px; color:var(--muted2);">1.42-1.55s</span></span>
+          <span style="background:rgba(245,166,35,0.15); border:1px solid rgba(245,166,35,0.35); padding:6px 8px; border-radius:3px; color:var(--amber);">el<br><span style="font-size:8px; color:var(--amber);">1.57-1.63s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">caso<br><span style="font-size:8px; color:var(--muted2);">1.65-1.90s</span></span>
+        </div>
+      </div>
+
+      <!-- Arrow: text matching -->
+      <div style="text-align:center; padding:4px 0;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--amber);">
+          Step 4: Select words [idx 2, 6] &nbsp;&darr;&nbsp; Step 5: Text-match &rarr; extract from clone &rarr; splice into bonafide
+        </div>
+      </div>
+
+      <!-- Step 5: Result -->
+      <div style="background:#0d0d0d; border:1px solid rgba(245,166,35,0.2); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag red" style="font-size:9px;">PARTIAL SPOOF</span>
+          <span style="font-size:10px; color:var(--muted2);">Result &mdash; Bonafide audio with 2 cloned words inserted (W2 tier)</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">Los</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes</span>
+          <span style="background:rgba(245,166,35,0.2); border:1px solid rgba(245,166,35,0.5); padding:6px 8px; border-radius:3px; color:var(--amber); font-weight:600;">estan</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">muy</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">por</span>
+          <span style="background:rgba(245,166,35,0.2); border:1px solid rgba(245,166,35,0.5); padding:6px 8px; border-radius:3px; color:var(--amber); font-weight:600;">el</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">caso</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout hi" style="max-width:800px;">
+      <strong style="color:var(--white);">Key insight:</strong> By cloning the <em>full sentence</em> first, the extracted words carry natural in-context prosody &mdash; not the flat, citation-form prosody you get from generating words in isolation. The splice is harder to detect because the cloned word already "fits" the sentence melodically.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     23 - 13b_splice_challenge
+================================================== -->
+<section class="slide" id="s23">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof Pipeline</div>
+    <h2>The splice boundary challenge</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Replacing a word is not as simple as cutting and pasting waveform samples. The junction between bonafide and cloned audio creates measurable artifacts that both humans and detectors can identify.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:24px;">
+      <!-- Left: The problem -->
+      <div>
+        <h3 style="margin-bottom:14px;">What goes wrong at the boundary</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Amplitude</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Energy discontinuity</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">The bonafide and cloned segments have different RMS levels. A sudden jump in loudness at the splice point creates an audible "seam."</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Phase</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Click artifacts</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">If the waveform is cut at non-zero amplitude, the instantaneous jump produces a broadband click. Solution: snap cuts to zero-crossings.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Spectral</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Formant mismatch</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">The TTS model produces slightly different spectral envelopes than the original speaker. The formant trajectory is discontinuous at the join.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Prosody</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">F0 discontinuity</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Fundamental frequency (pitch) trajectories differ between bonafide and clone. An abrupt F0 jump is perceptually unnatural, even if amplitude is matched.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Our mitigations -->
+      <div>
+        <h3 style="margin-bottom:14px;">Our mitigation strategy</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">Zero-crossing alignment</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Snap all 4 splice boundaries (bonafide start/end, cloned start/end) to the nearest zero-crossing within +/-5ms. Eliminates click artifacts.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">RMS energy normalization</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Scale the cloned segment's amplitude to match the bonafide region's RMS level. Removes the loudness seam.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">7 crossfade techniques</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Randomly select a fade curve and overlap duration (30-80ms) per splice. Prevents detectors from learning a fixed crossfade fingerprint.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">Gap-limited margins</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Crossfade overlap is clamped to the available silence between adjacent words. The cloned word content is <em>never</em> truncated by the fade.</div>
+          </div>
+        </div>
+
+        <div class="callout warn" style="margin-top:14px;">
+          <strong style="color:var(--white);">Key finding (Negroni et al., 2024):</strong> Even with optimal crossfading, purely spectral analysis achieves 6.16% EER on PartialSpoof with zero trained parameters. Artifacts persist &mdash; the goal is diversity, not invisibility.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     24 - 13c_technique_cut_paste
+================================================== -->
+<section class="slide" id="s24">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 1 / 7 &mdash; 10% of dataset</div>
+    <h2 style="margin-bottom:4px;">Direct cut-paste</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Hard concatenation at zero-crossings with no overlap or fading. The simplest and most forensically detectable method.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <!-- Step function: no crossfade -->
+            <polyline points="10,10 130,10 130,110 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 130,110 130,10 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <!-- Vertical cut line -->
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,77,77,0.5)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="115" y="125" fill="rgba(255,77,77,0.6)" font-size="8" font-family="JetBrains Mono">cut point</text>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag red" style="font-size:10px;">No overlap</span>
+          <span class="tag blue" style="font-size:10px;">10% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Method</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Abrupt concatenation at the splice point. Overlap = 0 ms. No fade curves applied. Bonafide segment ends, cloned segment begins immediately.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">PartialSpoof (Zhang et al., 2023), HAD (Yi et al., 2021). Both use simple concatenation as their baseline splicing method.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Produces energy discontinuities and potential phase jumps at the boundary. Even with zero-crossing alignment, spectral differences between segments create a measurable forensic trace. <strong style="color:var(--white);">Most detectable technique</strong> &mdash; Negroni et al. achieves 6.16% EER with zero training.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Why include it?</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Forces detectors to handle the easiest case. If a model cannot detect cut-paste splices, it has no chance with smoother methods. Serves as the <strong style="color:var(--white);">forensic floor</strong>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     25 - 13d_technique_ola_hanning
+================================================== -->
+<section class="slide" id="s25">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 2 / 7 &mdash; 20% of dataset</div>
+    <h2 style="margin-bottom:4px;">OLA Hanning</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Overlap-Add with a Hann window. The gold-standard in signal processing for smooth segment transitions. Equal-gain S-curve blend.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,13 58,20 82,31 106,45 130,60 154,76 178,89 202,100 226,108 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,108 58,100 82,89 106,76 130,60 154,45 178,31 202,20 226,13 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <!-- Crossing point marker -->
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag green" style="font-size:10px;">Equal-gain</span>
+          <span class="tag blue" style="font-size:10px;">20% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = 0.5 * (1 - cos(pi * t))<br>fade_out(t) = 0.5 * (1 + cos(pi * t))</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Negroni et al. (arXiv:2408.13784, 2024) &mdash; tested OLA with Hann windows from 256 to 4096 samples. Found minimum 1024 samples (64ms) needed to effectively mask artifacts. Even at 4096 samples, AUC remains 88.99%.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">S-shaped blend: slow transition at start and end, fast in the middle. Perceptually the smoothest technique. <strong style="color:var(--white);">fade_in + fade_out = 1.0</strong> everywhere (constant total gain), so no amplitude dip or boost in the overlap.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     26 - 13e_technique_linear
+================================================== -->
+<section class="slide" id="s26">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 3 / 7 &mdash; 15% of dataset</div>
+    <h2 style="margin-bottom:4px;">Linear crossfade</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">The simplest crossfade: a straight diagonal blend. Equal-gain but with a perceptual loudness dip at the midpoint.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,20 58,30 82,40 106,50 130,60 154,70 178,80 202,90 226,100 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,100 58,90 82,80 106,70 130,60 154,50 178,40 202,30 226,20 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag green" style="font-size:10px;">Equal-gain</span>
+          <span class="tag blue" style="font-size:10px;">15% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = t<br>fade_out(t) = 1 - t</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof (Luong et al., ICASSP 2025) &mdash; one of 5 crossfade functions randomly assigned per splice. Also the baseline in Negroni et al.'s "triangular window" analysis.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Constant total amplitude (in + out = 1.0), but perceived loudness dips at t=0.5 because <strong style="color:var(--white);">power = 0.5 + 0.5 = 0.5</strong> (half of original). This "loudness hole" is the main perceptual artifact and the main forensic signature of linear crossfades.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     27 - 13f_technique_cosine
+================================================== -->
+<section class="slide" id="s27">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 4 / 7 &mdash; 20% of dataset</div>
+    <h2 style="margin-bottom:4px;">Cosine (equal-power)</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Quarter-cosine crossfade with constant total power. The broadcast-standard crossfade: no loudness dip, no loudness boost.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,26 58,41 82,55 106,69 130,81 154,91 178,99 202,105 226,109 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,94 58,79 82,65 106,51 130,39 154,29 178,21 202,15 226,11 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag amber" style="font-size:10px;">Equal-power</span>
+          <span class="tag blue" style="font-size:10px;">20% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = sin(pi * t / 2)<br>fade_out(t) = cos(pi * t / 2)</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof &mdash; "quarter sine" variant. Also HQ-MPSD (Li et al., 2025) uses a cosine window with 30ms overlap as their default technique.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Constant total power: <strong style="color:var(--white);">sin&sup2; + cos&sup2; = 1</strong>. No perceptual loudness dip (unlike linear). The transition starts gradually, accelerates, then the outgoing signal drops quickly. Harder to detect than Hann because the total amplitude sum exceeds 1.0 (slight boost at midpoint), masking energy discontinuities.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     28 - 13g_technique_half_sine
+================================================== -->
+<section class="slide" id="s28">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 5 / 7 &mdash; 15% of dataset</div>
+    <h2 style="margin-bottom:4px;">Square-root (half-sine)</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Equal-power crossfade via square-root law. Aggressively shifts energy to the incoming signal early in the transition.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,42 58,55 82,65 106,73 130,81 154,87 178,94 202,99 226,105 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,78 58,65 82,55 106,47 130,39 154,33 178,26 202,21 226,15 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag amber" style="font-size:10px;">Equal-power</span>
+          <span class="tag blue" style="font-size:10px;">15% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = sqrt(t)<br>fade_out(t) = sqrt(1 - t)</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof &mdash; "half sine" variant. Common in broadcast/DAW production as the "constant power" crossfade. We implement it as the algebraic square-root law for numerical stability.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Very fast initial rise: at t=0.1, the incoming signal is already at 31.6% amplitude (vs 15.6% for cosine). The outgoing signal drops rapidly too. Creates a <strong style="color:var(--white);">"snap" to the new signal</strong> early in the overlap, leaving most of the crossfade as fine adjustment. Equal power: t + (1-t) = 1.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     29 - 13h_technique_logarithmic
+================================================== -->
+<section class="slide" id="s29">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 6 / 7 &mdash; 10% of dataset</div>
+    <h2 style="margin-bottom:4px;">Logarithmic crossfade</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Aggressive initial rise then plateau. Neither equal-gain nor equal-power &mdash; creates a unique energy dip artifact.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,38 58,55 82,67 106,76 130,84 154,91 178,96 202,101 226,106 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,82 58,65 82,53 106,44 130,36 154,29 178,24 202,19 226,14 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <!-- Dip indicator -->
+            <text x="115" y="80" fill="rgba(255,77,77,0.4)" font-size="7" font-family="JetBrains Mono">dip</text>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag red" style="font-size:10px;">Energy dip</span>
+          <span class="tag blue" style="font-size:10px;">10% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = log(1 + 9t) / log(10)<br>fade_out(t) = log(1 + 9(1-t)) / log(10)</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof &mdash; "logarithmic" variant. One of the 5 fading functions tested in their crossfade-vs-EER ablation (Table V).</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;"><strong style="color:var(--white);">Neither equal-gain nor equal-power.</strong> At t=0.5: in + out = 0.740 + 0.740 = 1.48 (amplitude), but in&sup2; + out&sup2; = 0.548 + 0.548 = 1.096 (near-equal power). The energy dip is the most distinctive forensic fingerprint among the 7 techniques &mdash; detectors can learn this as a characteristic "log signature."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     30 - 13i_technique_parabola
+================================================== -->
+<section class="slide" id="s30">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 7 / 7 &mdash; 10% of dataset</div>
+    <h2 style="margin-bottom:4px;">Inverted parabola</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Concave quadratic blend. Equal-gain with a smooth acceleration profile, sitting between linear and Hann in perceptual smoothness.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,29 58,46 82,61 106,74 130,85 154,94 178,101 202,106 226,109 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,91 58,74 82,59 106,46 130,35 154,26 178,19 202,14 226,11 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag green" style="font-size:10px;">Equal-gain</span>
+          <span class="tag blue" style="font-size:10px;">10% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = 1 - (1 - t)&sup2; = 2t - t&sup2;<br>fade_out(t) = (1 - t)&sup2;</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof &mdash; "inverted parabola" variant. The quadratic complement to their logarithmic and linear fades. Named for the shape of 1-(1-t)&sup2; which is a downward-opening parabola.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Equal-gain: <strong style="color:var(--white);">(2t - t&sup2;) + (1-t)&sup2; = 1.0</strong>. Rises faster than linear at the start (concave shape) but slower than logarithmic. Perceptually intermediate: smoother than linear but without the S-curve smoothness of Hann. The fast initial blend makes it more like "swapping" the signal with a gentle fade.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     31 - 13j_technique_summary
+================================================== -->
+<section class="slide tall" id="s31">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof &mdash; Summary</div>
+    <h2>Technique distribution &amp; literature gaps</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Seven techniques with varied proportions produce a forensically diverse dataset. Each splice independently draws its method and overlap duration, preventing detectors from learning a single crossfade fingerprint.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:28px;">
+      <!-- Left: Distribution table -->
+      <div>
+        <h3 style="margin-bottom:14px;">Per-splice distribution</h3>
+        <table style="font-size:12px; width:100%;">
+          <thead>
+            <tr><th>Technique</th><th>Proportion</th><th>Energy</th><th>Overlap</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Direct cut-paste</td><td><strong>10%</strong></td><td><span class="tag red" style="font-size:9px;">none</span></td><td>0 ms</td></tr>
+            <tr><td>OLA Hanning</td><td><strong>20%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+            <tr><td>Linear</td><td><strong>15%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+            <tr><td>Cosine</td><td><strong>20%</strong></td><td><span class="tag amber" style="font-size:9px;">equal-power</span></td><td>30-80 ms</td></tr>
+            <tr><td>Square-root</td><td><strong>15%</strong></td><td><span class="tag amber" style="font-size:9px;">equal-power</span></td><td>30-80 ms</td></tr>
+            <tr><td>Logarithmic</td><td><strong>10%</strong></td><td><span class="tag red" style="font-size:9px;">dip</span></td><td>30-80 ms</td></tr>
+            <tr><td>Inv. parabola</td><td><strong>10%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout hi" style="margin-top:14px;">
+          <strong style="color:var(--white);">Design rationale:</strong> Equal proportions for the two SOTA methods (OLA Hanning 20%, Cosine 20%). Lower proportions for extreme cases (cut-paste 10%, log 10%, parabola 10%). LlamaPartialSpoof assigns 30-80ms uniformly &mdash; we follow this anchor.
+        </div>
+      </div>
+
+      <!-- Right: Literature gaps -->
+      <div>
+        <h3 style="margin-bottom:14px;">Unsolved problems (thesis contributions)</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">1. Zero-gap boundary policy</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">No pipeline specifies behavior when adjacent cloned words leave &lt;30ms of bonafide margin. Five strategies exist; none is attested in any paper.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">2. F0 discontinuity</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">No partial-spoof paper reports pitch discontinuity at splice boundaries. Publishing F0 histograms at MFA word boundaries would be novel.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">3. Crossfade duration vs EER</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof's 30-80ms range is the only anchor. No paper maps overlap length to detection performance &mdash; a tractable publishable experiment.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">4. No source code released</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">None of the 4 canonical pipelines (PartialSpoof, LlamaPartialSpoof, HAD, HQ-MPSD) releases their splicer code. Our pipeline is fully reproducible.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- Comparison with existing pipelines -->
+    <h3 style="margin-bottom:14px;">Our pipeline vs existing partial spoof datasets</h3>
+    <table style="font-size:11px; width:100%;">
+      <thead>
+        <tr><th>Feature</th><th>PartialSpoof</th><th>LlamaPartialSpoof</th><th>HAD</th><th>HQ-MPSD</th><th style="color:var(--green);">Ours (HABLA 2.0)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Language</td><td>English</td><td>English</td><td>Chinese</td><td>6 languages</td><td style="color:var(--green);">Spanish (7 accents)</td></tr>
+        <tr><td>Splice level</td><td>Segment (VAD)</td><td>Word (MFA)</td><td>Character</td><td>Word (MFA)</td><td style="color:var(--green);">Word (Parakeet TDT)</td></tr>
+        <tr><td>Crossfade types</td><td>1 (simple OLA)</td><td>5 shapes</td><td>0 (pydub cut)</td><td>1 (cosine 30ms)</td><td style="color:var(--green);">7 techniques</td></tr>
+        <tr><td>Overlap range</td><td>VAD margins</td><td>30-80ms uniform</td><td>None</td><td>Fixed 30ms</td><td style="color:var(--green);">30-80ms uniform</td></tr>
+        <tr><td>TTS systems</td><td>ASVspoof 2019 LA</td><td>XTTS, Parler, Llama</td><td>7 legacy</td><td>3 modern</td><td style="color:var(--green);">6 modern (2024-2026)</td></tr>
+        <tr><td>Speakers</td><td>107 (VCTK)</td><td>~40 (VCTK)</td><td>281</td><td>4 / language</td><td style="color:var(--green);">1,567 (HABLA v2)</td></tr>
+        <tr><td>Code released</td><td>No</td><td>No</td><td>No</td><td>No</td><td style="color:var(--green);">Yes (open source)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ==================================================
+     32 - 13k_splice_quality_problem
+================================================== -->
+<section class="slide" id="s32">
+  <div class="glow" style="width:500px;height:500px;background:var(--red);bottom:-250px;right:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Discovery &mdash; Listening Tests</div>
+    <h2>The real problem: alignment, not crossfade</h2>
+    <p style="margin-bottom:20px; max-width:700px;">After implementing all 7 crossfade techniques and listening to the results, we discovered that <strong style="color:var(--white);">all techniques sounded identical</strong>. The audible problem was not the fade curve &mdash; it was three deeper issues.</p>
+
+    <div class="three" style="gap:20px; margin-bottom:24px;">
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">1. Blind word selection</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">Step 4 picked words <strong>randomly</strong> without checking if they could be cleanly cut from the clone. Words at fluid speech boundaries (no pause between them) sounded terrible when spliced.</div>
+      </div>
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">2. No clone quality gate</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">Bad TTS clones (low speaker similarity) passed through the entire pipeline, producing obviously detectable splices regardless of crossfade quality.</div>
+      </div>
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">3. Duration mismatch</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">A 480ms cloned word replacing a 640ms bonafide word shifted everything after by 160ms. Speech rhythm was completely destroyed.</div>
+      </div>
+    </div>
+
+    <!-- Energy visualization -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:20px;">
+      <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:12px;">Energy at "Dame" &rarr; "unicamente" boundary (0.80s) &mdash; cloned audio</div>
+      <div style="display:flex; align-items:end; gap:2px; height:60px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.70s">
+          <div style="width:100%; background:var(--green); height:47px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.75s">
+          <div style="width:100%; background:var(--green); height:54px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.80s boundary">
+          <div style="width:100%; background:var(--red); height:57px; border-radius:2px 2px 0 0;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.85s">
+          <div style="width:100%; background:var(--amber); height:50px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.90s">
+          <div style="width:100%; background:var(--amber); height:62px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.895s MIN">
+          <div style="width:100%; background:var(--amber); height:39px; border-radius:2px 2px 0 0; opacity:0.5;"></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted2); margin-top:4px;">
+        <span>0.70s ("Dame")</span>
+        <span style="color:var(--red);">0.80s &larr; aligner cut</span>
+        <span>0.90s ("unicamente")</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:8px;"><strong style="color:var(--red);">No energy valley.</strong> The TTS generates "Dame unicamente" as continuous speech &mdash; there is no pause to cut at. The aligner places the boundary at 0.80s, but the energy never drops below 0.097. The "u" of "unicamente" ends up inside "Dame".</div>
+    </div>
+
+    <div class="callout danger">
+      <strong style="color:var(--white);">Key insight:</strong> The crossfade technique (Hann, cosine, linear, etc.) only smooths the last 15-60ms of the junction. But if the <em>word itself</em> is cut wrong or doesn't fit the time slot, no crossfade can fix it. The problem is upstream of the crossfade.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     33 - 13l_splice_quality_solution
+================================================== -->
+<section class="slide tall" id="s33">
+  <div class="glow" style="width:500px;height:500px;background:var(--green);top:-200px;left:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Solution &mdash; Smart Selection + Quality Gate</div>
+    <h2>Valley-score selection + clone similarity gate</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Three fixes that address the root causes: select only words with clean boundaries, reject bad clones early, and preserve speech rhythm by matching durations exactly.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:24px;">
+      <!-- Left: Valley score -->
+      <div>
+        <h3 style="margin-bottom:14px;">Fix 1: Valley-score word selection</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px;">score = min_rms / avg_rms</code>
+          <div style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">For each word boundary: compute RMS energy in 5ms frames within &plusmn;100ms. The ratio of the minimum frame to the average tells us how deep the valley is. Score 0.0 = perfect silence. Score 1.0 = no valley at all.</div>
+        </div>
+
+        <!-- Ranking visual -->
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Ranking: "Dame unicamente el dato mas relevante"</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:20px;">#1</span>
+              <span style="width:90px;">"el"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:83%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:40px;">0.165</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:20px;">#2</span>
+              <span style="width:90px;">"relevante"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:82%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:40px;">0.179</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--amber); width:20px;">#3</span>
+              <span style="width:90px;">"dato"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:79%; height:100%; background:var(--amber); border-radius:4px;"></div></div>
+              <span style="color:var(--amber); width:40px;">0.210</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--red); width:20px;">#5</span>
+              <span style="width:90px;">"Dame"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:30%; height:100%; background:var(--red); border-radius:4px;"></div></div>
+              <span style="color:var(--red); width:40px;">0.700</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--red); width:20px;">#6</span>
+              <span style="width:90px;">"unicamente"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:30%; height:100%; background:var(--red); border-radius:4px;"></div></div>
+              <span style="color:var(--red); width:40px;">0.700</span>
+            </div>
+          </div>
+          <div style="font-size:10px; color:var(--muted2); margin-top:8px;">Words above threshold (0.65) are never selected. "Dame" and "unicamente" are rejected because their shared boundary has no energy valley.</div>
+        </div>
+      </div>
+
+      <!-- Right: Gate + duration -->
+      <div>
+        <h3 style="margin-bottom:14px;">Fix 2: Clone similarity gate</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">Before alignment and splicing, compute <strong style="color:var(--white);">ECAPA-TDNN cosine similarity</strong> between the bonafide reference and the TTS clone. Clones with SIM &lt; 0.60 are rejected immediately &mdash; saving compute and preventing obviously bad splices.</div>
+        </div>
+        <div style="display:flex; gap:12px; margin-bottom:20px;">
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:12px; flex:1; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">THRESHOLD</div>
+            <div style="font-size:20px; font-weight:700; color:var(--amber);">0.60</div>
+          </div>
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:12px; flex:1; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">EMBEDDING</div>
+            <div style="font-size:20px; font-weight:700; color:var(--white);">192-d</div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom:14px;">Fix 3: Duration-preserving splice</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">The cloned word is <strong style="color:var(--white);">time-stretched to fit the exact bonafide slot</strong>. Total audio length never changes. Gaps between words are preserved. Speech rhythm stays intact.</div>
+        </div>
+
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Before vs After</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.8; font-family:'JetBrains Mono',monospace;">
+            <div><span style="color:var(--red);">Before:</span> cut 640ms, insert 480ms &rarr; <span style="color:var(--red);">-160ms shift</span></div>
+            <div><span style="color:var(--green);">After:</span>&nbsp; stretch 480ms &rarr; 640ms &rarr; <span style="color:var(--green);">0ms shift</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edge cases -->
+    <div class="div"></div>
+    <h3 style="margin-bottom:14px;">Edge cases handled</h3>
+    <div class="four" style="gap:12px;">
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">All bad scores</div>
+        <div style="font-size:10px; color:var(--muted);">Reject sample entirely</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">Word &lt; 200ms</div>
+        <div style="font-size:10px; color:var(--muted);">Ineligible (too short)</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">Stretch &gt; 1.25x</div>
+        <div style="font-size:10px; color:var(--muted);">Skip word (distortion)</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">First/last word</div>
+        <div style="font-size:10px; color:var(--muted);">Only internal boundary scored</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     34 - 14_next_steps
+================================================== -->
+<section class="slide" id="s34">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
@@ -2055,7 +3011,7 @@ audio {
 </section>
 
 <script>
-const N = 20;
+const N = 34;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');

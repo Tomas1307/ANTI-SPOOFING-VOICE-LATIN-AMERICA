@@ -1,6 +1,7 @@
 """
 Schema for metadata about a single spliced (replaced) word.
 """
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -8,7 +9,7 @@ class SplicedWordInfo(BaseModel):
     """Metadata for a single word that was replaced in a partial spoof.
 
     Captures the original bonafide word position and the cloned word position
-    used for replacement, along with duration information for analysis.
+    used for replacement, along with splice technique and duration information.
 
     Attributes:
         word: The word text that was replaced.
@@ -18,7 +19,12 @@ class SplicedWordInfo(BaseModel):
         cloned_start_s: Start time of the word in the cloned audio (seconds).
         cloned_end_s: End time of the word in the cloned audio (seconds).
         duration_ratio: Ratio of cloned duration to bonafide duration.
-        crossfade_ms: Crossfade duration applied at splice boundaries.
+        crossfade_ms: Desired crossfade overlap drawn for this splice (ms).
+        effective_crossfade_ms: Actual crossfade applied after gap clamping (ms).
+            May be less than crossfade_ms when inter-word gap is smaller than desired.
+        splice_method: Fade-curve technique used (e.g. 'ola_hanning', 'cosine').
+        margin_before_ms: Margin captured before the word start from inter-word gap (ms).
+        margin_after_ms: Margin captured after the word end from inter-word gap (ms).
     """
 
     word: str = Field(
@@ -51,5 +57,26 @@ class SplicedWordInfo(BaseModel):
     )
     crossfade_ms: float = Field(
         ...,
-        description="Crossfade duration applied at splice boundaries (milliseconds)",
+        description="Desired crossfade overlap drawn for this splice (milliseconds)",
+    )
+    effective_crossfade_ms: Optional[float] = Field(
+        default=None,
+        description="Actual crossfade applied after gap clamping (ms). "
+                    "Less than crossfade_ms when inter-word gap is narrower.",
+    )
+    splice_method: Optional[str] = Field(
+        default=None,
+        description="Fade-curve technique applied at this splice boundary. "
+                    "One of: cut_paste, ola_hanning, linear, cosine, half_sine, "
+                    "logarithmic, parabola.",
+    )
+    margin_before_ms: Optional[float] = Field(
+        default=None,
+        description="Silence margin captured before the word start (ms). "
+                    "Limited by gap to previous cloned word.",
+    )
+    margin_after_ms: Optional[float] = Field(
+        default=None,
+        description="Silence margin captured after the word end (ms). "
+                    "Limited by gap to next cloned word.",
     )

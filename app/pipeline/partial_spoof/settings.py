@@ -40,7 +40,8 @@ class PartialSpoofSettings(BaseModel):
 
         ALIGNMENT_ENGINE: Forced alignment backend selection.
 
-        CROSSFADE_MS: Crossfade duration at splice boundaries in milliseconds.
+        CROSSFADE_MIN_MS: Minimum crossfade overlap drawn per splice (ms).
+        CROSSFADE_MAX_MS: Maximum crossfade overlap drawn per splice (ms).
         MAX_SILENCE_STEAL_MS: Maximum silence to steal from adjacent pauses.
         MAX_DURATION_STRETCH_RATIO: Maximum time compression ratio for duration mismatch.
 
@@ -61,13 +62,13 @@ class PartialSpoofSettings(BaseModel):
         description="Validation mode: True=3 speakers, False=all 162 speakers",
     )
     VALIDATION_SPEAKERS: List[str] = Field(
-        default=["arf_00295", "arf_00610", "arf_01523"],
-        description="Speakers for validation mode (3 Argentina Female speakers)",
+        default=["arf_00295", "arf_00610", "arf_01523", "arm_00412", "arm_00780"],
+        description="Speakers for validation mode (3 Argentina Female + 2 Argentina Male)",
     )
 
     # === Attack System Selection ===
     ATTACK_SYSTEM: str = Field(
-        default="fishgram",
+        default="qwen",
         description="Voice cloning system: fishgram, qwen, cosyvoice, outetts, chatterbox, openvoice",
     )
 
@@ -127,10 +128,57 @@ class PartialSpoofSettings(BaseModel):
         description="Forced alignment backend: torchaudio_mms (default, GPU, Spanish support)",
     )
 
+    # === Clone Quality Gate (between Steps 2 and 3) ===
+    ENABLE_CLONE_SIMILARITY_GATE: bool = Field(
+        default=True,
+        description="Enable ECAPA-TDNN cosine similarity pre-filter between Steps 2 and 3. "
+                    "Rejects clones below MIN_CLONE_SIMILARITY before wasting compute on "
+                    "alignment and splicing.",
+    )
+    MIN_CLONE_SIMILARITY: float = Field(
+        default=0.60,
+        description="Minimum ECAPA-TDNN cosine similarity between bonafide and clone. "
+                    "Clones below this are rejected before alignment. "
+                    "Production averages: FishGram=0.602, Qwen=0.720, OpenVoice=0.394.",
+    )
+
+    # === Valley Score Word Selection (Step 4) ===
+    VALLEY_SCORE_WINDOW_MS: float = Field(
+        default=100.0,
+        description="Window size in ms (+/- around each boundary) for energy valley analysis.",
+    )
+    VALLEY_SCORE_FRAME_MS: float = Field(
+        default=5.0,
+        description="Frame size in ms for RMS energy computation within the valley window.",
+    )
+    VALLEY_SCORE_THRESHOLD: float = Field(
+        default=0.65,
+        description="Maximum acceptable valley score. Words with combined score above this "
+                    "are ineligible for replacement. Lower = stricter (deeper valleys required).",
+    )
+    MIN_WORD_DURATION_MS: float = Field(
+        default=200.0,
+        description="Minimum word duration in ms to be eligible for replacement. "
+                    "Very short words (e.g. 'el', 'y') produce meaningless splices.",
+    )
+    MAX_STRETCH_RATIO: float = Field(
+        default=1.25,
+        description="Maximum duration ratio (cloned/bonafide or inverse) for word eligibility. "
+                    "Words requiring time-stretch outside [1/ratio, ratio] are skipped.",
+    )
+
     # === Splicing Parameters (Step 5) ===
-    CROSSFADE_MS: float = Field(
-        default=20.0,
-        description="Crossfade duration at splice boundaries in milliseconds (raised-cosine window)",
+    CROSSFADE_MIN_MS: float = Field(
+        default=30.0,
+        description="Minimum crossfade overlap drawn per splice boundary (ms). "
+                    "Actual overlap is drawn from Uniform[CROSSFADE_MIN_MS, CROSSFADE_MAX_MS] "
+                    "and then clamped to the available inter-word gap so the cloned word "
+                    "content is never truncated.",
+    )
+    CROSSFADE_MAX_MS: float = Field(
+        default=80.0,
+        description="Maximum crossfade overlap drawn per splice boundary (ms). "
+                    "For CUT_PASTE method this value is ignored (overlap = 0).",
     )
     MAX_SILENCE_STEAL_MS: float = Field(
         default=50.0,

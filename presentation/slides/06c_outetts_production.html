@@ -1,0 +1,75 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
+    <h2>OuteTTS <span class="tag green" style="font-size:12px; vertical-align:middle;">66% COMPLETE</span></h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers on GPU 2. OuteTTS uses a Llama-based language model that generates WavTokenizer codes directly from text, with zero-shot voice cloning via speaker prompt tokens. Moderate RTF of ~5.6x.</p>
+
+    <div class="four" style="margin-bottom:32px;">
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">23,561</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">of 35,927 target</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">66%</div>
+        <div class="sub">Progress</div>
+        <div class="detail">Started April 13</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~5.6x</div>
+        <div class="sub">RTF (consistent)</div>
+        <div class="detail">5th fastest pipeline</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~May 1</div>
+        <div class="sub">ETA</div>
+        <div class="detail">~6 days remaining</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--muted);">Production progress</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--green);">23,561 / 35,927</span>
+      </div>
+      <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
+        <div style="width:66%; height:100%; background:linear-gradient(90deg, var(--green), #2ecc71); border-radius:6px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
+        <span>GPU 2 &mdash; NVIDIA A40</span>
+        <span>Current speaker: mxf_00089</span>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <h3 style="margin-bottom:14px;">Pipeline characteristics</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Architecture</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Llama 3.1-based LM (500M params) that generates WavTokenizer discrete codes autoregressively from text. No vocoder &mdash; tokens decode directly to waveform via WavTokenizer decoder.</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Voice cloning</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Zero-shot via speaker prompt: 15s reference audio encoded as WavTokenizer tokens, prepended to the text token sequence. Speaker identity carried through autoregressive generation.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px;">Observations so far</h3>
+        <div class="callout hi">
+          <strong style="color:var(--white);">Consistent RTF.</strong> Unlike Chatterbox (31-45x range), OuteTTS maintains a steady ~5.6x RTF across all speakers. The LM architecture produces predictable generation times proportional to output length.
+        </div>
+        <div style="margin-top:10px;" class="card-sm">
+          <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">Known issue: "Possible clipped samples"</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">PyLoudNorm raises UserWarning about clipping during loudness normalization. Output samples may have slight amplitude clipping at peaks. Quality impact TBD after validation.</div>
+        </div>
+        <div style="margin-top:10px;" class="card-sm">
+          <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">RepetitionPenaltyLogitsProcessor</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Using patched processor with penalty_last_n=64 to prevent token repetition loops, a known issue with LM-based TTS.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

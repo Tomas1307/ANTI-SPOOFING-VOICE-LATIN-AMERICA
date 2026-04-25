@@ -69,7 +69,8 @@ def run_splice(bonafide_ts, cloned_ts, selected, label=""):
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )

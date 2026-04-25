@@ -1,0 +1,75 @@
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--amber);top:-200px;right:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof Pipeline</div>
+    <h2>How word-level splicing works</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Clone the full sentence with a TTS system, align both signals at word level, then surgically replace selected words in the bonafide audio with their cloned counterparts.</p>
+
+    <!-- Step 1: Bonafide audio with word boundaries -->
+    <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag green" style="font-size:9px;">BONAFIDE</span>
+          <span style="font-size:10px; color:var(--muted2);">Step 1 &mdash; Transcribe with Parakeet TDT + word timestamps</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">Los<br><span style="font-size:8px; color:var(--muted2);">0.00-0.18s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes<br><span style="font-size:8px; color:var(--muted2);">0.18-0.62s</span></span>
+          <span style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 8px; border-radius:3px; color:var(--white);">estan<br><span style="font-size:8px; color:var(--muted2);">0.65-0.88s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">muy<br><span style="font-size:8px; color:var(--muted2);">0.90-1.02s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados<br><span style="font-size:8px; color:var(--muted2);">1.05-1.48s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">por<br><span style="font-size:8px; color:var(--muted2);">1.50-1.62s</span></span>
+          <span style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); padding:6px 8px; border-radius:3px; color:var(--white);">el<br><span style="font-size:8px; color:var(--muted2);">1.65-1.72s</span></span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">caso<br><span style="font-size:8px; color:var(--muted2);">1.75-2.02s</span></span>
+        </div>
+      </div>
+
+      <!-- Step 2: TTS clone with alignment -->
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag amber" style="font-size:9px;">TTS CLONE</span>
+          <span style="font-size:10px; color:var(--muted2);">Step 2+3 &mdash; Clone full sentence, then force-align both</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">Los<br><span style="font-size:8px; color:var(--muted2);">0.00-0.15s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes<br><span style="font-size:8px; color:var(--muted2);">0.16-0.55s</span></span>
+          <span style="background:rgba(245,166,35,0.15); border:1px solid rgba(245,166,35,0.35); padding:6px 8px; border-radius:3px; color:var(--amber);">estan<br><span style="font-size:8px; color:var(--amber);">0.57-0.82s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">muy<br><span style="font-size:8px; color:var(--muted2);">0.84-0.95s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados<br><span style="font-size:8px; color:var(--muted2);">0.97-1.40s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">por<br><span style="font-size:8px; color:var(--muted2);">1.42-1.55s</span></span>
+          <span style="background:rgba(245,166,35,0.15); border:1px solid rgba(245,166,35,0.35); padding:6px 8px; border-radius:3px; color:var(--amber);">el<br><span style="font-size:8px; color:var(--amber);">1.57-1.63s</span></span>
+          <span style="background:rgba(245,166,35,0.06); border:1px solid rgba(245,166,35,0.12); padding:6px 8px; border-radius:3px; color:var(--muted);">caso<br><span style="font-size:8px; color:var(--muted2);">1.65-1.90s</span></span>
+        </div>
+      </div>
+
+      <!-- Arrow: text matching -->
+      <div style="text-align:center; padding:4px 0;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--amber);">
+          Step 4: Select words [idx 2, 6] &nbsp;&darr;&nbsp; Step 5: Text-match &rarr; extract from clone &rarr; splice into bonafide
+        </div>
+      </div>
+
+      <!-- Step 5: Result -->
+      <div style="background:#0d0d0d; border:1px solid rgba(245,166,35,0.2); border-radius:6px; padding:16px;">
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+          <span class="tag red" style="font-size:9px;">PARTIAL SPOOF</span>
+          <span style="font-size:10px; color:var(--muted2);">Result &mdash; Bonafide audio with 2 cloned words inserted (W2 tier)</span>
+        </div>
+        <div style="display:flex; gap:3px; font-family:'JetBrains Mono',monospace; font-size:11px;">
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">Los</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">presidentes</span>
+          <span style="background:rgba(245,166,35,0.2); border:1px solid rgba(245,166,35,0.5); padding:6px 8px; border-radius:3px; color:var(--amber); font-weight:600;">estan</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">muy</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">peleados</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">por</span>
+          <span style="background:rgba(245,166,35,0.2); border:1px solid rgba(245,166,35,0.5); padding:6px 8px; border-radius:3px; color:var(--amber); font-weight:600;">el</span>
+          <span style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.15); padding:6px 8px; border-radius:3px; color:var(--muted);">caso</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout hi" style="max-width:800px;">
+      <strong style="color:var(--white);">Key insight:</strong> By cloning the <em>full sentence</em> first, the extracted words carry natural in-context prosody &mdash; not the flat, citation-form prosody you get from generating words in isolation. The splice is harder to detect because the cloned word already "fits" the sentence melodically.
+    </div>
+  </div>
+</section>

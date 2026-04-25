@@ -449,7 +449,8 @@ class TestSpliceEngine:
             cloned_words=c_words,
             selected_indices=[2],
             sample_rate=16000,
-            crossfade_ms=5.0,
+            crossfade_min_ms=5.0,
+            crossfade_max_ms=5.0,
             max_silence_steal_ms=50.0,
             max_stretch_ratio=1.1,
         )
@@ -469,7 +470,8 @@ class TestSpliceEngine:
             cloned_words=c_words,
             selected_indices=[3],
             sample_rate=16000,
-            crossfade_ms=2.0,
+            crossfade_min_ms=2.0,
+            crossfade_max_ms=2.0,
             max_silence_steal_ms=50.0,
             max_stretch_ratio=1.1,
         )
@@ -506,7 +508,8 @@ class TestSpliceEngine:
             cloned_words=c_words,
             selected_indices=[3, 7],
             sample_rate=16000,
-            crossfade_ms=2.0,
+            crossfade_min_ms=2.0,
+            crossfade_max_ms=2.0,
             max_silence_steal_ms=50.0,
             max_stretch_ratio=1.15,
         )

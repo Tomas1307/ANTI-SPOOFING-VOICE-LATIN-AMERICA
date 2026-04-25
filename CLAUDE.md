@@ -90,6 +90,37 @@ Every attack pipeline (FishGram, Whisper Resynth, etc.) MUST follow the canonica
 - All steps have an `execute()` method returning typed Pydantic results
 - Steps receive dependencies via constructor injection, not global imports
 
+Thesis Wiki (MANDATORY — docs/thesis-wiki/):
+
+This project has a structured wiki at `docs/thesis-wiki/` that serves as the single source of truth for paper writing. Read `docs/thesis-wiki/SCHEMA.md` for conventions.
+
+Wiki Maintenance Protocol:
+- After EVERY session where research was done, investigations were analyzed, decisions were made, or experiments were run: UPDATE THE WIKI. This is not optional.
+- After analyzing a paper, reading deep research, or running an investigation: write the findings into the appropriate `state-of-art/` page. Do NOT let research stay only in conversation — it must be persisted in the wiki.
+- After making an architectural or methodology decision: add it to `decisions/decision-log.md` with Context/Decision/Alternatives/Outcome format.
+- After a production run completes or progress is checked: update `experiments/production-runs.md`.
+- After implementing a new approach: update the relevant `methodology/` page.
+- Always update `log.md` with a one-line entry per session.
+- Always update `index.md` if new pages are added.
+
+Content Ingestion Protocol:
+- When Master Tomas shares deep research documents, paper analyses, or investigation results: READ THEM FULLY and ingest into the wiki. Extract key findings, compare with existing knowledge, note contradictions, and file into the correct wiki pages.
+- Sources to ingest from: `investigation.md`, `partial_spoof_inv_1.md`, `partial_spoof_inv_2.md`, any new research documents, experiment logs from ml-server03, and conversation discoveries.
+- Cross-reference across pages. If a finding in `state-of-art/` contradicts a decision in `decisions/`, flag it.
+- The wiki is the COMPILED view. investigation.md is the raw source. The wiki synthesizes, summarizes, and cross-links for paper writing.
+
+Wiki Structure:
+```
+docs/thesis-wiki/
+  SCHEMA.md               — conventions
+  index.md                — master catalog
+  log.md                  — chronological changes
+  state-of-art/           — literature review (TTS, datasets, detection, splicing)
+  methodology/            — our approach (pipeline, partial spoof, metrics)
+  experiments/            — production runs, validation, ablations
+  decisions/              — decision log with rationale
+```
+
 Persistent Memory (engram MCP):
 
 This project has an engram MCP server configured in `.mcp.json` for persistent cross-session memory.

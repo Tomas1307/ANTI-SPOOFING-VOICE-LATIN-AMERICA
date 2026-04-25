@@ -2247,125 +2247,195 @@ Synthetic voices generated using neural audio codecs (not traditional GAN vocode
 
 ---
 
-## 8. Partial Spoof Splicing Techniques — Literature Review
+## 8. Partial Spoof Splicing — Comprehensive Literature Review
 
-**Date:** April 21, 2026
-**Purpose:** Investigate state-of-the-art audio splicing techniques for constructing partially spoofed speech datasets. These techniques determine how synthetic word segments are joined with bonafide audio at splice boundaries.
+**Date:** April 22, 2026
+**Sources:** Deep research audit of 4 target pipelines + 2 third-party analyses + classical concatenative synthesis literature. Based on `partial_spoof_inv_1.md` and `partial_spoof_inv_2.md` deep research reports plus web search.
 
-### 8.1 Background
+### 8.1 Executive Summary
 
-Partially spoofed audio replaces individual words or segments in bonafide speech with TTS-generated versions. The quality of the splice boundary determines both (a) how natural the result sounds to human listeners and (b) how difficult it is for automated detectors to identify. Research shows that even with sophisticated smoothing, splicing artifacts remain detectable — the goal is not to eliminate them but to create realistic, diverse artifacts that train robust detectors.
+Four canonical partial-spoof corpora (PartialSpoof, LlamaPartialSpoof, HAD, HQ-MPSD) collectively publish **far less waveform-level splicing detail than their prominence would suggest**. Only LlamaPartialSpoof names concrete waveform parameters (30-80ms overlap, 5 fade shapes). **No public pipeline documents time-stretching, F0 smoothing, formant matching, or any ablation of overlap duration versus detector EER.** No pipeline releases its splicer source code.
 
-### 8.2 Splicing Techniques from Literature
+Two third-party papers anchor the rigorous evidence: **Negroni et al. (2024)** achieves 6.16%/7.36% EER on PartialSpoof/HAD with no trained detector (purely hand-coded spectral analysis), and **Huang et al. (SLT 2024)** shows neural infilling fools humans but not SSL detectors. Together they bound the perceptual-vs-detection gap.
 
-#### 8.2.1 Direct Cut-Paste (No Smoothing)
+### 8.2 Comparison: 4 Pipelines x 7 Critical Questions
 
-**Source:** LlamaPartialSpoof (2024), PartialSpoof (Zhang et al., 2023)
-**Method:** Hard concatenation at the splice point with no overlap or fading.
-**Artifacts:** Produces audible clicks and energy discontinuities at boundaries. The most detectable method.
-**Use case:** Baseline for measuring artifact detection. Some real-world attacks use this naive approach.
+| Question | PartialSpoof (Zhang 2023) | LlamaPartialSpoof (Luong 2024) | HAD (Yi 2021) | HQ-MPSD (Li 2025) |
+|---|---|---|---|---|
+| Zero-gap handling | N/A (VAD margins) | Not specified | N/A (1 replacement/utt) | Not specified |
+| Duration mismatch | Selects similar-duration segments | Not specified | Not specified | Not specified |
+| F0 discontinuity | Not specified | Not specified | Not specified | Not specified |
+| Spectral envelope | ITU-T SV56 (-26 dBov) | Loudness norm only | Volume norm only | "Loudness + spectral alignment" (no detail) |
+| Cut placement | VAD boundaries | MFA word boundaries | Character-level timestamps | Word midpoints |
+| Code released | No (listed "TBA") | No (metadata only) | No (audio only) | No |
+| Perceptual metric | None | EER per concat method (Table V) | EER only | DNSMOS 3.58 |
 
-#### 8.2.2 Overlap-Add with Hanning Window (OLA-Hanning)
+**Critical correction:** The "OLA-Hanning" attributed to HAD in some sources is actually from Negroni et al.'s *external* analysis, not the HAD paper itself. HAD uses pydub (simple cut/paste wrapper).
 
-**Source:** HAD (Half-truth Audio Detection), Analyzing Splicing Artifacts (arXiv:2408.13784)
-**Method:** Apply half of a Hanning window to the end of the first segment and the other half to the beginning of the second segment, then sum in the overlap region.
-**Parameters tested:** Window sizes of 256, 512, 1024, 2048, and 4096 samples (16ms to 256ms at 16kHz).
-**Key finding:** 256-sample windows achieved near-original artifact levels (AUC=98.04%). Larger windows (1024-4096) provided better mitigation but still detectable (minimum AUC=88.99%). Effectively hiding artifacts requires at least 1024 samples (64ms).
+### 8.3 Splicing Techniques from Literature
 
-#### 8.2.3 Crossfade with Multiple Fading Functions
+#### 8.3.1 Direct Cut-Paste (No Smoothing)
 
-**Source:** LlamaPartialSpoof (arXiv:2409.14743, 2024)
-**Method:** Overlap region with one of five fading functions applied randomly per splice.
+**Source:** LlamaPartialSpoof, PartialSpoof
+**Method:** Hard concatenation at splice point. No overlap, no fading.
+**Artifacts:** Audible clicks, energy discontinuities, phase jumps. Most detectable.
+**Detection:** Negroni et al. achieves 6.16% EER on PartialSpoof with zero training — purely spectral-dynamic-range analysis of the join.
+
+#### 8.3.2 Overlap-Add with Hanning Window (OLA-Hanning)
+
+**Source:** Negroni et al. (arXiv:2408.13784, 2024) — applied to their own experimental splicing, NOT to HAD.
+**Method:** Half Hanning window on end of first segment, half on beginning of second, summed in overlap.
+**Parameters tested:** 256, 512, 1024, 2048, 4096 samples (16-256ms at 16kHz).
+**Key findings:**
+- 256-sample windows: near-original artifact levels (AUC=98.04%)
+- 1024+ samples: better mitigation but still detectable (min AUC=88.99%)
+- **Minimum 1024 samples (64ms) needed to effectively hide artifacts**
+- Even at 4096 samples, minimum AUC is still 88.99% — artifacts persist
+
+#### 8.3.3 Crossfade with 5 Fading Functions
+
+**Source:** LlamaPartialSpoof (arXiv:2409.14743, ICASSP 2025)
+**Method:** Overlap with one of five functions, randomly assigned per splice.
 **Parameters:**
-- Overlap duration: randomly assigned between 30 and 80ms
-- Five fading functions:
-  1. **Linear** — straight line fade-out/fade-in
-  2. **Quarter sine wave** — first quarter of sine (0 to pi/2)
-  3. **Half sine wave** — first half of sine (0 to pi)
-  4. **Logarithmic** — log-scale fade curve
-  5. **Inverted parabola** — quadratic fade curve
-- Pre-processing: loudness normalization, downsampling to 16kHz
-- Post-processing: random peak audio level from -0.01 dBFS to -10 dBFS
-**Key finding:** Model performance varies significantly by concatenation method. Training with diverse methods improves robustness.
+- Overlap: uniform random 30-80ms
+- Functions: linear, quarter sine, half sine, logarithmic, inverted parabola
+- Pre: loudness normalization, downsample to 16kHz
+- Post: random peak level -0.01 to -10 dBFS
+**Key finding:** Table V(b) ablates crossfade vs cut-paste vs OLA — the only published insertion-technique-vs-EER comparison. Diverse methods improve robustness.
 
-#### 8.2.4 OLA with Cosine Fade + Spectral Pre-emphasis
+#### 8.3.4 OLA + Cosine + Spectral Pre-emphasis
 
-**Source:** HQ-MPSD (arXiv:2512.13012, 2025)
-**Method:** 30ms overlap-add using cosine fading, combined with acoustic pre-processing.
+**Source:** HQ-MPSD (arXiv:2512.13012, Dec 2025)
+**Method:** Fixed 30ms cosine overlap-add with acoustic pre-processing.
 **Parameters:**
-- Fixed 30ms overlap with cosine window
-- RMS-based loudness alignment before splicing
-- Adaptive pre-emphasis filtering to mitigate spectral imbalance from neural vocoders
-- Splice points placed at midpoints between aligned word pairs (linguistic constraint via Montreal Forced Aligner)
-**Post-processing:** Background augmentation with room impulse responses and noise at 15dB SNR to mask residual discontinuities.
-**Key finding:** Linguistic boundary placement (cutting between words, not at word edges) significantly reduces prosodic discontinuities.
+- 30ms overlap, cosine window
+- RMS-based loudness alignment
+- "Spectral-characteristic alignment" (algorithmic detail not specified)
+- Cut at midpoints between aligned word pairs (Montreal Forced Aligner)
+- Post: room impulse responses + noise at 15dB SNR
+**Key finding:** Word-midpoint cuts significantly reduce prosodic discontinuities.
 
-#### 8.2.5 Raised Cosine (Hann) Crossfade
+#### 8.3.5 Cross-Correlation Best-Join (PartialSpoof)
 
-**Source:** Standard signal processing, widely used in concatenative TTS.
-**Method:** Uses a Hann window shape (raised cosine) for smoother perceptual transition than linear fades.
-**Parameters:** Typically 10-50ms overlap.
-**Formula:** fade_out = 0.5 * (1 + cos(t)), fade_in = 0.5 * (1 - cos(t)), t in [0, pi]
+**Source:** PartialSpoof (TASLP 2023, Section III-B step 3)
+**Method:** Within the VAD-detected silent margin around each segment, use time-domain cross-correlation to find the optimal concatenation point. Then OLA within the silence.
+**Key insight:** Elegant when a silent margin exists. Undefined when segments abut. This is the most sophisticated boundary-selection technique in the literature but only works with VAD margins, not word-level splicing.
 
-#### 8.2.6 Zero-Crossing Alignment
+#### 8.3.6 Zero-Crossing Alignment
 
-**Source:** General audio editing best practice.
-**Method:** Snap splice points to the nearest zero-crossing in the waveform to prevent the click artifact that occurs when cutting at non-zero amplitude.
-**Parameters:** Search window of 1-5ms around the target splice point.
-**Use case:** Combined with any of the above techniques as a pre-processing step.
+**Source:** Universal audio editing practice.
+**Method:** Snap splice points to nearest zero-crossing within +/-2ms search window.
+**Optional enhancement:** GCI (Glottal Closure Instant) alignment using DYPSA algorithm (Naylor et al., 2007, 95.7% identification rate) when both sides are voiced. No anti-spoofing paper measures EER impact of GCI vs zero-crossing vs arbitrary cuts.
 
-### 8.3 Pre-processing and Post-processing Techniques
+### 8.4 Unsolved Problems (Literature Gaps)
 
-| Technique | Source | Purpose |
-|-----------|--------|---------|
-| RMS loudness normalization | HQ-MPSD, LlamaPartialSpoof | Match energy levels between bonafide and cloned segments |
-| Adaptive spectral pre-emphasis | HQ-MPSD | Compensate for spectral imbalance from neural vocoders |
-| Random peak level assignment | LlamaPartialSpoof | Prevent detectors from keying on fixed loudness patterns |
-| Background noise augmentation | HQ-MPSD | Mask residual splicing artifacts with realistic noise (15dB SNR) |
-| Forced alignment boundary placement | HQ-MPSD, HAD | Cut at linguistically meaningful points (word midpoints, silence regions) |
+Based on the deep research audit, these are **completely unaddressed in the literature**:
 
-### 8.4 Proposed Implementation for HABLA 2.0
+**1. Zero-Gap Boundary Policy (the adjacency problem)**
+No pipeline specifies behavior when two cloned segments abut with <30ms of bonafide margin. Five candidate strategies — butt-splice at zero-crossing, silence insertion, micro-shift, multi-word TTS regeneration, cluster-external overlap only — are all plausible but **none is attested in any paper or repo**. This is the single largest gap. Defensible thesis contribution on its own.
 
-To create a diverse, robust partial spoof dataset that prevents detectors from overfitting to a single splicing pattern, we propose using **7 techniques in varied proportions**:
+**2. F0 Discontinuity**
+No partial-spoof paper reports |DF0| distribution at splice boundaries. No paper applies F0 smoothing. The toolkit exists (TD-PSOLA, Moulines & Charpentier 1990; HNM, Stylianou 2001) but is undocumented for partial-spoof construction. Publishing DF0 histograms for Qwen/FishGram at MFA word boundaries would be a novel contribution.
+
+**3. Duration Mismatch Absorption**
+No pipeline discriminates between global-shift, silence-compression, and accept-mismatch. Each has different implications for prosody and detection. TSM Subjective Quality Dataset (Roberts 2020) shows subjective MOS falls steeply outside ratio 0.85-1.20, but no anti-spoofing-specific threshold exists.
+
+**4. Spectral Envelope Continuity**
+No pipeline performs LPC-coefficient interpolation, MFCC-trajectory smoothing, or formant matching at joins. Negroni et al. strongly suggests the loudness-only policy leaves a ~6% EER floor for any detector.
+
+**5. Crossfade Duration vs Detection EER**
+LlamaPartialSpoof's 30-80ms range is the de facto anchor but was never ablated against EER. No paper maps overlap length to detection performance. This is a tractable publishable experiment.
+
+**6. Perceptual-vs-Detection Pareto Frontier**
+No paper plots MOS-vs-EER scatter for word-level edits with MFA boundaries and zero-shot voice cloning. Huang et al. established the phenomenon for sentence-level infilling; the word-level case is open.
+
+### 8.5 Proposed Implementation for HABLA 2.0
+
+Seven techniques in varied proportions, informed by the literature:
 
 | # | Technique | Proportion | Overlap | Implementation |
 |---|-----------|-----------|---------|----------------|
-| 1 | Direct cut-paste | 10% | None | Hard concatenation at nearest zero-crossing |
+| 1 | Direct cut-paste | 10% | None | Hard concat at zero-crossing |
 | 2 | OLA Hanning | 20% | Random 32-128ms | Hanning window overlap-add |
-| 3 | Crossfade linear | 15% | Random 30-80ms | Linear fade-out + fade-in |
+| 3 | Crossfade linear | 15% | Random 30-80ms | Linear fade-out/fade-in |
 | 4 | Crossfade cosine | 20% | Random 30-80ms | Raised cosine (Hann) window |
 | 5 | Crossfade half-sine | 15% | Random 30-80ms | Half sine wave fade |
-| 6 | Crossfade logarithmic | 10% | Random 30-80ms | Logarithmic fade curve |
-| 7 | Crossfade inverted parabola | 10% | Random 30-80ms | Quadratic (parabolic) fade curve |
+| 6 | Crossfade logarithmic | 10% | Random 30-80ms | Log fade curve |
+| 7 | Crossfade inverted parabola | 10% | Random 30-80ms | Quadratic fade curve |
 
-**Applied to all techniques:**
+**Applied universally:**
 - Zero-crossing alignment at splice points
 - RMS energy normalization of cloned segment to match bonafide region
-- Random overlap duration per splice (prevents detector from learning fixed window size)
-- Full natural duration of cloned word (no compression/truncation)
+- Random overlap duration per splice (prevents detector learning fixed window)
+- Full natural duration of cloned word (no compression/truncation — per our design decision)
+- Adjacent cloned words: cluster them, apply crossfade only at cluster-bonafide boundaries (per PartialSpoof's margin-based approach)
 
-**Rationale:** LlamaPartialSpoof demonstrated that training with diverse concatenation methods improves detector robustness. By including techniques ranging from naive (cut-paste) to sophisticated (OLA Hanning + spectral normalization), our dataset exercises the full range of attack sophistication levels.
+**Synthesized best-practice procedure** (from deep research, Section D of partial_spoof_inv_1.md):
+1. Cluster adjacent replacements into contiguous runs
+2. Per-cluster duration policy: accept mismatch if ratio in [0.90, 1.10], global-shift if [0.80, 1.25], reject outside
+3. Intra-cluster: concatenate at zero-crossings with no crossfade (words from same TTS run)
+4. Cluster-boundary: cross-correlation best-join within available bonafide margin (a la PartialSpoof)
+5. Loudness match (RMS normalization)
+6. Apply chosen crossfade technique at cluster boundaries
+7. Post-process: random peak normalization (-0.01 to -10 dBFS)
 
-### 8.5 Key Insights from Literature
+### 8.6 Historical Context: Why Splicing Detection is Fundamentally Hard
 
-1. **Artifacts are features, not bugs.** The goal is NOT to make splicing undetectable — it is to create diverse, realistic artifacts that train robust detectors. Even HQ-MPSD with all their smoothing acknowledges artifacts remain.
+(From `partial_spoof_inv_2.md` — comprehensive historical analysis)
 
-2. **Diverse techniques > perfect technique.** LlamaPartialSpoof showed that detectors trained on one splicing method fail on others. Using multiple methods forces generalization.
+The detection problem has inverted in 30 years. Three eras of synthesis produce three eras of forensics:
 
-3. **Linguistic boundaries matter.** Cutting at word midpoints (HQ-MPSD) or silence regions (HAD) produces fewer prosodic artifacts than cutting at arbitrary positions.
+| Era | Synthesis | Detectable Trace | Method | Typical EER |
+|---|---|---|---|---|
+| Pre-2010 | Splice of real recordings | ENF phase, room impulse | Phase analysis, filtering | ~6% (clean) |
+| Concatenative TTS | Unit selection from database | Cepstral/F0/power discontinuity at joins | Join-cost analysis, MFCC variance | Audible seams |
+| Neural TTS (2020+) | End-to-end generation | Statistical artifacts of generative models | Raw-waveform CNN/Transformer, SSL | 0.1-5% lab, 30%+ in-the-wild |
 
-4. **Energy normalization is universal.** Every modern paper normalizes loudness before splicing. Spectral pre-emphasis (HQ-MPSD) goes further but is optional.
+**Key insight:** Every detection regime exploits a signature that the next generation of synthesis eliminates. ENF disappears when recording goes off-mains. Concatenative joins disappear when synthesis goes neural. The current SSL-based detectors will degrade as synthesis models improve.
 
-5. **Window size sweet spot: 30-80ms.** LlamaPartialSpoof and HQ-MPSD converge on this range. Smaller windows leave audible clicks; larger windows over-smooth and change word perception.
+**Generalization crisis:** Muller et al. (Interspeech 2022) showed detectors trained on ASVspoof 2019 degrade by **200-1000% EER** on In-the-Wild audio. The "difference" term (distributional mismatch) dominates over "hardness" (intrinsic difficulty). Models learn dataset artifacts (e.g., "silence shortcut" — length of leading silence correlates with class) rather than synthesis properties.
 
-### 8.6 References
+**Implication for our dataset:** We must create diverse artifacts that force detectors to learn generalizable features, not dataset-specific shortcuts. This reinforces the multi-technique approach.
 
-- Zhang et al., "The PartialSpoof Database and Countermeasures for the Detection of Short Fake Speech Segments Embedded in an Utterance," IEEE/ACM TASLP, Vol. 31, pp. 813-825, 2023. [IEEE](https://ieeexplore.ieee.org/document/10003971/)
-- Cuccovillo et al., "Analyzing the Impact of Splicing Artifacts in Partially Fake Speech Signals," arXiv:2408.13784, 2024. [arXiv](https://arxiv.org/html/2408.13784)
-- Kawa et al., "LlamaPartialSpoof: An LLM-Driven Fake Speech Dataset Simulating Disinformation Generation," arXiv:2409.14743, 2024. [arXiv](https://arxiv.org/html/2409.14743v2)
-- Hao et al., "HQ-MPSD: A Multilingual Artifact-Controlled Benchmark for Partial Deepfake Speech Detection," arXiv:2512.13012, 2025. [arXiv](https://arxiv.org/html/2512.13012)
-- Yi et al., "Half-Truth: A Partially Fake Audio Detection Dataset," arXiv:2104.03617, 2021. [arXiv](https://arxiv.org/html/2104.03617v2)
-- Wu et al., "Manipulated Regions Localization For Partially Deepfake Audio: A Survey," arXiv:2506.14396, 2025. [arXiv](https://arxiv.org/html/2506.14396)
+### 8.7 Key Premise Corrections
+
+Two corrections from the deep research audit:
+
+1. **HAD does NOT use OLA-Hanning.** That attribution belongs to Negroni et al. (2024), who applied OLA-Hanning in their own experimental splicing on ASVspoof data. HAD uses pydub (simple cut/paste).
+
+2. **HQ-MPSD "adaptive pre-emphasis"** is not verified verbatim in the arXiv v1 text. Only "spectral-characteristic alignment" appears. The citation should be softened.
+
+### 8.8 References
+
+**Target pipelines:**
+- Zhang et al., "The PartialSpoof Database and Countermeasures," IEEE/ACM TASLP 31:813-825, 2023. arXiv:2204.05177
+- Luong et al., "LlamaPartialSpoof: An LLM-Driven Fake Speech Dataset," ICASSP 2025. arXiv:2409.14743
+- Yi et al., "Half-Truth: A Partially Fake Audio Detection Dataset," Interspeech 2021. arXiv:2104.03617
+- Li et al., "HQ-MPSD: A Multilingual Artifact-Controlled Benchmark," arXiv:2512.13012, Dec 2025
+
+**Third-party analyses (critical):**
+- Negroni et al., "Analyzing the Impact of Splicing Artifacts in Partially Fake Speech Signals," ASVspoof Workshop 2024. arXiv:2408.13784 (6.16%/7.36% EER with no trained detector)
+- Huang et al., "Detecting the Undetectable: Assessing Efficacy of Spoof Detection Against Seamless Speech Edits," SLT 2024. arXiv:2501.03805 (perceptual-vs-detection asymmetry)
+
+**Generalization and benchmarks:**
+- Muller et al., "Does Audio Deepfake Detection Generalize?" Interspeech 2022 (200-1000% EER degradation in-the-wild)
+- Muller, "Harder or Different? Understanding Generalization of Audio Deepfake Detection," 2024 (difference > hardness)
+- ML-ITW benchmark, 2026 (14 languages, 7 platforms, 28.4 hours)
+
+**Foundations (concatenative synthesis):**
+- Hunt & Black, "Unit Selection in a Concatenative Speech Synthesis System," ICASSP 1996
+- Moulines & Charpentier, "Pitch-synchronous waveform processing techniques," Speech Communication 9(5-6), 1990 (TD-PSOLA)
+- Stylianou, "Applying the harmonic plus noise model in concatenative speech synthesis," IEEE TSAP 9(1), 2001
+- Naylor et al., "Estimation of Glottal Closure Instants (DYPSA)," IEEE TASLP 15(1), 2007
+- Kelly & Gobl, "MFCC window length: 25ms for vowels, 45ms for voiceless fricatives," 2011
+
+**Time-scale modification:**
+- Roberts, "A Time-Scale Modification Dataset with Subjective Quality Labels," IEEE DataPort, 2020. arXiv:2006.00848
+
+**Adjacent datasets:**
+- Cai et al., "LAV-DF / AV-Deepfake1M," DICTA 2022 / ACM MM 2024
+- Zhang & Sim, "Localizing Fake Segments in Speech (Psynd)," ICPR 2022
+- Yi et al., "ADD 2022/2023," ICASSP 2022/2023
 
 ---
 

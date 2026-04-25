@@ -106,7 +106,8 @@ def simulate_retry(bonafide_ts, cloned_ts, tier_count, max_retries=5):
             cloned_words=cloned_ts,
             selected_indices=selected,
             sample_rate=SAMPLE_RATE,
-            crossfade_ms=5.0,
+            crossfade_min_ms=5.0,
+            crossfade_max_ms=5.0,
             max_silence_steal_ms=50.0,
             max_stretch_ratio=1.1,
         )

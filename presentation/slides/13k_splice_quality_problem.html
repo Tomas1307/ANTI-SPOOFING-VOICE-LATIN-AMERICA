@@ -1,0 +1,58 @@
+<section class="slide">
+  <div class="glow" style="width:500px;height:500px;background:var(--red);bottom:-250px;right:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Discovery &mdash; Listening Tests</div>
+    <h2>The real problem: alignment, not crossfade</h2>
+    <p style="margin-bottom:20px; max-width:700px;">After implementing all 7 crossfade techniques and listening to the results, we discovered that <strong style="color:var(--white);">all techniques sounded identical</strong>. The audible problem was not the fade curve &mdash; it was three deeper issues.</p>
+
+    <div class="three" style="gap:20px; margin-bottom:24px;">
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">1. Blind word selection</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">Step 4 picked words <strong>randomly</strong> without checking if they could be cleanly cut from the clone. Words at fluid speech boundaries (no pause between them) sounded terrible when spliced.</div>
+      </div>
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">2. No clone quality gate</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">Bad TTS clones (low speaker similarity) passed through the entire pipeline, producing obviously detectable splices regardless of crossfade quality.</div>
+      </div>
+      <div class="card-sm" style="border-color:rgba(255,77,77,0.3);">
+        <div style="font-size:13px; font-weight:600; color:var(--red); margin-bottom:8px;">3. Duration mismatch</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.5;">A 480ms cloned word replacing a 640ms bonafide word shifted everything after by 160ms. Speech rhythm was completely destroyed.</div>
+      </div>
+    </div>
+
+    <!-- Energy visualization -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:20px;">
+      <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:12px;">Energy at "Dame" &rarr; "unicamente" boundary (0.80s) &mdash; cloned audio</div>
+      <div style="display:flex; align-items:end; gap:2px; height:60px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.70s">
+          <div style="width:100%; background:var(--green); height:47px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.75s">
+          <div style="width:100%; background:var(--green); height:54px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.80s boundary">
+          <div style="width:100%; background:var(--red); height:57px; border-radius:2px 2px 0 0;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.85s">
+          <div style="width:100%; background:var(--amber); height:50px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.90s">
+          <div style="width:100%; background:var(--amber); height:62px; border-radius:2px 2px 0 0; opacity:0.7;"></div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px; flex:1;" title="0.895s MIN">
+          <div style="width:100%; background:var(--amber); height:39px; border-radius:2px 2px 0 0; opacity:0.5;"></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted2); margin-top:4px;">
+        <span>0.70s ("Dame")</span>
+        <span style="color:var(--red);">0.80s &larr; aligner cut</span>
+        <span>0.90s ("unicamente")</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:8px;"><strong style="color:var(--red);">No energy valley.</strong> The TTS generates "Dame unicamente" as continuous speech &mdash; there is no pause to cut at. The aligner places the boundary at 0.80s, but the energy never drops below 0.097. The "u" of "unicamente" ends up inside "Dame".</div>
+    </div>
+
+    <div class="callout danger">
+      <strong style="color:var(--white);">Key insight:</strong> The crossfade technique (Hann, cosine, linear, etc.) only smooths the last 15-60ms of the junction. But if the <em>word itself</em> is cut wrong or doesn't fit the time slot, no crossfade can fix it. The problem is upstream of the crossfade.
+    </div>
+  </div>
+</section>

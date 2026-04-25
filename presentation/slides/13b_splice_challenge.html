@@ -1,0 +1,71 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof Pipeline</div>
+    <h2>The splice boundary challenge</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Replacing a word is not as simple as cutting and pasting waveform samples. The junction between bonafide and cloned audio creates measurable artifacts that both humans and detectors can identify.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:24px;">
+      <!-- Left: The problem -->
+      <div>
+        <h3 style="margin-bottom:14px;">What goes wrong at the boundary</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Amplitude</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Energy discontinuity</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">The bonafide and cloned segments have different RMS levels. A sudden jump in loudness at the splice point creates an audible "seam."</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Phase</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Click artifacts</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">If the waveform is cut at non-zero amplitude, the instantaneous jump produces a broadband click. Solution: snap cuts to zero-crossings.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Spectral</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">Formant mismatch</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">The TTS model produces slightly different spectral envelopes than the original speaker. The formant trajectory is discontinuous at the join.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(255,77,77,0.2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <span class="tag red" style="font-size:9px;">Prosody</span>
+              <span style="font-size:13px; font-weight:500; color:var(--white);">F0 discontinuity</span>
+            </div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Fundamental frequency (pitch) trajectories differ between bonafide and clone. An abrupt F0 jump is perceptually unnatural, even if amplitude is matched.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Our mitigations -->
+      <div>
+        <h3 style="margin-bottom:14px;">Our mitigation strategy</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">Zero-crossing alignment</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Snap all 4 splice boundaries (bonafide start/end, cloned start/end) to the nearest zero-crossing within +/-5ms. Eliminates click artifacts.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">RMS energy normalization</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Scale the cloned segment's amplitude to match the bonafide region's RMS level. Removes the loudness seam.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">7 crossfade techniques</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Randomly select a fade curve and overlap duration (30-80ms) per splice. Prevents detectors from learning a fixed crossfade fingerprint.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--green); margin-bottom:4px;">Gap-limited margins</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Crossfade overlap is clamped to the available silence between adjacent words. The cloned word content is <em>never</em> truncated by the fade.</div>
+          </div>
+        </div>
+
+        <div class="callout warn" style="margin-top:14px;">
+          <strong style="color:var(--white);">Key finding (Negroni et al., 2024):</strong> Even with optimal crossfading, purely spectral analysis achieves 6.16% EER on PartialSpoof with zero trained parameters. Artifacts persist &mdash; the goal is diversity, not invisibility.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

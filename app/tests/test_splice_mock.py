@@ -117,7 +117,8 @@ def test_basic_w1_splice():
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -180,7 +181,8 @@ def test_w2_non_adjacent():
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -241,7 +243,8 @@ def test_mismatched_word_count():
         cloned_words=cloned_ts,
         selected_indices=selected_w1,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -259,7 +262,8 @@ def test_mismatched_word_count():
         cloned_words=cloned_ts,
         selected_indices=selected_w2,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -273,7 +277,8 @@ def test_mismatched_word_count():
         cloned_words=cloned_ts,
         selected_indices=selected_w3,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -325,7 +330,8 @@ def test_text_matching_with_bad_clone():
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -381,7 +387,8 @@ def test_text_matching_with_good_clone():
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )
@@ -434,7 +441,8 @@ def test_partial_match():
         cloned_words=cloned_ts,
         selected_indices=selected,
         sample_rate=SAMPLE_RATE,
-        crossfade_ms=5.0,
+        crossfade_min_ms=5.0,
+        crossfade_max_ms=5.0,
         max_silence_steal_ms=50.0,
         max_stretch_ratio=1.1,
     )

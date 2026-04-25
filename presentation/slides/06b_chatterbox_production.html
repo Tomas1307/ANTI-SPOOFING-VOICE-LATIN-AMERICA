@@ -1,0 +1,70 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Pipeline 06 &mdash; Chatterbox Production Run</div>
+    <h2>Chatterbox (Resemble.ai) <span class="tag amber" style="font-size:12px; vertical-align:middle;">IN PROGRESS</span></h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers on GPU 2. Chatterbox uses a GPT-style autoregressive decoder with classifier-free guidance (cfg=0.5) and a watermark removal step. Significantly slower than other pipelines due to high RTF.</p>
+
+    <div class="four" style="margin-bottom:32px;">
+      <div class="stat-card">
+        <div class="num" style="color:var(--amber);">14,818</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">of 35,927 target</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">41%</div>
+        <div class="sub">Progress</div>
+        <div class="detail">Started April 12</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">31-45x</div>
+        <div class="sub">RTF range</div>
+        <div class="detail">Slowest pipeline</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">~May 13</div>
+        <div class="sub">ETA</div>
+        <div class="detail">~18 days remaining</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="font-size:12px; color:var(--muted);">Production progress</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber);">14,818 / 35,927</span>
+      </div>
+      <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
+        <div style="width:41%; height:100%; background:linear-gradient(90deg, var(--amber), #e89520); border-radius:6px;"></div>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
+        <span>GPU 2 &mdash; NVIDIA A40</span>
+        <span>Current speaker: com_07049 (93/1000)</span>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <h3 style="margin-bottom:14px;">Pipeline characteristics</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Architecture</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">GPT-style autoregressive TTS with CFG (classifier-free guidance). Generates EnCodec tokens then decodes via Vocos vocoder.</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Voice cloning</div>
+            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Zero-shot via 15s reference audio + speaker embedding. No fine-tuning required. Watermark removal enabled.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:14px;">Observations so far</h3>
+        <div class="callout warn">
+          <strong style="color:var(--amber);">RTF 31-45x is prohibitive.</strong> A 5-second utterance takes 150-225 seconds to generate. At this rate, the full 35,927 samples require ~31 days of continuous GPU time. Chatterbox is the slowest of all 5 pipelines by a wide margin (FishGram: 2-3x, Qwen: 3-5x, OpenVoice: 0.07-0.10x).
+        </div>
+        <div class="callout hi" style="margin-top:10px;">
+          <strong style="color:var(--white);">Quality expectations:</strong> Resemble.ai reports high naturalness in English. Spanish quality is unvalidated until the run completes. Early samples show reasonable intelligibility but speaker similarity is TBD.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

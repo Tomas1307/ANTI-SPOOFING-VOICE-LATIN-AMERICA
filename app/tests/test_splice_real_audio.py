@@ -93,7 +93,8 @@ def main():
                 cloned_words=entry["cloned_words"],
                 selected_indices=indices,
                 sample_rate=SAMPLE_RATE,
-                crossfade_ms=20.0,
+                crossfade_min_ms=20.0,
+                crossfade_max_ms=20.0,
                 max_silence_steal_ms=50.0,
                 max_stretch_ratio=1.1,
             )

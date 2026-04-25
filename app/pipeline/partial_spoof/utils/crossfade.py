@@ -1,51 +1,84 @@
 """
 Crossfade utility for splice boundary smoothing.
 
-Applies a raised-cosine (Hann) crossfade at splice boundaries for
-smoother transitions than a linear fade. Also provides zero-crossing
-snapping and energy normalization to minimize audible artifacts.
+Implements seven splice boundary methods (direct cut-paste plus six distinct
+fade-curve variants) used to blend bonafide and cloned word segments. Provides
+per-splice random method selection weighted by SPLICE_METHOD_WEIGHTS, along with
+zero-crossing snap and RMS energy normalization helpers.
+
+Fade-curve summary for t in [0, 1] (fade_in shown; fade_out = fade_in(1-t)):
+    LINEAR     : t                          equal-gain, straight diagonal
+    OLA_HANNING: 0.5*(1 - cos(pi*t))       equal-gain, smooth S-curve
+    COSINE     : sin(pi*t/2)               equal-power, quarter-sine concave
+    HALF_SINE  : sqrt(t)                   equal-power, square-root law
+    LOGARITHMIC: log(1 + 9*t) / log(10)   aggressive initial rise, plateau
+    PARABOLA   : 1 - (1-t)^2              equal-gain, concave inverted parabola
 """
 import numpy as np
+
+from app.pipeline.partial_spoof.utils.splice_method import SpliceMethod, SPLICE_METHOD_WEIGHTS
+
+
+def draw_splice_method(rng: np.random.Generator) -> SpliceMethod:
+    """Draw a splice method randomly according to SPLICE_METHOD_WEIGHTS.
+
+    Args:
+        rng: NumPy random generator (caller is responsible for seeding).
+
+    Returns:
+        A SpliceMethod variant sampled from the weight distribution.
+    """
+    methods = list(SPLICE_METHOD_WEIGHTS.keys())
+    weights = np.array([SPLICE_METHOD_WEIGHTS[m] for m in methods], dtype=np.float64)
+    weights /= weights.sum()
+    idx = rng.choice(len(methods), p=weights)
+    return methods[idx]
 
 
 def apply_crossfade(
     segment_before: np.ndarray,
     segment_after: np.ndarray,
     crossfade_samples: int,
+    method: SpliceMethod = SpliceMethod.OLA_HANNING,
 ) -> np.ndarray:
-    """Apply raised-cosine crossfade between two adjacent audio segments.
+    """Blend two adjacent audio segments at their boundary using the chosen method.
 
-    Uses a Hann window shape (raised cosine) instead of linear fades
-    for a smoother perceptual transition at splice boundaries.
+    For all methods except CUT_PASTE, the last crossfade_samples of segment_before
+    and the first crossfade_samples of segment_after are blended according to the
+    fade curve. The output length is len(segment_before) + len(segment_after)
+    minus crossfade_samples (the overlap region is merged, not doubled).
+
+    For CUT_PASTE (or crossfade_samples <= 0), the segments are concatenated
+    with no blending.
 
     Args:
-        segment_before: Audio samples preceding the splice point (1-D float array).
-        segment_after: Audio samples following the splice point (1-D float array).
-        crossfade_samples: Number of samples for the crossfade overlap region.
+        segment_before: Audio samples preceding the splice point (1-D float32).
+        segment_after: Audio samples following the splice point (1-D float32).
+        crossfade_samples: Number of samples in the overlap/blend region.
+        method: Fade-curve variant to apply.
 
     Returns:
-        Concatenated audio with crossfade applied at the junction.
+        Blended audio array.
 
     Raises:
         ValueError: If crossfade_samples exceeds either segment length.
     """
-    if crossfade_samples <= 0:
+    if method is SpliceMethod.CUT_PASTE or crossfade_samples <= 0:
         return np.concatenate([segment_before, segment_after])
 
     if crossfade_samples > len(segment_before):
         raise ValueError(
-            f"Crossfade samples ({crossfade_samples}) exceeds "
+            f"crossfade_samples ({crossfade_samples}) exceeds "
             f"segment_before length ({len(segment_before)})"
         )
     if crossfade_samples > len(segment_after):
         raise ValueError(
-            f"Crossfade samples ({crossfade_samples}) exceeds "
+            f"crossfade_samples ({crossfade_samples}) exceeds "
             f"segment_after length ({len(segment_after)})"
         )
 
-    t = np.linspace(0, np.pi, crossfade_samples, dtype=np.float32)
-    fade_out = (0.5 * (1.0 + np.cos(t))).astype(np.float32)
-    fade_in = (0.5 * (1.0 - np.cos(t))).astype(np.float32)
+    t = np.linspace(0.0, 1.0, crossfade_samples, dtype=np.float32)
+    fade_in, fade_out = _compute_fade_curves(t, method)
 
     overlap = (
         segment_before[-crossfade_samples:] * fade_out
@@ -57,6 +90,50 @@ def apply_crossfade(
         overlap,
         segment_after[crossfade_samples:],
     ])
+
+
+def _compute_fade_curves(
+    t: np.ndarray,
+    method: SpliceMethod,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Compute fade-in and fade-out envelopes for the given method.
+
+    Args:
+        t: Linearly spaced values in [0, 1] for the crossfade region.
+        method: Fade-curve variant.
+
+    Returns:
+        Tuple of (fade_in, fade_out) arrays, each of shape (len(t),).
+        At t=0: fade_in=0, fade_out=1. At t=1: fade_in=1, fade_out=0.
+    """
+    if method is SpliceMethod.LINEAR:
+        fade_in = t
+        fade_out = 1.0 - t
+
+    elif method is SpliceMethod.OLA_HANNING:
+        fade_in = (0.5 * (1.0 - np.cos(np.pi * t))).astype(np.float32)
+        fade_out = (0.5 * (1.0 + np.cos(np.pi * t))).astype(np.float32)
+
+    elif method is SpliceMethod.COSINE:
+        fade_in = np.sin(0.5 * np.pi * t).astype(np.float32)
+        fade_out = np.cos(0.5 * np.pi * t).astype(np.float32)
+
+    elif method is SpliceMethod.HALF_SINE:
+        fade_in = np.sqrt(t).astype(np.float32)
+        fade_out = np.sqrt(1.0 - t).astype(np.float32)
+
+    elif method is SpliceMethod.LOGARITHMIC:
+        fade_in = (np.log1p(9.0 * t) / np.log(10.0)).astype(np.float32)
+        fade_out = (np.log1p(9.0 * (1.0 - t)) / np.log(10.0)).astype(np.float32)
+
+    elif method is SpliceMethod.PARABOLA:
+        fade_in = (1.0 - (1.0 - t) ** 2).astype(np.float32)
+        fade_out = ((1.0 - t) ** 2).astype(np.float32)
+
+    else:
+        raise ValueError(f"Unhandled SpliceMethod: {method!r}")
+
+    return fade_in, fade_out
 
 
 def find_nearest_zero_crossing(
@@ -102,14 +179,13 @@ def normalize_energy(
 ) -> np.ndarray:
     """Normalize the energy of a cloned segment to match the bonafide region.
 
-    Computes RMS energy of the bonafide region around the splice point
-    and scales the cloned segment to match. Uses a margin at the edges
-    of the bonafide region to capture the local energy level.
+    Computes RMS energy of the bonafide region and scales the cloned segment
+    to match, preventing loudness discontinuities at splice boundaries.
 
     Args:
         cloned_segment: The cloned word audio to be normalized.
         bonafide_region: The bonafide audio region being replaced (same word).
-        margin_samples: Extra samples from bonafide context for energy estimation.
+        margin_samples: Unused; kept for API compatibility.
 
     Returns:
         Energy-normalized cloned segment.

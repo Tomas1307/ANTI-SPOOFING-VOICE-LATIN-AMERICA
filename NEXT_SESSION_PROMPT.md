@@ -1,41 +1,88 @@
-We're continuing work on the partial spoof pipeline for HABLA 2.0 (Latin American Spanish anti-spoofing thesis). Last session we:
+# Next Session: Validate Partial Spoof Pipeline v2
 
-1. **Validated partial spoof end-to-end** on ml-server03 (7/7 passed, NISQA=4.72, SIM=0.789)
-2. **Fixed the splice engine** with text-matching (not positional), Spanish accent normalization (NFKD), smart retry with regeneration loop
-3. **Found a crossfade bug**: the 20ms crossfade was EATING 40ms from the cloned word, truncating it ("nicament" instead of "unicamente")
-4. **Researched SOTA splicing**: 6 papers (PartialSpoof, HAD, LlamaPartialSpoof, HQ-MPSD, Analyzing Artifacts, survey). Details in `investigation.md` Section 8.
+## Major Session Discoveries (April 25, 2026)
 
-**What needs to be done now:**
+### The Real Problem Was Not Crossfade
+We implemented 7 crossfade techniques (cut-paste, OLA Hanning, linear, cosine, half-sine, log, parabola) and discovered through listening tests that **all 7 sounded identical**. The audible problem was NOT the fade curve — it was:
 
-A. **Implement 7 splicing techniques** in `app/pipeline/partial_spoof/utils/crossfade.py` and `splice_engine.py`:
-   - Direct cut-paste (10%), OLA Hanning (20%), Linear fade (15%), Cosine fade (20%), Half-sine (15%), Log fade (10%), Inverted parabola (10%)
-   - Random overlap 30-80ms per splice, zero-crossing alignment, RMS energy normalization
-   - The cloned word must be inserted at FULL natural duration (no compression/truncation)
-   - The crossfade margin must come from OUTSIDE the word boundaries (gap between adjacent cloned words), NOT eat the word itself
+1. **Blind word selection** — Step 4 picked words randomly. Words at fluid speech boundaries (where TTS generates continuous speech with no pause) sounded terrible when spliced.
+2. **No clone quality gate** — Bad TTS clones went through the full pipeline.
+3. **Duration mismatch** — Inserting a 480ms cloned word into a 640ms slot shifted everything by 160ms, destroying speech rhythm.
 
-B. **Fix the margin issue**: when adjacent cloned words have 0ms gap, the crossfade cannot grab margin without eating into the neighboring word. Need a fallback strategy.
+### Three Fixes Implemented
 
-C. **Test locally** using `app/tests/test_splice_real_audio.py` which uses real bonafide+cloned audio from `data/attacks/qwen_partial_spoof/`
+**Fix 1: Valley-Score Word Selection** (Step 4 rewrite)
+- For each word boundary, compute `score = min_rms / avg_rms` in ±100ms window of 5ms frames
+- Lower score = deeper energy valley = cleaner cut
+- Combined score = max(left, right) — both boundaries must be clean
+- Only select words below VALLEY_SCORE_THRESHOLD (0.65)
+- Filter: duration >= 200ms, stretch ratio within [0.75, 1.25]
+- File: `app/pipeline/partial_spoof/utils/valley_scorer.py` (NEW)
+- File: `app/pipeline/partial_spoof/steps/step_04_select_words.py` (REWRITTEN)
 
-D. **Check production runs**: Chatterbox and OuteTTS should be done or close to done on ml-server03 GPU 2.
+**Fix 2: Clone Similarity Gate** (between Steps 2 and 3)
+- ECAPA-TDNN cosine similarity between bonafide and clone
+- Reject clones with SIM < 0.60 before alignment/splicing
+- Saves compute on bad TTS outputs
+- File: `app/pipeline/partial_spoof/pipeline_facade.py` (method `_filter_clones_by_similarity`)
 
-E. **Deep research results**: I may have results from a Claude deep research query about splicing techniques. If so, incorporate findings.
+**Fix 3: Duration-Preserving Splice** (splice_engine.py rewrite)
+- Time-stretch cloned word to fit exact bonafide slot duration
+- Overwrite in place: `result[b_start:b_end] = fitted` (total length never changes)
+- Crossfade happens INSIDE the slot (first/last cf samples blend bonafide↔cloned)
+- The 7 SpliceMethod techniques still control the fade curve at boundaries
+- File: `app/pipeline/partial_spoof/utils/splice_engine.py` (REWRITTEN)
 
-Key files:
-- `app/pipeline/partial_spoof/utils/splice_engine.py` — core splicing logic
-- `app/pipeline/partial_spoof/utils/crossfade.py` — fade functions
-- `app/pipeline/partial_spoof/settings.py` — CROSSFADE_MS parameter
-- `investigation.md` Section 8 — literature review with all 7 techniques
-- `app/tests/test_splice_real_audio.py` — local test with real audio
-- `splice_debug.html` — waveform visualization tool
+## What To Do Next
 
-Production status:
-- FishGram: DONE (34,197 passed, 95.2%)
-- Qwen3-TTS: DONE (31,568 passed, 87.9%)
-- OpenVoice: DONE (29,626 passed, 83.4%)
-- Chatterbox: RUNNING on GPU 2 (~40hrs)
-- OuteTTS: RUNNING on GPU 2 (~12-15 days, slow RTF)
-- CosyVoice: DROPPED (no Spanish)
-- Partial Spoof: TESTING — splice algorithm being improved
+### 1. Validate on ml-server03 (5 speakers, 10+ audios each)
 
-Presentation: component-based in `presentation/slides/`, run `python presentation/build.py` to assemble.
+```bash
+source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
+export CUDA_VISIBLE_DEVICES=1
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+git pull
+python -m app.pipeline.partial_spoof.pipeline_facade
+```
+
+Validation speakers: `["arf_00295", "arf_00610", "arf_01523", "arm_00412", "arm_00780"]`
+
+Check:
+- All spliced WAVs have identical duration to bonafide source
+- `word_selection_metadata.json` contains `valley_score` per word
+- `clone_similarity_filter.json` exists with per-sample SIM scores
+- Listen to 10+ samples — rhythm should sound natural
+- Compare metrics against baseline: WER=3.9%, NISQA=4.72, SIM=0.789
+
+### 2. Check Production Runs
+- Chatterbox: was running on GPU 2 (~April 22)
+- OuteTTS: was running on GPU 2 (~April 22)
+
+### 3. Run Partial Spoof Production (after validation passes)
+All 1,567 speakers with each TTS system that completed production.
+
+## Files Changed This Session
+
+| File | Change |
+|------|--------|
+| `utils/valley_scorer.py` | NEW: ValleyScorer class |
+| `utils/splice_method.py` | NEW: SpliceMethod enum + weights |
+| `utils/crossfade.py` | 7 fade curves + _compute_fade_curves |
+| `utils/splice_engine.py` | REWRITTEN: duration-preserving overwrite |
+| `steps/step_04_select_words.py` | REWRITTEN: valley-score selection |
+| `steps/step_05_splice_audio.py` | Updated splice_words call + spoof_duration_ratio |
+| `pipeline_facade.py` | Added _filter_clones_by_similarity gate |
+| `settings.py` | 7 new fields (valley, similarity, stretch) + 5 validation speakers |
+| `schemas/valley_score.py` | NEW: Pydantic schema |
+| `schemas/similarity_filter_result.py` | NEW: Pydantic schema |
+| `schemas/spliced_word_info.py` | Extended with splice_method, effective_crossfade_ms |
+| `presentation/slides/13a-13l` | 12 new slides (visual, challenge, 7 techniques, summary, problem, solution) |
+
+## Presentation Status
+34 total slides: 20 original + 06b (Chatterbox) + 06c (OuteTTS) + 13a–13l (12 partial spoof slides).
+Run `python presentation/build.py` to rebuild.
+
+## Thesis Wiki
+Complete 17-page wiki at `docs/thesis-wiki/`. See `docs/thesis-wiki/index.md` for all pages.
+Covers: state-of-art (5), methodology (5), experiments (3), decisions (1), schema/index/log (3).
+Maintained per CLAUDE.md protocol — update whenever research decisions or results change.

@@ -1,0 +1,7 @@
+Oracion: Dame únicamente el dato más relevante.
+Palabra elegida: "el" (idx 2, valley score 0.165)
+Clonado cortado en valles: 1.280s - 1.485s (205ms)
+Bonafide slot: 1.68s - 1.92s (240ms)
+Stretch: 0.854x
+Crossfade: 15ms OLA Hanning
+Duracion output: 5.89s (= bonafide)

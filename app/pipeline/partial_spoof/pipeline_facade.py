@@ -13,6 +13,8 @@ Includes a two-level retry system:
 import json
 from pathlib import Path
 
+import librosa
+import numpy as np
 from loguru import logger
 
 from app.pipeline.partial_spoof.settings import settings
@@ -171,6 +173,17 @@ class PartialSpoofPipeline:
                 f"avg RTF={result_2.avg_rtf:.3f}"
             )
 
+            # --- Clone Similarity Gate (between Steps 2 and 3) ---
+            if settings.ENABLE_CLONE_SIMILARITY_GATE:
+                rejected_count = self._filter_clones_by_similarity(
+                    round_label=round_label,
+                )
+                if rejected_count > 0:
+                    logger.info(
+                        f"{round_label}Similarity gate: {rejected_count} clones rejected "
+                        f"(threshold={settings.MIN_CLONE_SIMILARITY})"
+                    )
+
             # --- Step 3: Forced alignment ---
             if self.config.run_step_3:
                 logger.info("-" * 40)
@@ -264,6 +277,89 @@ class PartialSpoofPipeline:
         regen_path = settings.OUTPUT_DIR / f"regen_keys_round_{round_num}.json"
         with open(regen_path, "w", encoding="utf-8") as f:
             json.dump(sample_keys, f)
+
+    def _filter_clones_by_similarity(self, round_label: str = "") -> int:
+        """Filter cloned audio by ECAPA-TDNN speaker similarity.
+
+        Loads each clone and its bonafide reference, computes cosine
+        similarity, and removes entries below MIN_CLONE_SIMILARITY from
+        the cloned_generation_metadata.json. Saves a filter log for
+        traceability.
+
+        Args:
+            round_label: Prefix for log messages (e.g. "[Regen 1] ").
+
+        Returns:
+            Number of clones rejected.
+        """
+        from app.utils.ecapa_similarity import EcapaSimilarity
+
+        gen_meta_path = settings.OUTPUT_DIR / "cloned_generation_metadata.json"
+        transcripts_path = settings.OUTPUT_DIR / "bonafide_transcripts.json"
+
+        if not gen_meta_path.exists() or not transcripts_path.exists():
+            logger.warning(f"{round_label}Similarity gate: metadata not found, skipping.")
+            return 0
+
+        with open(gen_meta_path, "r", encoding="utf-8") as f:
+            gen_meta = json.load(f)
+        with open(transcripts_path, "r", encoding="utf-8") as f:
+            transcripts = json.load(f)
+
+        ecapa = EcapaSimilarity()
+        ecapa.load(device=settings.DEVICE)
+
+        ref_embeddings = {}
+        filter_log = {}
+        rejected_keys = []
+        similarities = []
+
+        for sample_key, entry in list(gen_meta.items()):
+            speaker_id = entry.get("speaker_id", sample_key.split("_")[0])
+
+            if speaker_id not in ref_embeddings:
+                bf_path = None
+                if sample_key in transcripts:
+                    bf_path = transcripts[sample_key].get("audio_path")
+                if bf_path and Path(bf_path).exists():
+                    ref_embeddings[speaker_id] = ecapa.extract_embedding(bf_path)
+                else:
+                    continue
+
+            cloned_path = entry.get("audio_path", "")
+            if not Path(cloned_path).exists():
+                continue
+
+            sim = ecapa.compute_similarity_from_embedding(
+                ref_embeddings[speaker_id], cloned_path
+            )
+            similarities.append(sim)
+
+            passed = sim >= settings.MIN_CLONE_SIMILARITY
+            filter_log[sample_key] = {
+                "similarity": round(sim, 4),
+                "passed": passed,
+                "speaker_id": speaker_id,
+            }
+
+            if not passed:
+                rejected_keys.append(sample_key)
+                del gen_meta[sample_key]
+
+        with open(gen_meta_path, "w", encoding="utf-8") as f:
+            json.dump(gen_meta, f, ensure_ascii=False, indent=2)
+
+        filter_path = settings.OUTPUT_DIR / "clone_similarity_filter.json"
+        with open(filter_path, "w", encoding="utf-8") as f:
+            json.dump(filter_log, f, ensure_ascii=False, indent=2)
+
+        avg_sim = float(np.mean(similarities)) if similarities else 0.0
+        logger.info(
+            f"{round_label}Similarity gate: {len(similarities)} evaluated, "
+            f"{len(rejected_keys)} rejected, avg SIM={avg_sim:.3f}"
+        )
+
+        return len(rejected_keys)
 
     def _get_regen_keys(self, round_num: int) -> list | None:
         """Load sample keys that need regeneration for this round.

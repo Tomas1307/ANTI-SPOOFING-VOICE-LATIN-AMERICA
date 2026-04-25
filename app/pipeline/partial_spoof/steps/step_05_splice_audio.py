@@ -155,9 +155,11 @@ class AudioSplicer:
                             cloned_words=alignment["cloned_words"],
                             selected_indices=candidate_indices,
                             sample_rate=settings.SAMPLE_RATE,
-                            crossfade_ms=settings.CROSSFADE_MS,
+                            crossfade_min_ms=settings.CROSSFADE_MIN_MS,
+                            crossfade_max_ms=settings.CROSSFADE_MAX_MS,
                             max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
                             max_stretch_ratio=settings.MAX_DURATION_STRETCH_RATIO,
+                            splice_seed=settings.RANDOM_SEED + hash(splice_key),
                         )
                     except Exception as exc:
                         retry_history.append({
@@ -205,7 +207,7 @@ class AudioSplicer:
 
                     total_duration = len(best_result) / settings.SAMPLE_RATE
                     spoofed_duration = sum(
-                        d["cloned_end_s"] - d["cloned_start_s"]
+                        d["bonafide_end_s"] - d["bonafide_start_s"]
                         for d in best_details
                     )
                     spoof_ratio = spoofed_duration / total_duration if total_duration > 0 else 0.0
