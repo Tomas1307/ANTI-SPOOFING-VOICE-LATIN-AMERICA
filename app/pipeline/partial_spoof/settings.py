@@ -62,8 +62,8 @@ class PartialSpoofSettings(BaseModel):
         description="Validation mode: True=3 speakers, False=all 162 speakers",
     )
     VALIDATION_SPEAKERS: List[str] = Field(
-        default=["arf_00295", "arf_00610", "arf_01523", "arm_00412", "arm_00780"],
-        description="Speakers for validation mode (3 Argentina Female + 2 Argentina Male)",
+        default=["arf_00295", "clm_00610", "cof_00610", "mxm_00001", "pef_00610"],
+        description="Speakers for validation mode (5 countries, mixed gender: Argentina F, Chile M, Colombia F, Mexico M, Peru F)",
     )
 
     # === Attack System Selection ===
