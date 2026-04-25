@@ -322,7 +322,7 @@ class PartialSpoofPipeline:
                 if sample_key in transcripts:
                     bf_path = transcripts[sample_key].get("audio_path")
                 if bf_path and Path(bf_path).exists():
-                    ref_embeddings[speaker_id] = ecapa.extract_embedding(bf_path)
+                    ref_embeddings[speaker_id] = ecapa.extract_embedding(Path(bf_path))
                 else:
                     continue
 
@@ -331,7 +331,7 @@ class PartialSpoofPipeline:
                 continue
 
             sim = ecapa.compute_similarity_from_embedding(
-                ref_embeddings[speaker_id], cloned_path
+                ref_embeddings[speaker_id], Path(cloned_path)
             )
             similarities.append(sim)
 
