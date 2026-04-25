@@ -168,6 +168,7 @@ class WordSelector:
                     "n_replaced": n_replace,
                     "selected_words": selected_words,
                     "selected_indices": selected_indices,
+                    "eligible_indices": [s.word_index for s in eligible],
                 })
 
                 tier_counts[tier] += 1

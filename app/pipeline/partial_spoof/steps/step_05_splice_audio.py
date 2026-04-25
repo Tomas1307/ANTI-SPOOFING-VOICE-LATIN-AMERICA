@@ -136,6 +136,7 @@ class AudioSplicer:
                             n_new=remaining_needed,
                             exclude=tried_indices,
                             seed=settings.RANDOM_SEED + hash(splice_key) + attempt,
+                            allowed_indices=sel.get("eligible_indices"),
                         )
                         if new_picks is None:
                             retry_history.append({
@@ -284,12 +285,14 @@ class AudioSplicer:
         n_new: int,
         exclude: set,
         seed: int,
+        allowed_indices: list | None = None,
     ) -> list | None:
         """Pick replacement indices for failed words, keeping confirmed ones.
 
         Selects n_new new indices that are non-adjacent to each other
         and to the already confirmed indices. Excludes previously tried
-        indices to avoid repeating failures.
+        indices to avoid repeating failures. Constrained to allowed_indices
+        (valley-score eligible words from Step 4) when provided.
 
         Args:
             total_words: Total number of words in the utterance.
@@ -297,6 +300,10 @@ class AudioSplicer:
             n_new: Number of new indices needed.
             exclude: Set of indices already tried (to avoid repeats).
             seed: Random seed for selection.
+            allowed_indices: Optional whitelist of eligible word indices from
+                Step 4 valley scoring. When provided, only these indices are
+                considered as candidates (prevents retrying words with bad
+                stretch ratios or valley scores that Step 4 already rejected).
 
         Returns:
             List of new indices to try, or None if no valid picks remain.
@@ -309,7 +316,8 @@ class AudioSplicer:
             blocked.add(idx)
             blocked.add(idx + 1)
 
-        available = [i for i in range(total_words) if i not in blocked]
+        candidate_pool = allowed_indices if allowed_indices is not None else list(range(total_words))
+        available = [i for i in candidate_pool if i not in blocked]
 
         if len(available) < n_new:
             return None
