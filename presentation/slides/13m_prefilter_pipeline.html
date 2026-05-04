@@ -1,0 +1,133 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Partial Spoof Pipeline &mdash; Quality Filters</div>
+    <h2>Two-gate pre-filter before splicing</h2>
+    <p style="margin-bottom:28px; max-width:700px;">Before any audio is cut and pasted, two independent filters ensure only high-fidelity, speaker-faithful clones of words with clean acoustic boundaries are accepted.</p>
+
+    <!-- Pipeline flow -->
+    <div style="display:flex; align-items:center; gap:0; margin-bottom:32px; overflow-x:auto;">
+
+      <!-- Step 1 -->
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 1</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Transcribe</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Parakeet TDT</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- Step 2 -->
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 2</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Clone</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Qwen3-TTS</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- GATE 1 -->
+      <div style="background:rgba(245,166,35,0.08); border:1px solid rgba(245,166,35,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:110px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--amber); margin-bottom:4px;">GATE 1</div>
+        <div style="font-size:12px; font-weight:700; color:var(--amber);">SIM &ge; 0.60</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">ECAPA-TDNN</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--amber); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">FILTER</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- Step 3 -->
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 3</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Align</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">MMS forced</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- Step 4 / GATE 2 -->
+      <div style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:110px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--green); margin-bottom:4px;">GATE 2</div>
+        <div style="font-size:12px; font-weight:700; color:var(--green);">score &le; 0.65</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Valley score</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">FILTER</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- Step 5 -->
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 5</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Splice</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">7 techniques</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <!-- Step 6 -->
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 6</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Validate</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">WER / NISQA / SIM</div>
+      </div>
+
+    </div>
+
+    <!-- Gate details -->
+    <div class="two" style="gap:28px;">
+
+      <!-- Gate 1: ECAPA -->
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+          <div style="background:rgba(245,166,35,0.15); border:1px solid rgba(245,166,35,0.4); border-radius:4px; padding:2px 8px; font-size:10px; font-weight:700; color:var(--amber);">GATE 1 — Clone Similarity</div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(245,166,35,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Method</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">ECAPA-TDNN (192-d embedding) cosine similarity between the bonafide reference speaker and the generated TTS clone. Applied <strong style="color:var(--white);">before alignment and splicing</strong> to avoid wasting compute on bad clones.</div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(245,166,35,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Threshold &amp; Rejection Rates</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:4px;">
+            <div style="text-align:center; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:8px;">
+              <div style="font-size:9px; color:var(--muted2); margin-bottom:2px;">FishGram</div>
+              <div style="font-size:16px; font-weight:700; color:var(--amber);">0.602</div>
+              <div style="font-size:9px; color:var(--muted2);">avg SIM</div>
+            </div>
+            <div style="text-align:center; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:8px;">
+              <div style="font-size:9px; color:var(--muted2); margin-bottom:2px;">Qwen3-TTS</div>
+              <div style="font-size:16px; font-weight:700; color:var(--green);">0.720</div>
+              <div style="font-size:9px; color:var(--muted2);">avg SIM</div>
+            </div>
+            <div style="text-align:center; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:8px;">
+              <div style="font-size:9px; color:var(--muted2); margin-bottom:2px;">OpenVoice</div>
+              <div style="font-size:16px; font-weight:700; color:var(--red);">0.394</div>
+              <div style="font-size:9px; color:var(--muted2);">avg SIM</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:10px;">
+          <span style="color:var(--muted2);">sim</span> <span style="color:var(--white);">=</span> <span style="color:var(--green);">cosine</span><span style="color:var(--white);">(emb_bonafide, emb_clone)</span><br>
+          <span style="color:var(--amber);">if</span> <span style="color:var(--white);">sim &lt; 0.60: </span><span style="color:var(--red);">reject</span>
+        </div>
+      </div>
+
+      <!-- Gate 2: Valley Score -->
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+          <div style="background:rgba(62,255,139,0.1); border:1px solid rgba(62,255,139,0.4); border-radius:4px; padding:2px 8px; font-size:10px; font-weight:700; color:var(--green);">GATE 2 — Valley Score Word Selection</div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Method</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">For each word boundary, measure how deep the energy valley is. Only words at <strong style="color:var(--white);">naturally quiet boundaries</strong> are eligible for replacement. This prevents splicing at fluid speech points where no natural cut exists.</div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--white);">score = min_rms / avg_rms</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">Computed in 5ms frames within &plusmn;100ms of the boundary. <strong style="color:var(--white);">0.0</strong> = perfect silence. <strong style="color:var(--white);">1.0</strong> = no valley. <strong style="color:var(--amber);">Threshold: 0.65</strong> — words above are ineligible.</div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Additional Eligibility Constraints</div>
+          <div style="display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--muted); font-family:'JetBrains Mono',monospace;">
+            <div><span style="color:var(--white);">duration</span> &ge; <span style="color:var(--green);">200ms</span> &nbsp;&mdash; no short function words</div>
+            <div><span style="color:var(--white);">stretch</span> &isin; <span style="color:var(--green);">[0.80, 1.25]</span> &mdash; time-stretch within &plusmn;25%</div>
+            <div><span style="color:var(--white);">non-adjacent</span> &nbsp;&nbsp;&nbsp;&nbsp;&mdash; selected words &ge; 2 apart</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
