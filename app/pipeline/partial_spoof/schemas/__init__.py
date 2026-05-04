@@ -7,6 +7,7 @@ from app.pipeline.partial_spoof.schemas.cloned_generation_result import ClonedGe
 from app.pipeline.partial_spoof.schemas.alignment_result import AlignmentResult
 from app.pipeline.partial_spoof.schemas.word_selection_result import WordSelectionResult
 from app.pipeline.partial_spoof.schemas.splice_result import SpliceResult
+from app.pipeline.partial_spoof.schemas.boundary_jitter_result import BoundaryJitterResult
 from app.pipeline.partial_spoof.schemas.splice_quality_result import SpliceQualityResult
 from app.pipeline.partial_spoof.schemas.formatting_result import FormattingResult
 from app.pipeline.partial_spoof.schemas.word_alignment import WordAlignment
@@ -20,6 +21,7 @@ __all__ = [
     "AlignmentResult",
     "WordSelectionResult",
     "SpliceResult",
+    "BoundaryJitterResult",
     "SpliceQualityResult",
     "FormattingResult",
     "WordAlignment",

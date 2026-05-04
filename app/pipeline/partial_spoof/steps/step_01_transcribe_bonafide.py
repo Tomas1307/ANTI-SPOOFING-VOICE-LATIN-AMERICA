@@ -8,10 +8,18 @@ utterances with fewer than MIN_WORDS_W1 words (below W1 tier minimum).
 The transcripts serve two purposes:
 1. Input text for the voice cloning system (Step 2).
 2. Word-level timestamps for forced alignment on the bonafide side (Step 3).
+
+Supports per-speaker bonafide file partition for the boundary-jitter dataset.
+When BONAFIDE_FILE_PARTITION is 'main' or 'jitter', the file list per
+speaker is shuffled deterministically and split 50/50, ensuring main and
+jitter datasets use disjoint utterances.
 """
+import hashlib
 import json
 from pathlib import Path
+from typing import List
 
+import numpy as np
 from loguru import logger
 from tqdm import tqdm
 
@@ -89,6 +97,7 @@ class BonafideTranscriber:
                     f for ext in ("*.wav", "*.flac", "*.mp3")
                     for f in split_dir.glob(ext)
                 )
+                audio_files = self._apply_partition(audio_files, speaker_id, split)
                 for audio_path in audio_files:
                     if settings.MAX_SAMPLES > 0 and total_transcribed >= settings.MAX_SAMPLES:
                         max_reached = True
@@ -153,6 +162,62 @@ class BonafideTranscriber:
             d for d in self.bonafide_dir.iterdir()
             if d.is_dir() and not d.name.startswith(".")
         ])
+
+    def _apply_partition(
+        self,
+        audio_files: List[Path],
+        speaker_id: str,
+        split: str,
+    ) -> List[Path]:
+        """Apply per-speaker bonafide file partition for main/jitter split.
+
+        Shuffles the file list deterministically using a seed derived from
+        BONAFIDE_PARTITION_SEED and a stable speaker hash, then returns the
+        first half (partition='main') or second half (partition='jitter').
+
+        Speakers with only one file contribute that file to whichever
+        partition the shuffle assigned it to. No speakers are discarded
+        for having too few files; the partition naturally yields fewer
+        files per speaker as the file count decreases.
+
+        Args:
+            audio_files: Sorted list of audio file paths for this speaker/split.
+            speaker_id: HABLA speaker identifier (used to seed the shuffle).
+            split: Dataset split label (used only for logging).
+
+        Returns:
+            Subset of audio_files corresponding to the active partition.
+        """
+        partition = settings.BONAFIDE_FILE_PARTITION
+        if partition not in ("main", "jitter"):
+            raise ValueError(
+                f"BONAFIDE_FILE_PARTITION must be 'main' or 'jitter', got '{partition}'."
+            )
+
+        if not audio_files:
+            return audio_files
+
+        speaker_hash = int.from_bytes(
+            hashlib.sha256(speaker_id.encode("utf-8")).digest()[:4],
+            byteorder="little",
+        )
+        rng = np.random.RandomState(settings.BONAFIDE_PARTITION_SEED + speaker_hash)
+        shuffled_indices = rng.permutation(len(audio_files))
+
+        half = len(shuffled_indices) // 2
+        if partition == "main":
+            selected_indices = sorted(shuffled_indices[:half].tolist())
+        else:
+            selected_indices = sorted(shuffled_indices[half:].tolist())
+
+        selected_files = [audio_files[i] for i in selected_indices]
+
+        logger.debug(
+            f"Partition '{partition}' for {speaker_id}/{split}: "
+            f"{len(selected_files)}/{len(audio_files)} files"
+        )
+
+        return selected_files
 
     def _compute_word_count_distribution(self, transcripts: dict) -> dict:
         """Compute word count distribution across tier buckets.

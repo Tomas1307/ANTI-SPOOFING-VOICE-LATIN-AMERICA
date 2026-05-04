@@ -1,7 +1,7 @@
 # TTS Systems for Voice Anti-Spoofing Attack Generation
 
 **Status:** Active
-**Last updated:** 2026-04-25
+**Last updated:** 2026-05-01
 **Source:** investigation.md Sections 1-7, Comparative Analysis, Final Recommendations
 
 ---
@@ -10,7 +10,7 @@
 
 Seven modern TTS systems were evaluated for their suitability in generating synthetic Latin American Spanish voice attacks for anti-spoofing detection research. The evaluation focused on three criteria: (1) Spanish language quality (mandatory), (2) implementation feasibility, and (3) research usefulness (attack sophistication, codec diversity). Hardware target: ml-server03 with 4x NVIDIA A40 GPUs (46 GB VRAM each, CUDA 12.6).
 
-Five systems were implemented; CosyVoice 3.0 was dropped (generates Chinese for Spanish input); Nari Dia 1.6B was not implemented (English-only, dialogue-focused, no single-speaker TTS).
+Five systems are validated and in production; OmniVoice (k2-fsa) was added 2026-05-01 as a 6th attack pipeline pending standalone validation; CosyVoice 3.0 was dropped (generates Chinese for Spanish input); Nari Dia 1.6B was not implemented (English-only, dialogue-focused, no single-speaker TTS).
 
 ---
 
@@ -238,6 +238,25 @@ Five systems were implemented; CosyVoice 3.0 was dropped (generates Chinese for 
 | OpenVoice | 29,626 / 35,544 | 83.4% | 1.50% | 4.41 | 0.394 |
 | Chatterbox | Running | ~41% | -- | -- | -- |
 | OuteTTS | Running | ~66% | -- | -- | -- |
+| OmniVoice | Pending first run | -- | -- | -- | -- |
+
+---
+
+## 7. OmniVoice (k2-fsa) -- ADDED 2026-05-01
+
+**Architecture:** Diffusion language model TTS, zero-shot voice cloning. State-of-the-art massively multilingual model from the k2-fsa group.
+
+**Spanish support:** **27,559 hours** of Spanish training data (per k2-fsa/OmniVoice languages.md), one of the largest Spanish coverage among open zero-shot TTS models. ISO 639-1 code `es`, ISO 639-3 `spa`.
+
+**Architecture details:** Diffusion-language-model with `num_step` (default 32 for higher quality, 16 for speed) and `speed` (default 1.0) generation parameters. Native sample rate **24 kHz** (resampled to 16 kHz on FLAC write in our pipeline). Reference duration: 3-10 seconds recommended (longer degrades cloning quality, per upstream docs). Inference: very fast, RTF approximately 0.025 per upstream benchmarks.
+
+**License:** Open release on HuggingFace at `k2-fsa/OmniVoice`. Disclaimer prohibits unauthorized voice cloning, fraud, and impersonation; defensive anti-spoofing research is the legitimate use case.
+
+**Key papers:** Zhu et al. 2026 "OmniVoice: Towards Omnilingual Zero-Shot Text-to-Speech with Diffusion Language Models" (arXiv:2604.00688).
+
+**VRAM:** Float16 inference fits comfortably on a single A40.
+
+**Production status:** Standalone pipeline written 2026-04-30. Validation run pending on ml-server03. Not yet included in boundary jitter pilot until quality is confirmed.
 
 ---
 

@@ -17,7 +17,8 @@ def create_attack_strategy(attack_system: str) -> AttackStrategy:
 
     Args:
         attack_system: Voice cloning system identifier. Must be one of:
-            'fishgram', 'qwen', 'cosyvoice', 'outetts', 'chatterbox', 'openvoice'.
+            'fishgram', 'qwen', 'cosyvoice', 'outetts', 'chatterbox', 'openvoice',
+            'omnivoice'.
 
     Returns:
         Concrete AttackStrategy instance for the specified system.
@@ -54,3 +55,7 @@ def create_attack_strategy(attack_system: str) -> AttackStrategy:
     if attack_system == "openvoice":
         from app.pipeline.partial_spoof.strategies.openvoice_strategy import OpenVoiceStrategy
         return OpenVoiceStrategy()
+
+    if attack_system == "omnivoice":
+        from app.pipeline.partial_spoof.strategies.omnivoice_strategy import OmniVoiceStrategy
+        return OmniVoiceStrategy()

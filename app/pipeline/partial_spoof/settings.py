@@ -7,7 +7,7 @@ Global application settings belong in app/config.py instead.
 import torch
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Tuple
 
 
 class PartialSpoofSettings(BaseModel):
@@ -231,6 +231,86 @@ class PartialSpoofSettings(BaseModel):
     ENABLED_TIERS: List[str] = Field(
         default=["W1", "W2", "W3"],
         description="List of word replacement tiers to generate",
+    )
+
+    # === Bonafide File Partition (Step 1) ===
+    BONAFIDE_FILE_PARTITION: str = Field(
+        default="main",
+        description="Per-speaker bonafide file partition: 'main' or 'jitter'. "
+                    "Files are shuffled deterministically per speaker (seeded) and split 50/50; "
+                    "'main' takes the first half, 'jitter' takes the second half. "
+                    "Ensures the boundary jitter dataset uses sentences disjoint from main partial spoof.",
+    )
+    BONAFIDE_PARTITION_SEED: int = Field(
+        default=42,
+        description="Seed for the per-speaker bonafide file partition shuffle. "
+                    "Combined with a deterministic speaker hash so the same speaker always "
+                    "yields the same main/jitter split across runs.",
+    )
+
+    # === Boundary Jitter (Step 5b) ===
+    ENABLE_BOUNDARY_JITTER: bool = Field(
+        default=False,
+        description="Enable Step 5b boundary jitter. When True, after splicing each "
+                    "internal word boundary in the utterance is independently subjected to "
+                    "a random structural manipulation (truncate, overlap, or bleed) with "
+                    "probability JITTER_PROBABILITY. Spoof boundaries receive the same "
+                    "treatment so the splice does not stand out as the only manipulated boundary. "
+                    "Targets the 'find the noisy boundary' detector shortcut documented in "
+                    "Negroni et al. (2024) and Muller (2024).",
+    )
+    JITTER_PROBABILITY: float = Field(
+        default=0.5,
+        description="Probability of applying a manipulation per internal boundary. "
+                    "0.5 means each boundary independently has a 50 pct chance of being "
+                    "left natural and a 50 pct chance of receiving a uniformly chosen "
+                    "manipulation (truncate, overlap, or bleed).",
+    )
+    JITTER_TRUNCATE_RANGE_MS: Tuple[int, int] = Field(
+        default=(10, 40),
+        description="Uniform random range (ms) for truncate magnitude. "
+                    "Lower bound covers Spanish VOT minimum (~4 ms); upper bound stays below "
+                    "Spanish syllable nucleus duration (~50-90 ms) to preserve intelligibility.",
+    )
+    JITTER_OVERLAP_RANGE_MS: Tuple[int, int] = Field(
+        default=(30, 80),
+        description="Uniform random range (ms) for overlap magnitude. "
+                    "Matches the LlamaPartialSpoof crossfade range (Luong et al. 2024) and the "
+                    "main partial_spoof CROSSFADE_MIN_MS/MAX_MS so jittered boundaries are "
+                    "indistinguishable from splice boundaries in temporal scale.",
+    )
+    JITTER_BLEED_RANGE_MS: Tuple[int, int] = Field(
+        default=(20, 60),
+        description="Uniform random range (ms) for bleed magnitude (cross-word fragment insert). "
+                    "Lower bound covers Spanish VOT plus consonant transition; upper bound covers "
+                    "consonant onset plus vowel attack without inserting a complete second phoneme.",
+    )
+    JITTER_OVERLAP_FADE: str = Field(
+        default="hanning",
+        description="Fade shape applied during overlap manipulation. "
+                    "'hanning' applies a half-Hanning window to each side of the overlap region "
+                    "(matches OLA-Hanning literature); 'linear' applies a linear crossfade.",
+    )
+    JITTER_SEED: int = Field(
+        default=42,
+        description="Random seed for boundary jitter decisions and magnitude draws. "
+                    "Combined with a sample-key hash so the same utterance always receives "
+                    "the same jitter plan across runs.",
+    )
+    AUDIO_ID_START_W1_JITTER: int = Field(
+        default=16000000,
+        description="Starting audio ID for W1 tier under boundary jitter "
+                    "(16000000-16999999, disjoint from main W1 at 12M).",
+    )
+    AUDIO_ID_START_W2_JITTER: int = Field(
+        default=17000000,
+        description="Starting audio ID for W2 tier under boundary jitter "
+                    "(17000000-17999999, disjoint from main W2 at 13M).",
+    )
+    AUDIO_ID_START_W3_JITTER: int = Field(
+        default=18000000,
+        description="Starting audio ID for W3 tier under boundary jitter "
+                    "(18000000-18999999, disjoint from main W3 at 14M).",
     )
 
     class Config:

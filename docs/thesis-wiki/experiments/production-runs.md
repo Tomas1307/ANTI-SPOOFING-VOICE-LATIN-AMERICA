@@ -1,7 +1,7 @@
 # Production Runs
 
 **Status:** Active
-**Last updated:** 2026-04-25
+**Last updated:** 2026-05-01
 **Source:** ml-server03 logs, pipeline output metadata
 
 ---
@@ -15,6 +15,7 @@
 | OpenVoice | DONE | 35,544 | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
 | Chatterbox | RUNNING | ~14,818 | TBD | TBD | TBD | TBD | TBD | 31-45x |
 | OuteTTS | RUNNING | ~23,561 | TBD | TBD | TBD | TBD | TBD | ~5.6x |
+| OmniVoice | NOT STARTED | 0 | - | - | - | - | - | - |
 | CosyVoice | DROPPED | - | - | - | - | - | - | - |
 
 **Hardware:** ml-server03, NVIDIA A40 (46GB VRAM), CUDA 12.6
@@ -54,3 +55,155 @@
 
 ### CosyVoice 3.0
 - Dropped. Generates Chinese output for Spanish input text. No Spanish support despite multilingual claims.
+
+### OmniVoice (k2-fsa) -- ADDED 2026-05-01, NOT STARTED
+- Standalone TTS pipeline written. Code at `app/pipeline/omnivoice_attack/`.
+- Audio ID range 15M-15.99M (avoids collision with partial_spoof main 12M-14M).
+- Status: pending first run on ml-server03 to validate Spanish quality.
+- Excluded from boundary jitter pilot until standalone validation passes (see "Operational Runbook" below).
+
+---
+
+## Operational Runbook (continue from another PC / ml-server03)
+
+This section is the executable handover. Read top to bottom; run blocks in order on ml-server03.
+
+### Pre-requisites
+
+Before running anything, verify these are in place on ml-server03:
+
+| Item | Path | Check |
+|---|---|---|
+| Repo cloned | `~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/` | `git pull` from `feat/attacks` |
+| Bonafide v2 dataset | `data/bonafide_dataset_by_speaker_v2/` | `ls | wc -l` returns ~1567 |
+| Mozilla CV transcripts | `data/cv-corpus-24.0-2025-12-05/es/validated.tsv` | exists |
+| MUSAN noise (RIR augmentation, not jitter) | `data/noise_dataset/musan/` | exists |
+| qwen_env | `envs/qwen_env/` | `source .../bin/activate` works |
+| omnivoice_env | `envs/omnivoice_env/` | does NOT exist yet, needs setup |
+| GPU availability | `nvidia-smi` | confirm one A40 free (avoid 0 and 2 if shared) |
+
+### Job 1: OmniVoice standalone validation (highest priority)
+
+**Why first:** The OmniVoice pipeline code is written but unvalidated. Until we confirm it generates intelligible Spanish, it cannot be used as input to the boundary jitter pilot.
+
+**Setup the venv:**
+```bash
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+git pull
+python3 -m venv envs/omnivoice_env
+source envs/omnivoice_env/bin/activate
+
+# Torch matched to driver 560.35.03 / CUDA 12.6
+pip install torch==2.8.0 torchaudio==2.8.0 --extra-index-url https://download.pytorch.org/whl/cu126
+pip install -r envs/omnivoice_requirements.txt
+
+# Smoke check
+python -c "from omnivoice import OmniVoice; print('OmniVoice import OK')"
+python -c "import nemo.collections.asr; print('NeMo ASR (Parakeet) OK')"
+deactivate
+```
+
+**Run validation mode (3 speakers, 6 samples):**
+```bash
+source envs/omnivoice_env/bin/activate
+export CUDA_VISIBLE_DEVICES=1   # check nvidia-smi first
+
+python -c "
+from app.pipeline.omnivoice_attack import OmniVoiceAttackPipeline, settings
+settings.VALIDATION_MODE = True
+settings.SAMPLES_PER_SPEAKER = 2
+settings.MATCH_BONAFIDE_COUNT = False
+
+pipe = OmniVoiceAttackPipeline()
+print('Output:', pipe.run())
+"
+deactivate
+```
+
+**Success criteria:**
+- All 6 samples generated (no failures in `data/omnivoice_output/generation_metadata.json`)
+- Mean WER <= 0.15 (Parakeet WER on generated audio vs prompt)
+- Mean NISQA MOS >= 3.5
+- Listening test on at least 2 samples by Master Tomas: intelligible Spanish, no Chinese leakage, no robotic artifacts
+
+**If success:** Promote to production mode (`VALIDATION_MODE=False`, `MATCH_BONAFIDE_COUNT=True`). OmniVoice joins the active 5-attack suite.
+**If failure:** Document in this page under "OmniVoice" section, root-cause (model-quality vs venv-issue vs CUDA-issue), and either fix-and-retry or drop OmniVoice.
+
+### Job 2: Qwen partial_spoof main run with file partition
+
+**Why second:** Before producing the jitter dataset, we need the **main** dataset to use the same `BONAFIDE_FILE_PARTITION="main"` policy so the partition is enforced on both sides. The original Qwen partial_spoof run (35,927 samples) used the full bonafide pool — overlap with the future jitter dataset is possible. Either:
+
+- (A) **Re-run main with `partition="main"`**: produces a clean half-pool main dataset, but invalidates the existing 35,927 sample dataset. Costly.
+- (B) **Keep existing main dataset, only run jitter with `partition="jitter"`**: jitter dataset overlaps with ~half of main's sentences. Acceptable for production but breaks the "frases distintas" guarantee.
+
+**Recommended:** Option B for now (cheaper), with the caveat documented. If a fully clean ablation is needed later, re-run main.
+
+### Job 3: Qwen partial_spoof JITTER pilot
+
+```bash
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+source envs/qwen_env/bin/activate
+export CUDA_VISIBLE_DEVICES=3   # check nvidia-smi first
+
+python -c "
+from app.pipeline.partial_spoof import PartialSpoofPipeline
+from app.pipeline.partial_spoof.schemas.pipeline_config import PartialSpoofPipelineConfig
+
+config = PartialSpoofPipelineConfig(
+    attack_system='qwen',
+    enable_boundary_jitter_override=True,
+    bonafide_file_partition_override='jitter',
+)
+PartialSpoofPipeline(config=config).run()
+"
+deactivate
+```
+
+**Output:**
+- `data/qwen_partial_spoof_jitter/jittered/*.wav` (jittered audio)
+- `data/qwen_partial_spoof_jitter/boundary_jitter_metadata.json` (per-utterance jitter plans)
+- `data/qwen_partial_spoof_jitter/LA/` (final ASVspoof2019 LA structure with system_id `QWEN3TTS_PSW{1,2,3}J`)
+
+**Success criteria:**
+- Mean per-utterance duration drift |dt| < 100 ms (otherwise jitter is too aggressive)
+- WER on jittered audio <= main_qwen WER + 0.03 absolute (otherwise jitter degrades intelligibility too much)
+- Operation counts roughly balanced across truncate/overlap/bleed (~33% each among the manipulated boundaries)
+
+**If success:** Replicate Job 3 for the 4 remaining validated attacks: chatterbox, openvoice, outetts, fishgram.
+**If failure (drift too large or WER spike):** Tune magnitude ranges in `settings.py` (e.g., reduce `JITTER_OVERLAP_RANGE_MS` to (30, 60)). Re-run.
+
+### Job 4: Detector EER comparison (deferred)
+
+Once jitter datasets exist for at least 2 attacks, train AASIST/RawNet3 on:
+1. Main partial_spoof only -> measure EER on main eval and jitter eval.
+2. Jitter only -> measure EER on main eval and jitter eval.
+3. Combined main + jitter -> measure EER on each eval set.
+
+The diagonal (train_main, eval_main) is the baseline. Off-diagonal degradation reveals whether the detector learned the boundary-anomaly shortcut.
+
+This is deferred until the dataset construction settles. Capture the experimental design in `experiments/ablation-studies.md` once underway.
+
+---
+
+## Pending Work Checklist
+
+Use this as the bookmark when picking up later. Items struck through are done.
+
+- [ ] OmniVoice venv setup on ml-server03
+- [ ] OmniVoice validation run (3 speakers, 6 samples)
+- [ ] OmniVoice listening test sign-off by Master Tomas
+- [ ] OmniVoice production run (decide after listening test)
+- [ ] Qwen partial_spoof JITTER pilot run on ml-server03
+- [ ] Audit jitter run: drift, WER, op-count distribution
+- [ ] Replicate jitter to chatterbox, openvoice, outetts, fishgram (after Qwen succeeds)
+- [ ] Decide ablation-vs-disjoint-sentences strategy for jitter (Option A re-run vs Option B accept overlap)
+- [ ] Magnitude ablation: sweep `JITTER_PROBABILITY` in {0.3, 0.5, 0.7, 1.0}
+- [ ] Detector EER comparison on main vs jitter datasets
+- [ ] Update this page with results after each milestone
+
+## Related Pages
+
+- [Partial Spoof Approach](../methodology/partial-spoof-approach.md) -- algorithmic details and justifications for jitter
+- [Attack Systems](../methodology/attack-systems.md) -- per-pipeline configuration and venv paths
+- [Decision Log](../decisions/decision-log.md) -- chronological design decisions
+- [TTS Systems](../state-of-art/tts-systems.md) -- TTS evaluation including OmniVoice section

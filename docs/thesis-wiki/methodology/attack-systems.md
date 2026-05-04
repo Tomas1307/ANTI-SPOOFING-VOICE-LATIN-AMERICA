@@ -1,7 +1,7 @@
 # Attack Systems
 
 **Status:** Active
-**Last updated:** 2026-04-25
+**Last updated:** 2026-05-01
 **Source:** app/pipeline/*/strategies/, settings.py files
 
 ---
@@ -50,6 +50,18 @@ Each TTS system runs as an isolated attack pipeline with its own virtual environ
 
 ### CosyVoice 3.0 (DROPPED)
 - Generates Chinese output for Spanish input text. No actual Spanish support despite multilingual claims.
+
+### OmniVoice (k2-fsa) — ADDED 2026-05-01
+- **Venv:** `envs/omnivoice_env/`
+- **Model:** `k2-fsa/OmniVoice` (HuggingFace), diffusion language model TTS
+- **Deployment:** In-process Python API (`OmniVoice.from_pretrained`); no separate server
+- **Reference:** 10s concatenated reference audio per speaker (OmniVoice docs warn against >10s)
+- **Sample rate:** 24 kHz native, resampled to 16 kHz on FLAC write
+- **Spanish data:** 27,559 hours training (one of the largest Spanish coverage in any open zero-shot TTS)
+- **Reference text:** Pre-computed with Parakeet TDT (consistent with project STT stack), passed as `ref_text` to `model.generate()`
+- **Torch pin:** 2.8.0+cu126 (matches ml-server03 driver 560.35.03; cu128 not used despite upstream recommendation, to avoid driver mismatch)
+- **System ID:** `OMNIVOICE`. Audio ID range: 15M-15.99M.
+- **Production:** Pipeline written 2026-04-30; first validation run pending. NOT yet in boundary jitter pilot (Qwen first).
 
 ## Virtual Environment Paths
 

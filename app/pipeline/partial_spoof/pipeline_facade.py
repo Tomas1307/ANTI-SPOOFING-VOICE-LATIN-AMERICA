@@ -24,6 +24,7 @@ from app.pipeline.partial_spoof.steps.step_02_generate_cloned_speech import Clon
 from app.pipeline.partial_spoof.steps.step_03_forced_alignment import ForcedAligner
 from app.pipeline.partial_spoof.steps.step_04_select_words import WordSelector
 from app.pipeline.partial_spoof.steps.step_05_splice_audio import AudioSplicer
+from app.pipeline.partial_spoof.steps.step_05b_apply_boundary_jitter import BoundaryJitterApplier
 from app.pipeline.partial_spoof.steps.step_06_validate_splice import SpliceQualityValidator
 from app.pipeline.partial_spoof.steps.step_07_format_output import OutputFormatter
 from app.pipeline.partial_spoof.utils.strategy_factory import create_attack_strategy
@@ -64,10 +65,17 @@ class PartialSpoofPipeline:
             settings.DEVICE = self.config.device_override
         if self.config.random_seed_override is not None:
             settings.RANDOM_SEED = self.config.random_seed_override
+        if self.config.enable_boundary_jitter_override is not None:
+            settings.ENABLE_BOUNDARY_JITTER = self.config.enable_boundary_jitter_override
+        if self.config.bonafide_file_partition_override is not None:
+            settings.BONAFIDE_FILE_PARTITION = self.config.bonafide_file_partition_override
         if self.config.output_dir_override:
             settings.OUTPUT_DIR = self.config.output_dir_override
         else:
-            settings.OUTPUT_DIR = Path(f"data/{self.config.attack_system}_partial_spoof")
+            base_name = f"data/{self.config.attack_system}_partial_spoof"
+            if settings.ENABLE_BOUNDARY_JITTER:
+                base_name = f"{base_name}_jitter"
+            settings.OUTPUT_DIR = Path(base_name)
 
     def run(self) -> Path:
         """Execute the full partial spoof pipeline.
@@ -83,6 +91,8 @@ class PartialSpoofPipeline:
         logger.info(f"Attack system: {self.config.attack_system}")
         logger.info(f"Tiers: {self.config.tiers}")
         logger.info(f"Output: {settings.OUTPUT_DIR}")
+        logger.info(f"Bonafide partition: {settings.BONAFIDE_FILE_PARTITION}")
+        logger.info(f"Boundary jitter: {settings.ENABLE_BOUNDARY_JITTER}")
         logger.info(f"Max regenerations: {MAX_REGENERATIONS}")
         logger.info("=" * 80)
 
@@ -104,6 +114,22 @@ class PartialSpoofPipeline:
             # Runs in a regeneration loop for failed samples
             if self.config.run_step_2:
                 self._run_generation_loop(strategy)
+
+            # === STEP 5b: Apply boundary jitter (optional) ===
+            if (
+                settings.ENABLE_BOUNDARY_JITTER
+                and self.config.run_step_5b
+            ):
+                logger.info("-" * 40)
+                step_5b = BoundaryJitterApplier()
+                result_5b = step_5b.execute()
+                logger.info(
+                    f"Step 5b result: {result_5b.total_processed} processed, "
+                    f"{result_5b.total_skipped} skipped, "
+                    f"{result_5b.total_boundaries_seen} boundaries. "
+                    f"Operations: {result_5b.operation_counts}. "
+                    f"Avg drift: {result_5b.avg_duration_drift_ms:.1f} ms."
+                )
 
             # === STEP 6: Validate splice quality ===
             if self.config.run_step_6:
