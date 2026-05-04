@@ -1,7 +1,7 @@
 # Splicing Techniques for Partial Spoof Construction
 
 **Status:** Active
-**Last updated:** 2026-04-25
+**Last updated:** 2026-05-01
 **Source:** investigation.md Sections 8.3-8.5
 
 ---
@@ -203,9 +203,53 @@ These gaps represent potential thesis contributions (see [Partial Spoof Literatu
 
 ---
 
+## Boundary Jitter: Per-Boundary Structural Manipulations (2026-05-01)
+
+A novel proposal in this project, motivated by the Negroni 6.16%-EER-no-training result and the Muller 2024 detector-shortcut analysis. Instead of (or in addition to) crossfading the splice boundary, we apply **the same kind of structural artifacts** to ALL internal word boundaries (including the spoof boundary), making them statistically indistinguishable.
+
+### Three operations
+
+Each defined per-boundary, with magnitude drawn from a literature-grounded or phonetics-informed range:
+
+**1. Truncate.** Cut a fragment from the left word's tail or the right word's head. Mimics direct cut-paste. Magnitude 10-40 ms uniform; below this the cut is sub-audible (<160 samples at 16 kHz), above this it begins to chop into Spanish syllable nuclei (typically 50-90 ms vowel duration).
+
+**2. Overlap.** Shift the right word backward in time so its onset overlaps with the left word's tail; sum the two with a Hanning fade. Identical in principle and parameter range to OLA-Hanning crossfade. Magnitude 30-80 ms uniform — **literature-grounded**, matches LlamaPartialSpoof crossfade range (Luong et al. 2024) exactly.
+
+**3. Bleed.** Insert a fragment of one adjacent word into the other (right_to_left appends right word's onset to left word's tail, creating pre-echo; left_to_right does the reverse, creating post-echo). Mimics tail bleed of crossfade splices. Magnitude 20-60 ms uniform; lower bound covers Spanish VOT (4-29 ms) plus brief consonant transition, upper bound covers consonant onset plus vowel attack without inserting a complete second phoneme.
+
+### Per-boundary application
+
+For every internal word boundary in a partial-spoofed utterance:
+- Coin flip with `JITTER_PROBABILITY = 0.5`.
+- Heads -> uniformly pick one operation, draw magnitude, apply.
+- Tails -> leave natural.
+
+The spoof boundary receives the same coin flip on top of the splice already applied in Step 5. The detector cannot identify the spoof boundary as "the only one with a manipulation"; the manipulation distribution is 0/1 (bonafide-bonafide) vs 1/2 (bonafide-spoof) instead of the original 0 vs 1.
+
+### Why this is novel
+
+The 4 canonical partial-spoof corpora (PartialSpoof, LlamaPartialSpoof, HAD, HQ-MPSD) all keep the bonafide segments **clean**. None of them apply structural artifacts to non-spoof boundaries. The detector trained on these corpora can use boundary anomaly as a near-perfect shortcut. Boundary jitter is, to our knowledge, the first proposal to systematically homogenize boundary artifacts across the entire utterance.
+
+### Magnitude grounding summary
+
+| Operation | Range | Grounding |
+|---|---|---|
+| Truncate | 10-40 ms | Phonetics: < Spanish syllable nucleus (50-90 ms); > audibility floor |
+| Overlap | 30-80 ms | **Literature**: LlamaPartialSpoof (Luong 2024), exact match |
+| Bleed | 20-60 ms | Phonetics: VOT (4-29 ms) + consonant-vowel transition |
+
+### Implementation
+
+`app/pipeline/partial_spoof/steps/step_05b_apply_boundary_jitter.py` runs after Step 5 (splice) and before Step 6 (validate). Per-utterance boundaries processed right-to-left so manipulations don't invalidate earlier sample indices. Total length drift bounded; recorded per utterance for analysis.
+
+System ID: `<ATTACK>_PSW{N}J`. Audio ID range: 16M-18M (jitter W1/W2/W3) disjoint from main 12M-14M.
+
+---
+
 ## Cross-references
 
 - [Partial Spoof Literature](partial-spoof-literature.md) -- full literature review, 6 unsolved gaps
 - [Anti-Spoofing Datasets](anti-spoofing-datasets.md) -- datasets where these techniques are used
 - [Detection Methods](detection-methods.md) -- how detectors exploit splice artifacts
 - [TTS Systems](tts-systems.md) -- systems generating the cloned segments
+- [Partial Spoof Approach](../methodology/partial-spoof-approach.md) -- our implementation of valley-score selection, duration-preserving splice, and boundary jitter

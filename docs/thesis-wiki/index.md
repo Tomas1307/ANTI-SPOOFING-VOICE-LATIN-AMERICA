@@ -30,7 +30,7 @@
 
 | Page | Summary |
 |------|---------|
-| [Production Runs](experiments/production-runs.md) | Per-pipeline: FishGram (95.2%), Qwen (87.9%), OpenVoice (83.4%), Chatterbox (41% running), OuteTTS (66% running) |
+| [Production Runs](experiments/production-runs.md) | Per-pipeline status + **Operational Runbook** with exact ml-server03 commands, success criteria, and pending-work checklist (OmniVoice validation + boundary jitter pilot) — **read this first when continuing on a new machine** |
 | [Validation Results](experiments/validation-results.md) | Partial spoof validation: 5 speakers, metrics comparison |
 | [Ablation Studies](experiments/ablation-studies.md) | Crossfade technique comparison, valley score threshold tuning |
 

@@ -30,6 +30,12 @@ TIER_ID_SETTINGS = {
     "W3": "AUDIO_ID_START_W3",
 }
 
+TIER_ID_SETTINGS_JITTER = {
+    "W1": "AUDIO_ID_START_W1_JITTER",
+    "W2": "AUDIO_ID_START_W2_JITTER",
+    "W3": "AUDIO_ID_START_W3_JITTER",
+}
+
 
 class OutputFormatter:
     """Formats partial spoof samples into ASVspoof2019 LA structure.
@@ -79,8 +85,11 @@ class OutputFormatter:
         for split in ["train", "dev", "eval"]:
             (la_dir / f"ASVspoof2019_LA_{split}" / "flac").mkdir(parents=True, exist_ok=True)
 
+        tier_id_settings = (
+            TIER_ID_SETTINGS_JITTER if settings.ENABLE_BOUNDARY_JITTER else TIER_ID_SETTINGS
+        )
         counters = {}
-        for tier, setting_name in TIER_ID_SETTINGS.items():
+        for tier, setting_name in tier_id_settings.items():
             start_id = getattr(settings, setting_name)
             counters[(tier, "train")] = start_id
             counters[(tier, "dev")] = start_id
@@ -115,7 +124,8 @@ class OutputFormatter:
             prefix = SPLIT_PREFIXES[split]
             audio_id = f"{prefix}{audio_id_num:07d}"
 
-            system_id = f"{self.system_id_prefix}_PSW{tier[1]}"
+            jitter_suffix = "J" if settings.ENABLE_BOUNDARY_JITTER else ""
+            system_id = f"{self.system_id_prefix}_PSW{tier[1]}{jitter_suffix}"
 
             try:
                 audio, sr = librosa.load(str(audio_path), sr=settings.SAMPLE_RATE)

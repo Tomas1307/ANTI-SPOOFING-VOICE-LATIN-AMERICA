@@ -15,6 +15,7 @@ VALID_ATTACK_SYSTEMS = [
     "outetts",
     "chatterbox",
     "openvoice",
+    "omnivoice",
 ]
 
 

@@ -39,6 +39,11 @@ class PartialSpoofPipelineConfig(BaseModel):
     run_step_3: bool = Field(default=True, description="Execute Step 3: forced alignment")
     run_step_4: bool = Field(default=True, description="Execute Step 4: select words to replace")
     run_step_5: bool = Field(default=True, description="Execute Step 5: splice audio")
+    run_step_5b: bool = Field(
+        default=True,
+        description="Execute Step 5b: apply boundary jitter (only runs when "
+                    "settings.ENABLE_BOUNDARY_JITTER is True; otherwise this flag is ignored)",
+    )
     run_step_6: bool = Field(default=True, description="Execute Step 6: validate splice quality")
     run_step_7: bool = Field(default=True, description="Execute Step 7: format output to LA")
     tiers: List[str] = Field(
@@ -60,6 +65,15 @@ class PartialSpoofPipelineConfig(BaseModel):
     skip_existing: bool = Field(
         default=False,
         description="Skip already-generated files during resume runs",
+    )
+    enable_boundary_jitter_override: Optional[bool] = Field(
+        default=None,
+        description="Override settings.ENABLE_BOUNDARY_JITTER. None preserves the settings value.",
+    )
+    bonafide_file_partition_override: Optional[str] = Field(
+        default=None,
+        description="Override settings.BONAFIDE_FILE_PARTITION ('main' or 'jitter'). "
+                    "None preserves the settings value.",
     )
 
     class Config:
