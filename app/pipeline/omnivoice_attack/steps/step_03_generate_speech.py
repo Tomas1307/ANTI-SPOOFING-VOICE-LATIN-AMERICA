@@ -109,6 +109,7 @@ class SpeechGenerator:
             ref_text=ref_text,
             num_step=settings.OMNIVOICE_NUM_STEP,
             speed=settings.OMNIVOICE_SPEED,
+            language=settings.OMNIVOICE_LANGUAGE,
         )
 
         generation_time = time.time() - start_time

@@ -152,6 +152,10 @@ class OmniVoiceAttackSettings(BaseModel):
         default=1.0,
         description="Speed factor for OmniVoice generation (>1.0 faster, <1.0 slower)"
     )
+    OMNIVOICE_LANGUAGE: str = Field(
+        default="es",
+        description="Language code passed to OmniVoice generate(). 'es' for Spanish per k2-fsa/OmniVoice languages.md"
+    )
 
     PARAKEET_MODEL_ID: str = Field(
         default="nvidia/parakeet-tdt-0.6b-v3",

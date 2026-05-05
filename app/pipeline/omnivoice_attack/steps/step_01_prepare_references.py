@@ -168,15 +168,18 @@ class ReferenceAudioPreparator:
     def _determine_split(self, speaker_dir: Path) -> str:
         """Determine speaker's primary split based on file counts.
 
+        Counts wav, flac, and mp3 files (mxm_* speakers from Mozilla
+        Common Voice store audio as mp3, not wav).
+
         Args:
             speaker_dir: Speaker directory path.
 
         Returns:
             Split name ('train', 'val', or 'test').
         """
-        train_count = len(list((speaker_dir / "train").glob("*.wav"))) if (speaker_dir / "train").exists() else 0
-        val_count = len(list((speaker_dir / "val").glob("*.wav"))) if (speaker_dir / "val").exists() else 0
-        test_count = len(list((speaker_dir / "test").glob("*.wav"))) if (speaker_dir / "test").exists() else 0
+        train_count = self._count_audio_files(speaker_dir / "train")
+        val_count = self._count_audio_files(speaker_dir / "val")
+        test_count = self._count_audio_files(speaker_dir / "test")
 
         if train_count >= val_count and train_count >= test_count:
             return "train"
@@ -184,3 +187,19 @@ class ReferenceAudioPreparator:
             return "val"
         else:
             return "test"
+
+    def _count_audio_files(self, directory: Path) -> int:
+        """Count audio files (wav, flac, mp3) in a directory.
+
+        Args:
+            directory: Path to the directory to count files in.
+
+        Returns:
+            Total number of audio files found.
+        """
+        if not directory.exists():
+            return 0
+        return sum(
+            len(list(directory.glob(f"*.{ext}")))
+            for ext in ("wav", "flac", "mp3")
+        )
