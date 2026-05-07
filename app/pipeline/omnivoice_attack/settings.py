@@ -187,6 +187,17 @@ class OmniVoiceAttackSettings(BaseModel):
         description="Minimum acceptable ECAPA-TDNN cosine similarity (informational only)"
     )
 
+    NONVERBAL_PREFIX_RMS_FLOOR_DB: float = Field(
+        default=-55.0,
+        description=(
+            "dBFS threshold above which pre-speech RMS counts as audible non-verbal "
+            "content (reference voice bleed, breath, click). Samples whose pre-speech "
+            "window exceeds this floor are rejected by Step 4 so the retry loop can "
+            "regenerate them. Empirical: OmniVoice artifacts measure -22 to -25 dB, "
+            "clean samples measure -120 dB (silence floor)."
+        )
+    )
+
     TRAIN_SPLIT_NAME: str = Field(
         default="train",
         description="Directory name for train split"
