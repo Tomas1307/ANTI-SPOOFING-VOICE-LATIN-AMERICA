@@ -793,7 +793,7 @@ audio {
     </div>
 
     <div class="callout hi">
-      <strong style="color:var(--white);">Validation result.</strong> 100&nbsp;% recall on bleed detection across 12 trials (initial + 5 retries on 2 affected samples). Final 4&nbsp;samples passed cleanly. Two samples from one speaker (<span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>) bled deterministically across all 6 generation attempts &mdash; reveals a model-level failure mode tied to specific reference clips that retries alone cannot fix. Investigation of reference selection is the open follow-up.
+      <strong style="color:var(--white);">Root cause identified and fixed.</strong> The bleed traced to <span style="font-family:'JetBrains Mono',monospace;">audio_concatenation.py</span> slicing the last bonafide file mid-word to hit a 10&nbsp;s target. OmniVoice's diffusion conditioning attempted to "complete" the cut-off pattern at the start of generation. Fix: stop at the last fitting file, snap to silence in the edge case, always append 200&nbsp;ms trailing silence so the reference ends cleanly. Post-fix validation: <strong style="color:var(--green);">6/6 passed first attempt</strong>, zero non-verbal-prefix rejections, zero retries needed. <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span> -- previously deterministic-fail across 6 attempts -- now passes cleanly. Detector + retry kept as defense in depth.
     </div>
   </div>
 </section>

@@ -15,7 +15,7 @@
 | OpenVoice | DONE | 35,544 | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
 | Chatterbox | RUNNING | ~14,818 | TBD | TBD | TBD | TBD | TBD | 31-45x |
 | OuteTTS | RUNNING | ~23,561 | TBD | TBD | TBD | TBD | TBD | ~5.6x |
-| OmniVoice | VALIDATED | 6 | 6 | 100.0% | 3.94% | 4.53 | 0.680 | TBD |
+| OmniVoice | VALIDATED (post-fix) | 6 | 6 | 100.0% | 1.85% | 4.59 | 0.696 | TBD |
 | CosyVoice | DROPPED | - | - | - | - | - | - | - |
 
 **Hardware:** ml-server03, NVIDIA A40 (46GB VRAM), CUDA 12.6
@@ -56,14 +56,15 @@
 ### CosyVoice 3.0
 - Dropped. Generates Chinese output for Spanish input text. No Spanish support despite multilingual claims.
 
-### OmniVoice (k2-fsa) -- VALIDATED 2026-05-06
-- Standalone TTS pipeline written. Code at `app/pipeline/omnivoice_attack/`.
-- Audio ID range 15M-15.99M (avoids collision with partial_spoof main 12M-14M).
-- Status: validation PASSED 2026-05-06 on GPU 1, ml-server03. 6/6 samples (3 speakers, 2 each).
-- Metrics: avg WER 3.94%, avg CER 1.81%, avg NISQA MOS 4.53, avg ECAPA SIM 0.680.
-- All 3 validation speakers (arf_00295, arf_00610, arf_01523) live in train split per the canonical HABLA partition, so train=6 / dev=0 / eval=0 in this run. Production mode will hit all splits.
-- ECAPA SIM 0.680 sits below the informational floor of 0.70 -- OmniVoice is the **weakest cloner of the suite** by speaker similarity. Content quality (NISQA 4.53) is the highest of any attack. Useful contrast for the paper.
-- Cleared for boundary jitter pilot (no longer blocked).
+### OmniVoice (k2-fsa) -- VALIDATED 2026-05-06 (after reference-cut fix)
+- Standalone TTS pipeline at `app/pipeline/omnivoice_attack/`. Audio ID range 15M-15.99M (avoids collision with partial_spoof main 12M-14M).
+- Initial validation appeared to pass 6/6 but listening surfaced reference-voice bleed in 2 samples that Parakeet did not transcribe.
+- Root cause identified 2026-05-06: `concatenate_with_padding` sliced the last bonafide file mid-word to hit a 10 s target, leaving the reference ending abruptly. OmniVoice's diffusion conditioning attempted to "complete" the cut-off pattern at the start of generation, manifesting as reference-voice bleed.
+- Fix: stop at last fitting file, snap to silence in edge case, always append 200 ms trailing silence. References are now 3-10 s ending in silence.
+- Post-fix validation: **6/6 passed first attempt**, zero non-verbal-prefix rejections, zero retries needed. Metrics improved across the board.
+- Final post-fix metrics: avg WER 1.85%, avg CER 0.83%, avg NISQA MOS 4.59, avg ECAPA SIM 0.696.
+- ECAPA SIM 0.696 is still below the 0.70 informational floor -- a stable property of OmniVoice's diffusion conditioning, not a bug. OmniVoice remains the weakest cloner of the suite by speaker similarity (Qwen 0.720, FishGram 0.602, OpenVoice 0.394). Useful contrast for the paper.
+- Cleared for production run AND boundary jitter pilot.
 
 ---
 
