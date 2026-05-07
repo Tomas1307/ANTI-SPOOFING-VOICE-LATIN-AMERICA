@@ -436,8 +436,8 @@ audio {
 <section class="slide tall" id="s2">
   <div class="inner">
     <div class="eyebrow">Overview</div>
-    <h2>Eight pipelines</h2>
-    <p style="margin-bottom:28px; max-width:700px;">All share the same architecture — Facade orchestrator, Strategy steps, Pydantic schemas, loguru logging. Six distinct TTS codec architectures ensure the detector cannot overfit to a single synthesis fingerprint. Plus a novel word-level partial spoof pipeline.</p>
+    <h2>Nine pipelines</h2>
+    <p style="margin-bottom:28px; max-width:700px;">All share the same architecture — Facade orchestrator, Strategy steps, Pydantic schemas, loguru logging. Seven distinct TTS codec architectures ensure the detector cannot overfit to a single synthesis fingerprint. Plus a novel word-level partial spoof pipeline.</p>
 
     <!-- Row 1: Original 5 pipelines -->
     <div class="pipe-vis">
@@ -494,6 +494,14 @@ audio {
       <div class="pipe-sep"></div>
       <div class="pipe-box">
         <div class="pipe-box-label">Pipeline 07</div>
+        <div class="pipe-box-title">OmniVoice Attack</div>
+        <div class="pipe-box-sub">omnivoice_attack/</div>
+        <div class="pipe-box-desc">k2-fsa OmniVoice (diffusion LM, 646 languages, 27,559 h Spanish). Custom prefix-bleed detection + retry loop.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Validated</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 08</div>
         <div class="pipe-box-title">CosyVoice</div>
         <div class="pipe-box-sub">cosyvoice_attack/</div>
         <div class="pipe-box-desc">CosyVoice2-0.5B (Conditional Flow Matching). No Spanish support — generates Chinese.</div>
@@ -501,7 +509,7 @@ audio {
       </div>
       <div class="pipe-sep"></div>
       <div class="pipe-box" style="flex:2;">
-        <div class="pipe-box-label">Pipeline 08 — Novel Contribution</div>
+        <div class="pipe-box-label">Pipeline 09 — Novel Contribution</div>
         <div class="pipe-box-title">Partial Spoof</div>
         <div class="pipe-box-sub">partial_spoof/</div>
         <div class="pipe-box-desc">Word-level splicing: replaces 1-3 words in bonafide audio with TTS-cloned versions. 7-step pipeline with 6 attack backends. First partial spoof for Latin American Spanish.</div>
@@ -517,7 +525,7 @@ audio {
         <div class="stat-label">Steps per pipeline</div>
       </div>
       <div>
-        <div class="stat-num">6</div>
+        <div class="stat-num">7</div>
         <div class="stat-label">TTS architectures</div>
       </div>
       <div>
@@ -663,9 +671,137 @@ audio {
 </section>
 
 <!-- ==================================================
-     06 - 02_cross_pipeline
+     06 - 01e_omnivoice_overview
 ================================================== -->
-<section class="slide" id="s6">
+<section class="slide tall" id="s6">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Attack Pipeline &mdash; OmniVoice (k2-fsa)</div>
+    <h2>OmniVoice: 646-language diffusion TTS with reference-bleed handling</h2>
+    <p style="margin-bottom:24px; max-width:780px;">Diffusion language model from k2-fsa supporting 646 languages, with 27,559 hours of Spanish training data &mdash; the largest Spanish coverage in any open zero-shot TTS we evaluated. Required custom post-processing because diffusion sampling occasionally bleeds the reference voice into the leading audio frames in a way that ASR-based detection cannot see.</p>
+
+    <!-- Model facts row -->
+    <div class="three" style="margin-bottom:14px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--white); margin-top:6px;">Diffusion LM</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Architecture</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">646</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Languages</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:20px; font-weight:700; color:var(--green); letter-spacing:-0.5px;">27,559 h</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Spanish training data</div>
+      </div>
+    </div>
+    <div class="three" style="margin-bottom:28px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">10s</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Reference audio</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:20px; font-weight:700; color:var(--amber); letter-spacing:-0.5px;">RTF ~0.025</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Speed (40&times; real-time)</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--white); margin-top:6px;">24 kHz native</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Sample rate (resampled to 16 kHz)</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <h3 style="margin-bottom:12px;">Reference voice bleed: an artifact ASR cannot see</h3>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Diffusion sampling occasionally emits a fragment of the reference voice (200&ndash;600 ms) before the prompt content begins. The fragment is sub-syllabic, so Parakeet TDT does not transcribe it &mdash; WER stays at 0.0 even though the audio is clearly contaminated. Word-alignment-based prefix detectors (used for Qwen3-TTS hallucinated words) are blind to this failure mode.</p>
+
+    <!-- Empirical signal table -->
+    <div class="two" style="gap:24px; margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Empirical signal (validation set, 6 samples)</div>
+        <div class="card-sm" style="border-color:rgba(245,166,35,0.2); margin-bottom:10px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.7;">
+            <strong style="color:var(--red);">Artifact samples:</strong><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">T_first &asymp; 0.56&ndash;0.64 s</span><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">pre_RMS &asymp; -22 to -25 dB</span><br>
+            <span style="font-size:11px; color:var(--muted2);">(only 2&ndash;5 dB below speech level)</span>
+          </div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+          <div style="font-size:11px; color:var(--muted); line-height:1.7;">
+            <strong style="color:var(--green);">Clean samples:</strong><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">T_first = 0.0 &ndash; 0.08 s</span><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">pre_RMS = -120 dB</span><br>
+            <span style="font-size:11px; color:var(--muted2);">(silence floor)</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Discriminator margin</div>
+        <div class="card-sm">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+            Threshold of <strong style="color:var(--white);">-55 dBFS</strong> sits<br>
+            <span style="color:var(--green);">+30 dB above the artifact band</span><br>
+            <span style="color:var(--green);">+65 dB below the silence band</span>
+          </div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:10px; margin-top:10px;">
+          <span style="color:var(--muted2);">pre_rms_db</span> <span style="color:var(--white);">=</span> <span style="color:var(--green);">20 &middot; log10</span><span style="color:var(--white);">(rms[0:T_first])</span><br>
+          <span style="color:var(--amber);">if</span> <span style="color:var(--white);">pre_rms_db &gt; -55: </span><span style="color:var(--red);">reject</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-bottom:12px;">Two-layer detection + retry loop</h3>
+    <div style="display:flex; align-items:center; gap:0; margin-bottom:24px; overflow-x:auto;">
+
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 3</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Generate</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">OmniVoice diffusion</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 4a</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Transcribe</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Parakeet TDT + timestamps</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(245,166,35,0.08); border:1px solid rgba(245,166,35,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:120px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--amber); margin-bottom:4px;">LAYER 1</div>
+        <div style="font-size:12px; font-weight:700; color:var(--amber);">Word align</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Trim hallucinated prefix words</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--amber); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">TRIM</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:130px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--green); margin-bottom:4px;">LAYER 2</div>
+        <div style="font-size:12px; font-weight:700; color:var(--green);">pre_RMS &gt; -55 dB</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Reject non-verbal bleed</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">REJECT</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(255,77,79,0.08); border:1px solid rgba(255,77,79,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:120px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--red); margin-bottom:4px;">RETRY</div>
+        <div style="font-size:12px; font-weight:700; color:var(--red);">up to 5&times;</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Regenerate &amp; revalidate</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--red); color:#fff; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">LOOP</div>
+      </div>
+    </div>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Validation result.</strong> 100&nbsp;% recall on bleed detection across 12 trials (initial + 5 retries on 2 affected samples). Final 4&nbsp;samples passed cleanly. Two samples from one speaker (<span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>) bled deterministically across all 6 generation attempts &mdash; reveals a model-level failure mode tied to specific reference clips that retries alone cannot fix. Investigation of reference selection is the open follow-up.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     07 - 02_cross_pipeline
+================================================== -->
+<section class="slide" id="s7">
   <div class="inner">
     <div class="eyebrow">Production Scale — All 5 Attack Pipelines</div>
     <h2>Cross-pipeline comparison</h2>
@@ -765,9 +901,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     07 - 03_fishgram_production
+     08 - 03_fishgram_production
 ================================================== -->
-<section class="slide tall" id="s7">
+<section class="slide tall" id="s8">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Production Run</div>
     <h2>FishGram at scale</h2>
@@ -871,9 +1007,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     08 - 04_fishgram_distributions
+     09 - 04_fishgram_distributions
 ================================================== -->
-<section class="slide tall" id="s8">
+<section class="slide tall" id="s9">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Distribution Analysis</div>
     <h2>Quality distributions</h2>
@@ -1001,9 +1137,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     09 - 05_qwen_production
+     10 - 05_qwen_production
 ================================================== -->
-<section class="slide tall" id="s9">
+<section class="slide tall" id="s10">
   <div class="inner">
     <div class="eyebrow">Pipeline 03 — Qwen3-TTS Production Run</div>
     <h2>Qwen3-TTS at scale</h2>
@@ -1112,9 +1248,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     10 - 06_openvoice_production
+     11 - 06_openvoice_production
 ================================================== -->
-<section class="slide tall" id="s10">
+<section class="slide tall" id="s11">
   <div class="inner">
     <div class="eyebrow">Pipeline 05 — OpenVoice Production Run</div>
     <h2>OpenVoice at scale</h2>
@@ -1223,9 +1359,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     11 - 06b_chatterbox_production
+     12 - 06b_chatterbox_production
 ================================================== -->
-<section class="slide" id="s11">
+<section class="slide" id="s12">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Pipeline 06 &mdash; Chatterbox Production Run</div>
     <h2>Chatterbox (Resemble.ai) <span class="tag amber" style="font-size:12px; vertical-align:middle;">IN PROGRESS</span></h2>
@@ -1297,9 +1433,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     12 - 06c_outetts_production
+     13 - 06c_outetts_production
 ================================================== -->
-<section class="slide" id="s12">
+<section class="slide" id="s13">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
     <h2>OuteTTS <span class="tag green" style="font-size:12px; vertical-align:middle;">66% COMPLETE</span></h2>
@@ -1376,9 +1512,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     13 - 07_rejected_samples
+     14 - 07_rejected_samples
 ================================================== -->
-<section class="slide tall" id="s13">
+<section class="slide tall" id="s14">
   <div class="inner">
     <div class="eyebrow">Production — Rejection Analysis</div>
     <h2>Rejected samples across pipelines</h2>
@@ -1537,9 +1673,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     14 - 08_demo_outetts
+     15 - 08_demo_outetts
 ================================================== -->
-<section class="slide" id="s14">
+<section class="slide" id="s15">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 06</div>
     <h2>Bonafide vs OuteTTS</h2>
@@ -1595,9 +1731,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     15 - 09_demo_cosyvoice
+     16 - 09_demo_cosyvoice
 ================================================== -->
-<section class="slide" id="s15">
+<section class="slide" id="s16">
   <div class="inner">
     <div class="eyebrow">Negative Finding — CosyVoice 2</div>
     <h2>CosyVoice: no Spanish support</h2>
@@ -1650,9 +1786,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     16 - 09b_datasets_intro
+     17 - 09b_datasets_intro
 ================================================== -->
-<section class="slide" id="s16">
+<section class="slide" id="s17">
   <div class="inner">
     <div class="eyebrow">Literature Review</div>
     <h2>Datasets investigation</h2>
@@ -1718,9 +1854,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     17 - 10_lrlspoof
+     18 - 10_lrlspoof
 ================================================== -->
-<section class="slide tall" id="s17">
+<section class="slide tall" id="s18">
   <div class="inner">
     <div class="eyebrow">Related Work — LRLSpoof</div>
     <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
@@ -1783,9 +1919,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     18 - 11_speechfake
+     19 - 11_speechfake
 ================================================== -->
-<section class="slide" id="s18">
+<section class="slide" id="s19">
   <div class="inner">
     <div class="eyebrow">Related Work — SpeechFake-MD</div>
     <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
@@ -1884,9 +2020,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     19 - 12_hispaspoof
+     20 - 12_hispaspoof
 ================================================== -->
-<section class="slide tall" id="s19">
+<section class="slide tall" id="s20">
   <div class="inner">
     <div class="eyebrow">Related Work — HISPASpoof</div>
     <h2>HISPASpoof: Spanish Speech Forensics</h2>
@@ -1993,9 +2129,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     20 - 12b_partial_spoof_intro
+     21 - 12b_partial_spoof_intro
 ================================================== -->
-<section class="slide" id="s20">
+<section class="slide" id="s21">
   <div class="glow" style="width:600px;height:600px;background:var(--amber);bottom:-250px;left:-150px;"></div>
   <div class="inner" style="max-width:800px;">
     <div class="eyebrow">Novel Contribution</div>
@@ -2040,9 +2176,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     21 - 13_partial_spoof
+     22 - 13_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s21">
+<section class="slide tall" id="s22">
   <div class="inner">
     <div class="eyebrow">Novel Contribution — Partial Spoof</div>
     <h2>Word-level partial spoof for Spanish</h2>
@@ -2159,9 +2295,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     22 - 13a_partial_spoof_visual
+     23 - 13a_partial_spoof_visual
 ================================================== -->
-<section class="slide" id="s22">
+<section class="slide" id="s23">
   <div class="glow" style="width:500px;height:500px;background:var(--amber);top:-200px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
@@ -2238,9 +2374,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     23 - 13b_splice_challenge
+     24 - 13b_splice_challenge
 ================================================== -->
-<section class="slide" id="s23">
+<section class="slide" id="s24">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
     <h2>The splice boundary challenge</h2>
@@ -2313,9 +2449,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     24 - 13c_technique_cut_paste
+     25 - 13c_technique_cut_paste
 ================================================== -->
-<section class="slide" id="s24">
+<section class="slide" id="s25">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 1 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Direct cut-paste</h2>
@@ -2375,9 +2511,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     25 - 13d_technique_ola_hanning
+     26 - 13d_technique_ola_hanning
 ================================================== -->
-<section class="slide" id="s25">
+<section class="slide" id="s26">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 2 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">OLA Hanning</h2>
@@ -2431,9 +2567,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     26 - 13e_technique_linear
+     27 - 13e_technique_linear
 ================================================== -->
-<section class="slide" id="s26">
+<section class="slide" id="s27">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 3 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Linear crossfade</h2>
@@ -2486,9 +2622,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     27 - 13f_technique_cosine
+     28 - 13f_technique_cosine
 ================================================== -->
-<section class="slide" id="s27">
+<section class="slide" id="s28">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 4 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">Cosine (equal-power)</h2>
@@ -2541,9 +2677,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     28 - 13g_technique_half_sine
+     29 - 13g_technique_half_sine
 ================================================== -->
-<section class="slide" id="s28">
+<section class="slide" id="s29">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 5 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Square-root (half-sine)</h2>
@@ -2596,9 +2732,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     29 - 13h_technique_logarithmic
+     30 - 13h_technique_logarithmic
 ================================================== -->
-<section class="slide" id="s29">
+<section class="slide" id="s30">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 6 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Logarithmic crossfade</h2>
@@ -2652,9 +2788,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     30 - 13i_technique_parabola
+     31 - 13i_technique_parabola
 ================================================== -->
-<section class="slide" id="s30">
+<section class="slide" id="s31">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 7 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Inverted parabola</h2>
@@ -2707,9 +2843,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     31 - 13j_technique_summary
+     32 - 13j_technique_summary
 ================================================== -->
-<section class="slide tall" id="s31">
+<section class="slide tall" id="s32">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof &mdash; Summary</div>
     <h2>Technique distribution &amp; literature gaps</h2>
@@ -2785,9 +2921,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     32 - 13k_splice_quality_problem
+     33 - 13k_splice_quality_problem
 ================================================== -->
-<section class="slide" id="s32">
+<section class="slide" id="s33">
   <div class="glow" style="width:500px;height:500px;background:var(--red);bottom:-250px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Discovery &mdash; Listening Tests</div>
@@ -2847,9 +2983,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     33 - 13l_splice_quality_solution
+     34 - 13l_splice_quality_solution
 ================================================== -->
-<section class="slide tall" id="s33">
+<section class="slide tall" id="s34">
   <div class="glow" style="width:500px;height:500px;background:var(--green);top:-200px;left:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Solution &mdash; Smart Selection + Quality Gate</div>
@@ -2962,9 +3098,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     34 - 13m_prefilter_pipeline
+     35 - 13m_prefilter_pipeline
 ================================================== -->
-<section class="slide tall" id="s34">
+<section class="slide tall" id="s35">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Partial Spoof Pipeline &mdash; Quality Filters</div>
     <h2>Two-gate pre-filter before splicing</h2>
@@ -3099,9 +3235,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     35 - 13n_demo_partial_spoof
+     36 - 13n_demo_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s35">
+<section class="slide tall" id="s36">
   <div class="glow" style="width:400px;height:400px;background:var(--blue);top:-150px;right:-150px;"></div>
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Demo &mdash; Partial Spoof Pipeline &middot; Qwen3-TTS</div>
@@ -3265,9 +3401,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     36 - 14_next_steps
+     37 - 14_next_steps
 ================================================== -->
-<section class="slide" id="s36">
+<section class="slide" id="s37">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
@@ -3314,7 +3450,7 @@ audio {
 </section>
 
 <script>
-const N = 36;
+const N = 37;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');
