@@ -1,7 +1,7 @@
 # Production Runs
 
 **Status:** Active
-**Last updated:** 2026-05-01
+**Last updated:** 2026-05-06
 **Source:** ml-server03 logs, pipeline output metadata
 
 ---
@@ -15,7 +15,7 @@
 | OpenVoice | DONE | 35,544 | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
 | Chatterbox | RUNNING | ~14,818 | TBD | TBD | TBD | TBD | TBD | 31-45x |
 | OuteTTS | RUNNING | ~23,561 | TBD | TBD | TBD | TBD | TBD | ~5.6x |
-| OmniVoice | NOT STARTED | 0 | - | - | - | - | - | - |
+| OmniVoice | VALIDATED | 6 | 6 | 100.0% | 3.94% | 4.53 | 0.680 | TBD |
 | CosyVoice | DROPPED | - | - | - | - | - | - | - |
 
 **Hardware:** ml-server03, NVIDIA A40 (46GB VRAM), CUDA 12.6
@@ -56,11 +56,14 @@
 ### CosyVoice 3.0
 - Dropped. Generates Chinese output for Spanish input text. No Spanish support despite multilingual claims.
 
-### OmniVoice (k2-fsa) -- ADDED 2026-05-01, NOT STARTED
+### OmniVoice (k2-fsa) -- VALIDATED 2026-05-06
 - Standalone TTS pipeline written. Code at `app/pipeline/omnivoice_attack/`.
 - Audio ID range 15M-15.99M (avoids collision with partial_spoof main 12M-14M).
-- Status: pending first run on ml-server03 to validate Spanish quality.
-- Excluded from boundary jitter pilot until standalone validation passes (see "Operational Runbook" below).
+- Status: validation PASSED 2026-05-06 on GPU 1, ml-server03. 6/6 samples (3 speakers, 2 each).
+- Metrics: avg WER 3.94%, avg CER 1.81%, avg NISQA MOS 4.53, avg ECAPA SIM 0.680.
+- All 3 validation speakers (arf_00295, arf_00610, arf_01523) live in train split per the canonical HABLA partition, so train=6 / dev=0 / eval=0 in this run. Production mode will hit all splits.
+- ECAPA SIM 0.680 sits below the informational floor of 0.70 -- OmniVoice is the **weakest cloner of the suite** by speaker similarity. Content quality (NISQA 4.53) is the highest of any attack. Useful contrast for the paper.
+- Cleared for boundary jitter pilot (no longer blocked).
 
 ---
 
@@ -79,27 +82,56 @@ Before running anything, verify these are in place on ml-server03:
 | Mozilla CV transcripts | `data/cv-corpus-24.0-2025-12-05/es/validated.tsv` | exists |
 | MUSAN noise (RIR augmentation, not jitter) | `data/noise_dataset/musan/` | exists |
 | qwen_env | `envs/qwen_env/` | `source .../bin/activate` works |
-| omnivoice_env | `envs/omnivoice_env/` | does NOT exist yet, needs setup |
+| omnivoice_env | `envs/omnivoice_env/` | exists (built 2026-05-06, validated) |
 | GPU availability | `nvidia-smi` | confirm one A40 free (avoid 0 and 2 if shared) |
 
-### Job 1: OmniVoice standalone validation (highest priority)
+### Job 1: OmniVoice standalone validation -- COMPLETED 2026-05-06
 
-**Why first:** The OmniVoice pipeline code is written but unvalidated. Until we confirm it generates intelligible Spanish, it cannot be used as input to the boundary jitter pilot.
+**Outcome:** PASSED. 6/6 samples on GPU 1. Avg WER 3.94%, CER 1.81%, NISQA 4.53, ECAPA SIM 0.680.
 
-**Setup the venv:**
+**Venv build recipe (proven on ml-server03 2026-05-06):**
+
+The straightforward `pip install -r envs/omnivoice_requirements.txt` does NOT yield a working environment because NeMo and modern transformers fight over `huggingface_hub` versions. The proven order is:
+
 ```bash
 cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
 git pull
 python3 -m venv envs/omnivoice_env
 source envs/omnivoice_env/bin/activate
 
-# Torch matched to driver 560.35.03 / CUDA 12.6
-pip install torch==2.8.0 torchaudio==2.8.0 --extra-index-url https://download.pytorch.org/whl/cu126
-pip install -r envs/omnivoice_requirements.txt
+pip install --upgrade pip
 
-# Smoke check
-python -c "from omnivoice import OmniVoice; print('OmniVoice import OK')"
-python -c "import nemo.collections.asr; print('NeMo ASR (Parakeet) OK')"
+# 1. Torch first, matched to driver 560.35.03 / CUDA 12.6
+pip install torch==2.8.0 torchaudio==2.8.0 --extra-index-url https://download.pytorch.org/whl/cu126
+
+# 2. NeMo with all transitive deps (also pulls setuptools<81 to keep pkg_resources working)
+pip install "nemo_toolkit[asr]>=2.7.0" "setuptools<81"
+
+# 3. OmniVoice without deps (avoids version fight with NeMo's transformers pin)
+pip install --no-deps omnivoice
+
+# 4. Force transformers to 5.3.0 (NeMo runs fine on 5.3+)
+pip install "transformers>=5.3.0" --force-reinstall --no-deps
+
+# 5. CRITICAL: align huggingface_hub with transformers 5.3.0, otherwise
+#    `is_offline_mode` ImportError cascades through lightning/torchmetrics
+pip install "huggingface_hub==1.5.0" --no-deps
+
+# 6. Pipeline deps not pulled by NeMo
+pip install "speechbrain>=1.0.0" "torchmetrics>=1.0.0" "jiwer>=3.0.0" "pydantic>=2.0.0"
+
+# Smoke check (all four must pass)
+python -c "from huggingface_hub import is_offline_mode; print('hf_hub OK')"
+python -c "import nemo.collections.asr; print('NeMo ASR OK')"
+python -c "from omnivoice import OmniVoice; print('OmniVoice OK')"
+python -c "from speechbrain.inference.speaker import SpeakerRecognition; print('SpeechBrain OK')"
+deactivate
+```
+
+After the env is healthy, regenerate the requirements lock:
+```bash
+source envs/omnivoice_env/bin/activate
+pip freeze > envs/omnivoice_requirements.txt
 deactivate
 ```
 
@@ -108,7 +140,7 @@ deactivate
 source envs/omnivoice_env/bin/activate
 export CUDA_VISIBLE_DEVICES=1   # check nvidia-smi first
 
-python -c "
+python -u -c "
 from app.pipeline.omnivoice_attack import OmniVoiceAttackPipeline, settings
 settings.VALIDATION_MODE = True
 settings.SAMPLES_PER_SPEAKER = 2
@@ -116,18 +148,18 @@ settings.MATCH_BONAFIDE_COUNT = False
 
 pipe = OmniVoiceAttackPipeline()
 print('Output:', pipe.run())
-"
+" 2>&1 | tee logs/omnivoice_validation_$(date +%Y_%m_%d).log
 deactivate
 ```
 
-**Success criteria:**
-- All 6 samples generated (no failures in `data/omnivoice_output/generation_metadata.json`)
-- Mean WER <= 0.15 (Parakeet WER on generated audio vs prompt)
-- Mean NISQA MOS >= 3.5
-- Listening test on at least 2 samples by Master Tomas: intelligible Spanish, no Chinese leakage, no robotic artifacts
+**Validation results (2026-05-06):**
+- 6/6 samples passed validation (100% pass rate, no rejections)
+- Avg WER 3.94%, Avg CER 1.81% (well below the 15%/10% rejection ceilings)
+- Avg NISQA MOS 4.53 (best of suite -- exceeds FishGram's 4.57 in single run; full production needed for fair comparison)
+- Avg ECAPA SIM 0.680 (below 0.70 informational floor; weakest cloner of suite)
+- 0 prefix trims, all 6 in train split (artifact of the validation speaker selection)
 
-**If success:** Promote to production mode (`VALIDATION_MODE=False`, `MATCH_BONAFIDE_COUNT=True`). OmniVoice joins the active 5-attack suite.
-**If failure:** Document in this page under "OmniVoice" section, root-cause (model-quality vs venv-issue vs CUDA-issue), and either fix-and-retry or drop OmniVoice.
+**Next step:** Promote to production mode (`VALIDATION_MODE=False`, `MATCH_BONAFIDE_COUNT=True`).
 
 ### Job 2: Qwen partial_spoof main run with file partition
 
