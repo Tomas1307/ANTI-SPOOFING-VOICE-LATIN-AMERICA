@@ -8,12 +8,18 @@ For each WAV file in the configured generated/ directory:
     3. Extract the first word's start time (T_first).
     4. Compute RMS dBFS over [0, T_first] (pre-speech window).
     5. Compute RMS dBFS over [T_first, T_first + 0.5s] (speech reference).
-    6. Print a per-sample row plus a final summary.
+    6. Print a per-sample row, persist all rows to JSON, print a final summary.
+
+Output JSON is written to settings.OUTPUT_DIR / 'prefix_diagnostic.json' so the
+data survives terminal scrollback truncation.
 
 Usage on ml-server03:
     source envs/omnivoice_env/bin/activate
     export CUDA_VISIBLE_DEVICES=1
+    # Run on all generated samples:
     python -m app.scripts.diagnose_omnivoice_prefix
+    # Or filter by substring (e.g. just TEXT_00001):
+    python -m app.scripts.diagnose_omnivoice_prefix TEXT_00001
     deactivate
 
 The output table tells us:
@@ -22,6 +28,7 @@ The output table tells us:
     - Where to set min_gap_seconds and silence_floor_db for the production
       detector
 """
+import json
 import sys
 from pathlib import Path
 from typing import List
@@ -71,30 +78,41 @@ def _format_timestamps(timestamps: List[WordTimestamp], max_words: int = 8) -> s
 def main() -> int:
     """Diagnose OmniVoice prefix artifacts via Parakeet timestamp analysis.
 
+    Optionally accepts a filter substring as the first CLI argument; only
+    WAV files whose stem contains the substring are processed.
+
     Returns:
         Process exit code (0 on success, 1 on missing input directory).
     """
+    name_filter = sys.argv[1] if len(sys.argv) > 1 else None
+
     generated_dir = settings.OUTPUT_DIR / "generated"
     if not generated_dir.exists():
         logger.error(f"Generated directory not found: {generated_dir}")
         return 1
 
     wav_files = sorted(generated_dir.glob("*.wav"))
+    if name_filter:
+        wav_files = [w for w in wav_files if name_filter in w.stem]
+        logger.info(f"Filter '{name_filter}' matched {len(wav_files)} files")
+
     if not wav_files:
-        logger.error(f"No WAV files in {generated_dir}")
+        logger.error(f"No WAV files match in {generated_dir}")
         return 1
 
-    logger.info(f"Found {len(wav_files)} WAV files in {generated_dir}")
+    logger.info(f"Processing {len(wav_files)} WAV files from {generated_dir}")
 
     transcriber = ParakeetTranscriber()
     transcriber.load(model_id=settings.PARAKEET_MODEL_ID, device=settings.DEVICE)
 
-    print()
-    print("=" * 120)
-    print(
+    header = (
         f"{'sample':<48} | {'dur(s)':>6} | "
         f"{'T_first':>7} | {'pre_RMS':>8} | {'spch_RMS':>8} | {'gap?':<5} | first_words"
     )
+
+    print()
+    print("=" * 120)
+    print(header)
     print("-" * 120)
 
     rows = []
@@ -105,10 +123,20 @@ def main() -> int:
         text, timestamps = transcriber.transcribe_with_timestamps(wav_path)
 
         if not timestamps:
-            print(
+            line = (
                 f"{wav_path.stem:<48} | {duration:>6.2f} | "
                 f"{'N/A':>7} | {'N/A':>8} | {'N/A':>8} | {'no-ts':<5} | <no timestamps>"
             )
+            print(line)
+            rows.append({
+                "stem": wav_path.stem,
+                "duration": duration,
+                "t_first": None,
+                "pre_rms_db": None,
+                "speech_rms_db": None,
+                "transcription": text,
+                "first_words_repr": "<no timestamps>",
+            })
             continue
 
         t_first = timestamps[0].start
@@ -122,27 +150,43 @@ def main() -> int:
 
         gap_flag = "YES" if t_first >= 0.020 else "no"
 
-        print(
+        words_repr = _format_timestamps(timestamps)
+        line = (
             f"{wav_path.stem:<48} | {duration:>6.2f} | "
             f"{t_first:>7.3f} | {pre_rms_db:>8.1f} | {speech_rms_db:>8.1f} | "
-            f"{gap_flag:<5} | {_format_timestamps(timestamps)}"
+            f"{gap_flag:<5} | {words_repr}"
         )
+        print(line)
 
         rows.append({
             "stem": wav_path.stem,
-            "duration": duration,
-            "t_first": t_first,
-            "pre_rms_db": pre_rms_db,
-            "speech_rms_db": speech_rms_db,
+            "duration": float(duration),
+            "t_first": float(t_first),
+            "pre_rms_db": float(pre_rms_db),
+            "speech_rms_db": float(speech_rms_db),
+            "gap_flag": gap_flag,
+            "transcription": text,
+            "first_words_repr": words_repr,
+            "all_timestamps": [
+                {"word": wt.word, "start": float(wt.start), "end": float(wt.end)}
+                for wt in timestamps
+            ],
         })
 
     print("-" * 120)
     print()
 
-    if rows:
-        gaps = [r["t_first"] for r in rows]
-        pre_rms = [r["pre_rms_db"] for r in rows]
-        speech_rms = [r["speech_rms_db"] for r in rows]
+    output_path = settings.OUTPUT_DIR / "prefix_diagnostic.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, indent=2, ensure_ascii=False)
+    logger.info(f"Diagnostic results persisted to: {output_path}")
+
+    valid_rows = [r for r in rows if r.get("t_first") is not None]
+    if valid_rows:
+        gaps = [r["t_first"] for r in valid_rows]
+        pre_rms = [r["pre_rms_db"] for r in valid_rows]
+        speech_rms = [r["speech_rms_db"] for r in valid_rows]
 
         print("SUMMARY")
         print(f"  T_first  : min={min(gaps):.3f}s  median={float(np.median(gaps)):.3f}s  max={max(gaps):.3f}s")
