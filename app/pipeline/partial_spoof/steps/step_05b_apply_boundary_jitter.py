@@ -141,7 +141,11 @@ class BoundaryJitterApplier:
                 new_entry["jitter_applied"] = False
                 new_entry["jitter_drift_samples"] = 0
                 new_metadata[splice_key] = new_entry
-                jitter_plans[splice_key] = {"boundaries": [], "drift_samples": 0}
+                jitter_plans[splice_key] = {
+                    "boundaries": [],
+                    "drift_samples": 0,
+                    "events_timeline": self._build_events_timeline(entry, [], settings.SAMPLE_RATE),
+                }
                 total_processed += 1
                 continue
 
@@ -171,6 +175,9 @@ class BoundaryJitterApplier:
             jitter_plans[splice_key] = {
                 "boundaries": plan["boundary_records"],
                 "drift_samples": int(drift),
+                "events_timeline": self._build_events_timeline(
+                    entry, plan["boundary_records"], settings.SAMPLE_RATE
+                ),
             }
 
             drift_samples.append(drift)
@@ -224,6 +231,91 @@ class BoundaryJitterApplier:
             if splice_key.endswith(tier):
                 return splice_key[: -len(tier)]
         return splice_key
+
+    def _build_events_timeline(
+        self,
+        splice_entry: dict,
+        boundary_records: List[dict],
+        sample_rate: int,
+    ) -> List[dict]:
+        """Build a chronological timeline of every transformation event.
+
+        Combines the spoof-word splice events from the Step 5 splice metadata
+        entry with the per-boundary jitter records from the current Step 5b
+        plan. Events are sorted by absolute time so a downstream consumer can
+        scan the list and know exactly what happened where in the utterance.
+
+        Each event is one of:
+            spoof_start  -- start of a cloned word's slot in the bonafide
+                            reference frame (carries word, splice method,
+                            crossfade ms)
+            spoof_end    -- end of the same slot
+            natural      -- internal boundary that was kept untouched (jitter
+                            coin flipped tails)
+            truncate     -- jitter truncate at this boundary (carries side,
+                            duration_ms, delta_samples)
+            overlap      -- jitter overlap (carries duration_ms, fade,
+                            delta_samples)
+            bleed        -- jitter bleed (carries direction, duration_ms,
+                            delta_samples)
+
+        Args:
+            splice_entry: Splice metadata entry for this utterance (provides
+                spoofed_words list).
+            boundary_records: Jitter plan boundary records produced by
+                _apply_jitter_plan.
+            sample_rate: Audio sample rate used to convert boundary_sample
+                indices to seconds.
+
+        Returns:
+            List of event dicts sorted by ascending time_s.
+        """
+        events: List[dict] = []
+
+        for w in splice_entry.get("spoofed_words", []):
+            base = {
+                "word": w.get("word", "?"),
+                "splice_method": w.get("splice_method"),
+                "crossfade_ms": w.get("effective_crossfade_ms", w.get("crossfade_ms", 0.0)),
+            }
+            events.append({
+                "time_s": float(w.get("bonafide_start_s", 0.0)),
+                "type": "spoof_start",
+                **base,
+            })
+            events.append({
+                "time_s": float(w.get("bonafide_end_s", 0.0)),
+                "type": "spoof_end",
+                **base,
+            })
+
+        for rec in boundary_records:
+            sample_idx = int(rec.get("boundary_sample", 0))
+            time_s = sample_idx / float(sample_rate)
+            op = rec.get("operation", "none")
+
+            event: dict = {
+                "time_s": time_s,
+                "type": "natural" if op == "none" else op,
+                "boundary_index": rec.get("boundary_index"),
+            }
+            if op == "truncate":
+                event["side"] = rec.get("side")
+                event["duration_ms"] = rec.get("duration_ms")
+                event["delta_samples"] = rec.get("delta_samples")
+            elif op == "overlap":
+                event["fade"] = rec.get("fade")
+                event["duration_ms"] = rec.get("duration_ms")
+                event["delta_samples"] = rec.get("delta_samples")
+            elif op == "bleed":
+                event["direction"] = rec.get("direction")
+                event["duration_ms"] = rec.get("duration_ms")
+                event["delta_samples"] = rec.get("delta_samples")
+
+            events.append(event)
+
+        events.sort(key=lambda e: e["time_s"])
+        return events
 
     def _stable_hash(self, key: str) -> int:
         """Compute a deterministic 32-bit integer hash of a string key.
