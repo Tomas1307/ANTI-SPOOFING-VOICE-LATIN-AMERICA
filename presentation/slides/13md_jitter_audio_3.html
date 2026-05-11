@@ -1,0 +1,58 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Audio 3 (W2 tier)</div>
+    <h2>Same source as Audio 2, two cloned words ("hubieron" + "muertos")</h2>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Speaker <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>, 12 words, 2 cloned. 11 internal boundaries. Different RNG seed than W1 (seeded by splice_key) so a different jitter plan emerges. After Step 5b: 3 truncate, 1 overlap, 1 bleed, 6 natural. Drift -67 ms.</p>
+
+    <!-- Audio row -->
+    <div class="three" style="gap:14px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Bonafide (original)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/spanish_dataset/bonafide_artition_Dataset_by_Speaker/arf_00295/train/arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); margin-bottom:6px;">Spliced W2 (no jitter)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/spliced/QWEN3TTS_PSW2_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(62,255,139,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:6px;">Jittered W2J</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/jittered/QWEN3TTS_PSW2_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+    </div>
+
+    <table style="font-size:12px; margin-bottom:18px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Word</th>
+          <th>Span (s)</th>
+          <th>Left boundary</th>
+          <th>Right boundary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:rgba(62,255,139,0.08);"><td>1</td><td>Segun</td><td>0.32 - 1.04</td><td><span style="color:var(--muted2);">utterance start</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>2</td><td>la</td><td>1.04 - 1.20</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>3</td><td>television</td><td>1.20 - 1.76</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>4</td><td>y</td><td>1.76 - 1.92</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>5</td><td>los</td><td>1.92 - 2.00</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--green);">overlap</span> 39.6 ms</td><td>touched R</td></tr>
+        <tr><td>6</td><td>medios,</td><td>2.00 - 2.32</td><td><span style="color:var(--green);">overlap</span> 39.6 ms</td><td><span style="color:var(--amber);">bleed</span> 43.1 ms R&rarr;L (= spoof start)</td><td>touched both</td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>7</td><td><strong style="color:var(--red);">hubieron</strong></td><td>2.48 - 2.96</td><td><span style="color:var(--amber);">bleed</span> 43.1 ms (splice + jitter)</td><td>truncate 29.6 ms RH (splice + jitter)</td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr style="background:rgba(245,166,35,0.08);"><td>8</td><td>bastantes</td><td>2.96 - 3.36</td><td>truncate 29.6 ms RH (= spoof end of hubieron)</td><td>truncate 30.9 ms RH (= spoof start of muertos)</td><td><strong style="color:var(--amber);">SANDWICHED</strong></td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>9</td><td><strong style="color:var(--red);">muertos</strong></td><td>3.36 - 3.68</td><td>truncate 30.9 ms RH (splice + jitter, cut_paste)</td><td><span style="color:var(--muted2);">natural (jitter tails, cut_paste)</span></td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>10</td><td>por</td><td>3.68 - 3.84</td><td><span style="color:var(--muted2);">natural (= spoof end of muertos)</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>11</td><td>el</td><td>3.84 - 4.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 10.3 ms RH</td><td>touched R</td></tr>
+        <tr><td>12</td><td>terremoto.</td><td>4.00 - 4.88</td><td>truncate 10.3 ms RH</td><td><span style="color:var(--muted2);">utterance end</span></td><td>touched L</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Tally.</strong> 2 spoof, 5 clean (50 %), 4 touched, 1 sandwiched. The 4-word clean run <strong style="color:var(--white);">"Segun la television y"</strong> at the start (0.32-1.92 s) is pure bonafide passthrough. <strong style="color:var(--white);">"bastantes"</strong> (between the two spoofs) takes hits on both sides because both spoof boundaries flipped heads -- it ends up with two truncates flanking it. The cloned "muertos" was spliced with <span style="font-family:'JetBrains Mono',monospace;">cut_paste</span> (the rare 10 % no-crossfade fade), and its left boundary stacks the cut_paste with a 30.9 ms truncate jitter -- the most aggressive single boundary in the three samples. Listen carefully there.
+    </div>
+  </div>
+</section>

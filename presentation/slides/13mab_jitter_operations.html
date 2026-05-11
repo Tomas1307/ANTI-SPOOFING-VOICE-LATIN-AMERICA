@@ -1,0 +1,77 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Three Structural Operations</div>
+    <h2>Truncate, overlap, bleed: chosen uniformly when the coin flips heads</h2>
+    <p style="margin-bottom:22px; max-width:760px;">Each operation imitates a specific splice artifact, so a manipulated bonafide-bonafide boundary is acoustically indistinguishable from a real splice boundary at the spectral level. Magnitudes are drawn uniformly at random within ranges anchored to Spanish phonetics and to the LlamaPartialSpoof crossfade convention.</p>
+
+    <table style="font-size:13px; margin-bottom:24px;">
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Magnitude</th>
+          <th>Effect on audio</th>
+          <th>Mimics splice artifact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:#3b82f6;">truncate</strong></td>
+          <td>10&nbsp;-&nbsp;40&nbsp;ms</td>
+          <td>Cut left tail or right head &rarr; abrupt onset/offset</td>
+          <td>Hard cut/paste splice (no crossfade)</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--green);">overlap</strong></td>
+          <td>30&nbsp;-&nbsp;80&nbsp;ms</td>
+          <td>Sum left tail with right head, Hanning fade</td>
+          <td>OLA-Hanning crossfade splice</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--amber);">bleed</strong></td>
+          <td>20&nbsp;-&nbsp;60&nbsp;ms</td>
+          <td>Insert fragment of one word into the other &rarr; pre/post-echo</td>
+          <td>Tail bleed of crossfade splice</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="two" style="gap:24px; margin-bottom:22px;">
+      <div>
+        <h3 style="margin-bottom:12px;">Per-boundary probability table</h3>
+        <div class="card-sm">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.8;">
+            <span style="color:var(--muted);">P(natural)</span>             <span style="color:var(--white);">= 0.500</span><br>
+            <span style="color:var(--muted);">P(truncate left_tail)</span>  <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(truncate right_head)</span> <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(overlap hanning)</span>     <span style="color:var(--white);">= 0.167</span><br>
+            <span style="color:var(--muted);">P(bleed L&rarr;R)</span>            <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(bleed R&rarr;L)</span>            <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted2); border-top:1px dashed var(--border); padding-top:4px; display:inline-block; margin-top:4px;">total</span>                  <span style="color:var(--white);">= 1.000</span>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.55;">
+          Uniform pick among ops because we have no prior knowledge of which artifact type the detector is most sensitive to &mdash; that would require running the detector first (circular).
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:12px;">Magnitude grounding</h3>
+        <div class="card-sm" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:var(--green);">Overlap (30-80 ms)</strong> matches the LlamaPartialSpoof crossfade range (Luong et&nbsp;al. 2024) exactly. Same temporal scale as the splice itself.
+          </div>
+        </div>
+        <div class="card-sm" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:#3b82f6;">Truncate (10-40 ms)</strong> stays below Spanish syllable nucleus duration (~50-90 ms) so intelligibility is preserved. 10 ms minimum is at the threshold of audibility.
+          </div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:var(--amber);">Bleed (20-60 ms)</strong> covers Spanish VOT for voiceless stops (4-29 ms) plus consonant-vowel transition &mdash; inserted fragment sounds like a partial phoneme, not a full second phoneme.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

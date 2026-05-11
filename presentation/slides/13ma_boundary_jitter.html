@@ -1,0 +1,62 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Partial Spoof &mdash; Boundary Jitter (Step 5b)</div>
+    <h2>Homogenize boundary anomalies so the splice no longer stands out</h2>
+    <p style="margin-bottom:22px; max-width:760px;">After Step 5 splices the cloned word, the only unusual boundaries are the two around the spoof. A detector exploits "find the noisy boundary" as a shortcut. Step 5b applies the same kind of structural manipulations to <strong style="color:var(--white);">every</strong> internal boundary so the spoof no longer stands out.</p>
+
+    <!-- Detector shortcut motivation -->
+    <div class="callout danger" style="margin-bottom:26px;">
+      <strong style="color:var(--red);">Negroni et al. (2024):</strong> 6.16&nbsp;% EER on PartialSpoof with <strong>zero training</strong>, purely by analyzing dynamic-range discontinuity at the splice join. <strong style="color:var(--red);">Muller (2024):</strong> detectors generalize via dataset-specific shortcuts (silence length, spectral cleanness), not synthesis features.
+    </div>
+
+    <h3 style="margin-bottom:12px;">Per-boundary independent coin flip</h3>
+    <div class="card-sm" style="margin-bottom:22px;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7;">
+<span style="color:var(--amber);">for</span> <span style="color:var(--white);">each internal boundary i (right-to-left):</span><br>
+&nbsp;&nbsp;<span style="color:var(--amber);">if</span> <span style="color:var(--white);">rng.uniform() &lt; </span><span style="color:var(--green);">JITTER_PROBABILITY = 0.5</span><span style="color:var(--white);">:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--white);">op = uniform_pick(</span><span style="color:var(--green);">truncate</span><span style="color:var(--white);">,</span> <span style="color:var(--green);">overlap</span><span style="color:var(--white);">,</span> <span style="color:var(--green);">bleed</span><span style="color:var(--white);">)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--white);">apply(audio, op, uniform_magnitude_within_range)</span><br>
+&nbsp;&nbsp;<span style="color:var(--amber);">else</span><span style="color:var(--white);">:</span> <span style="color:var(--muted2);">leave boundary natural</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.55;">
+        Spoof boundaries receive the <strong style="color:var(--white);">same coin flip</strong> on top of the splice. Seed = <span style="font-family:'JetBrains Mono',monospace;">JITTER_SEED + sha256(splice_key)[:4]</span> for reproducibility.
+      </div>
+    </div>
+
+    <!-- The maxent payoff: count-distribution mixing -->
+    <h3 style="margin-bottom:12px;">Why p = 0.5: count-distribution mixing</h3>
+    <div class="two" style="gap:24px; margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Before jitter (deterministic)</div>
+        <table style="font-size:12px;">
+          <thead>
+            <tr><th>Boundary type</th><th>Manipulations</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>bonafide-bonafide</td><td><strong>0</strong> (always)</td></tr>
+            <tr><td>spoof</td><td class="fail"><strong>1</strong> (always)</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px; color:var(--red); margin-top:6px;">Detector classifies trivially on count.</div>
+      </div>
+
+      <div>
+        <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">After jitter (p = 0.5)</div>
+        <table style="font-size:12px;">
+          <thead>
+            <tr><th>Boundary type</th><th>Distribution over count</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>bonafide-bonafide</td><td><strong>0</strong> (50&nbsp;%) or <strong>1</strong> (50&nbsp;%)</td></tr>
+            <tr><td>spoof</td><td><strong>1</strong> (50&nbsp;%) or <strong>2</strong> (50&nbsp;%)</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px; color:var(--green); margin-top:6px;">Both share equal mass at count = 1 &rarr; ambiguous.</div>
+      </div>
+    </div>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Word interiors stay intact.</strong> All three operations act only at boundaries -- never inside a word. With p = 0.5 per boundary, the probability that both flanking boundaries of a word flip natural is 0.25. By construction, <strong style="color:var(--white);">~25 % of non-spoof words remain bit-identical to the bonafide</strong>. Intelligibility is preserved; only the boundary fingerprint is homogenized.
+    </div>
+  </div>
+</section>

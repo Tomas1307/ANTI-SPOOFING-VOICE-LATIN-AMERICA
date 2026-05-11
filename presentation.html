@@ -799,111 +799,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     07 - 02_cross_pipeline
+     07 - 03_fishgram_production
 ================================================== -->
-<section class="slide" id="s7">
-  <div class="inner">
-    <div class="eyebrow">Production Scale — All 5 Attack Pipelines</div>
-    <h2>Cross-pipeline comparison</h2>
-    <p style="margin-bottom:32px; max-width:640px;">Production metrics from ~35K samples each (1,567 speakers). FishGram, Qwen3-TTS, and OpenVoice complete. Chatterbox in progress. OuteTTS from validation run (6 samples). CosyVoice dropped (no Spanish).</p>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Metric</th>
-          <th>FishGram</th>
-          <th>Qwen3TTS</th>
-          <th>OpenVoice</th>
-          <th>Chatterbox</th>
-          <th>OuteTTS</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Architecture</td>
-          <td>VQGAN vocoder</td>
-          <td>Dual-Track codec</td>
-          <td>VITS tone-color</td>
-          <td>Flow-matching</td>
-          <td>LLM + DAC codec</td>
-        </tr>
-        <tr>
-          <td>Model size</td>
-          <td><strong>4B</strong></td>
-          <td>1.7B</td>
-          <td>~200M</td>
-          <td>500M</td>
-          <td>0.6B</td>
-        </tr>
-        <tr>
-          <td>Samples</td>
-          <td>34,197</td>
-          <td>31,568</td>
-          <td>29,626</td>
-          <td style="color:var(--amber);">running...</td>
-          <td style="color:var(--muted);">5 (val)</td>
-        </tr>
-        <tr>
-          <td>Pass rate</td>
-          <td class="pass"><strong>95.2%</strong></td>
-          <td class="pass">87.9%</td>
-          <td class="warn">83.4%</td>
-          <td>—</td>
-          <td class="pass">83.3%</td>
-        </tr>
-        <tr>
-          <td>Avg WER</td>
-          <td>2.17%</td>
-          <td class="pass"><strong>1.46%</strong></td>
-          <td class="pass">1.50%</td>
-          <td>—</td>
-          <td class="pass">4.04%</td>
-        </tr>
-        <tr>
-          <td>Avg CER</td>
-          <td>0.70%</td>
-          <td class="pass">0.59%</td>
-          <td class="pass"><strong>0.45%</strong></td>
-          <td>—</td>
-          <td class="pass">1.60%</td>
-        </tr>
-        <tr>
-          <td>Avg NISQA MOS</td>
-          <td><strong>4.571</strong></td>
-          <td>4.371</td>
-          <td>4.409</td>
-          <td>—</td>
-          <td class="pass"><strong>4.620</strong></td>
-        </tr>
-        <tr>
-          <td>Avg speaker similarity</td>
-          <td>0.602</td>
-          <td class="pass"><strong>0.720</strong></td>
-          <td class="fail">0.394</td>
-          <td>—</td>
-          <td class="warn">0.468</td>
-        </tr>
-        <tr>
-          <td>Total audio</td>
-          <td>36.1h</td>
-          <td>40.1h</td>
-          <td>37.2h</td>
-          <td>—</td>
-          <td style="color:var(--muted);">—</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div style="margin-top:24px;" class="callout hi">
-      <strong style="color:var(--white);">Production-scale findings.</strong> Qwen3-TTS is the most dangerous attack: highest speaker fidelity (0.720) with lowest WER (1.46%). FishGram achieves the best pass rate (95.2%) and NISQA (4.571). OpenVoice has the best intelligibility (0.45% CER) but weakest voice cloning (0.394 similarity) — easiest for embedding-based detectors. OuteTTS shows the highest NISQA (4.62) but from validation only.
-    </div>
-  </div>
-</section>
-
-<!-- ==================================================
-     08 - 03_fishgram_production
-================================================== -->
-<section class="slide tall" id="s8">
+<section class="slide tall" id="s7">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Production Run</div>
     <h2>FishGram at scale</h2>
@@ -1007,9 +905,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     09 - 04_fishgram_distributions
+     08 - 04_fishgram_distributions
 ================================================== -->
-<section class="slide tall" id="s9">
+<section class="slide tall" id="s8">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Distribution Analysis</div>
     <h2>Quality distributions</h2>
@@ -1137,9 +1035,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     10 - 05_qwen_production
+     09 - 05_qwen_production
 ================================================== -->
-<section class="slide tall" id="s10">
+<section class="slide tall" id="s9">
   <div class="inner">
     <div class="eyebrow">Pipeline 03 — Qwen3-TTS Production Run</div>
     <h2>Qwen3-TTS at scale</h2>
@@ -1248,9 +1146,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     11 - 06_openvoice_production
+     10 - 06_openvoice_production
 ================================================== -->
-<section class="slide tall" id="s11">
+<section class="slide tall" id="s10">
   <div class="inner">
     <div class="eyebrow">Pipeline 05 — OpenVoice Production Run</div>
     <h2>OpenVoice at scale</h2>
@@ -1359,9 +1257,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     12 - 06b_chatterbox_production
+     11 - 06b_chatterbox_production
 ================================================== -->
-<section class="slide" id="s12">
+<section class="slide" id="s11">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Pipeline 06 &mdash; Chatterbox Production Run</div>
     <h2>Chatterbox (Resemble.ai) <span class="tag amber" style="font-size:12px; vertical-align:middle;">IN PROGRESS</span></h2>
@@ -1369,12 +1267,12 @@ audio {
 
     <div class="four" style="margin-bottom:32px;">
       <div class="stat-card">
-        <div class="num" style="color:var(--amber);">14,818</div>
+        <div class="num" style="color:var(--amber);">21,192</div>
         <div class="sub">Samples generated</div>
         <div class="detail">of 35,927 target</div>
       </div>
       <div class="stat-card">
-        <div class="num">41%</div>
+        <div class="num">59%</div>
         <div class="sub">Progress</div>
         <div class="detail">Started April 12</div>
       </div>
@@ -1384,9 +1282,9 @@ audio {
         <div class="detail">Slowest pipeline</div>
       </div>
       <div class="stat-card">
-        <div class="num">~May 13</div>
+        <div class="num">~early June</div>
         <div class="sub">ETA</div>
-        <div class="detail">~18 days remaining</div>
+        <div class="detail">~14,700 remaining</div>
       </div>
     </div>
 
@@ -1394,14 +1292,14 @@ audio {
     <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
         <span style="font-size:12px; color:var(--muted);">Production progress</span>
-        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber);">14,818 / 35,927</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--amber);">21,192 / 35,927</span>
       </div>
       <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
-        <div style="width:41%; height:100%; background:linear-gradient(90deg, var(--amber), #e89520); border-radius:6px;"></div>
+        <div style="width:59%; height:100%; background:linear-gradient(90deg, var(--amber), #e89520); border-radius:6px;"></div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
         <span>GPU 2 &mdash; NVIDIA A40</span>
-        <span>Current speaker: com_07049 (93/1000)</span>
+        <span>As of 2026-05-10</span>
       </div>
     </div>
 
@@ -1433,78 +1331,110 @@ audio {
 </section>
 
 <!-- ==================================================
-     13 - 06c_outetts_production
+     12 - 06c_outetts_production
 ================================================== -->
-<section class="slide" id="s13">
-  <div class="inner" style="max-width:900px;">
+<section class="slide tall" id="s12">
+  <div class="inner">
     <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
-    <h2>OuteTTS <span class="tag green" style="font-size:12px; vertical-align:middle;">66% COMPLETE</span></h2>
-    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers on GPU 2. OuteTTS uses a Llama-based language model that generates WavTokenizer codes directly from text, with zero-shot voice cloning via speaker prompt tokens. Moderate RTF of ~5.6x.</p>
+    <h2>OuteTTS at scale</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers. OuteTTS 1.0 0.6B (Llama 3.1 backbone + WavTokenizer codes), zero-shot voice cloning via 15s speaker prompt tokens. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN. Moderate RTF ~5.6x.</p>
 
-    <div class="four" style="margin-bottom:32px;">
+    <div class="four" style="margin-bottom:36px;">
       <div class="stat-card">
-        <div class="num" style="color:var(--green);">23,561</div>
+        <div class="num">35,461</div>
         <div class="sub">Samples generated</div>
-        <div class="detail">of 35,927 target</div>
+        <div class="detail">1,567 speakers</div>
       </div>
       <div class="stat-card">
-        <div class="num">66%</div>
-        <div class="sub">Progress</div>
-        <div class="detail">Started April 13</div>
+        <div class="num" style="color:var(--green);">25,642</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">72.3% pass rate</div>
       </div>
       <div class="stat-card">
-        <div class="num">~5.6x</div>
-        <div class="sub">RTF (consistent)</div>
-        <div class="detail">5th fastest pipeline</div>
+        <div class="num" style="color:var(--red);">9,819</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">27.7% rejection rate</div>
       </div>
       <div class="stat-card">
-        <div class="num">~May 1</div>
-        <div class="sub">ETA</div>
-        <div class="detail">~6 days remaining</div>
+        <div class="num">30.9h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 4.33s per sample</div>
       </div>
     </div>
 
-    <!-- Progress bar -->
-    <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px; margin-bottom:24px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-        <span style="font-size:12px; color:var(--muted);">Production progress</span>
-        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--green);">23,561 / 35,927</span>
-      </div>
-      <div style="width:100%; height:12px; background:#161616; border-radius:6px; overflow:hidden;">
-        <div style="width:66%; height:100%; background:linear-gradient(90deg, var(--green), #2ecc71); border-radius:6px;"></div>
-      </div>
-      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--muted2);">
-        <span>GPU 2 &mdash; NVIDIA A40</span>
-        <span>Current speaker: mxf_00089</span>
-      </div>
-    </div>
+    <div class="div"></div>
 
-    <div class="two" style="gap:32px;">
+    <div class="two" style="gap:40px;">
       <div>
-        <h3 style="margin-bottom:14px;">Pipeline characteristics</h3>
-        <div style="display:flex; flex-direction:column; gap:10px;">
-          <div class="card-sm">
-            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Architecture</div>
-            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Llama 3.1-based LM (500M params) that generates WavTokenizer discrete codes autoregressively from text. No vocoder &mdash; tokens decode directly to waveform via WavTokenizer decoder.</div>
-          </div>
-          <div class="card-sm">
-            <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">Voice cloning</div>
-            <div style="font-size:12px; color:var(--muted); line-height:1.5;">Zero-shot via speaker prompt: 15s reference audio encoded as WavTokenizer tokens, prepended to the text token sequence. Speaker identity carried through autoregressive generation.</div>
-          </div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>2.36%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>4.36%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.85%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.84%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.453</strong></td>
+              <td>4.625</td>
+              <td>0.534</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td class="fail"><strong>0.462</strong></td>
+              <td>0.471</td>
+              <td>0.115</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout warn">
+          <strong style="color:var(--amber);">Lower speaker similarity than other pipelines.</strong> OuteTTS's 0.462 mean ECAPA SIM is well below Qwen (0.720) and FishGram (0.602), comparable to OpenVoice (0.394). The WavTokenizer-based reproduction preserves linguistic content well (NISQA 4.45 -- second only to FishGram) but speaker timbre transfer is weaker.
         </div>
       </div>
+
       <div>
-        <h3 style="margin-bottom:14px;">Observations so far</h3>
-        <div class="callout hi">
-          <strong style="color:var(--white);">Consistent RTF.</strong> Unlike Chatterbox (31-45x range), OuteTTS maintains a steady ~5.6x RTF across all speakers. The LM architecture produces predictable generation times proportional to output length.
-        </div>
-        <div style="margin-top:10px;" class="card-sm">
-          <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">Known issue: "Possible clipped samples"</div>
-          <div style="font-size:12px; color:var(--muted); line-height:1.5;">PyLoudNorm raises UserWarning about clipping during loudness normalization. Output samples may have slight amplitude clipping at peaks. Quality impact TBD after validation.</div>
-        </div>
-        <div style="margin-top:10px;" class="card-sm">
-          <div style="font-size:13px; font-weight:500; color:var(--white); margin-bottom:4px;">RepetitionPenaltyLogitsProcessor</div>
-          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Using patched processor with penalty_last_n=64 to prevent token repetition loops, a known issue with LM-based TTS.</div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">5,968</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">60.8% of rejections &mdash; both thresholds exceeded simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">3,375</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">34.4% &mdash; word-level pronunciation errors on complex vocabulary</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">CER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">262</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">2.7% &mdash; character-level substitutions below WER threshold</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent / artifacts</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">214</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">2.2% &mdash; near-silent output (213) + duration anomaly (1)</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1512,9 +1442,250 @@ audio {
 </section>
 
 <!-- ==================================================
-     14 - 07_rejected_samples
+     13 - 06d_omnivoice_production
 ================================================== -->
-<section class="slide tall" id="s14">
+<section class="slide tall" id="s13">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 08 &mdash; OmniVoice Production Run</div>
+    <h2>OmniVoice at scale</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers. OmniVoice (k2-fsa) diffusion language model TTS, 646 languages, 27,559 h Spanish training data. Zero-shot voice cloning via 10s reference. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN, with a non-verbal prefix detector and 5-round retry loop guarding against reference-bleed artifacts.</p>
+
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,927</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">33,743</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">93.9% pass rate (best of suite)</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">2,184</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">6.1% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">39.3h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 4.19s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>1.06%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>3.16%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.30%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.05%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.284</strong></td>
+              <td>4.657</td>
+              <td>0.888</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td><strong>0.686</strong></td>
+              <td>0.705</td>
+              <td>0.109</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout hi">
+          <strong style="color:var(--white);">Lowest WER of the suite (1.06%) and highest pass rate (93.9%).</strong> OmniVoice's diffusion conditioning produces highly intelligible Spanish despite being a non-autoregressive architecture. Speaker similarity 0.686 sits between Qwen (0.720) and FishGram (0.602) -- a strong all-around attack profile.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent / artifacts</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">989</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">45.3% &mdash; near-silent (979) + duration anomaly (10)</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">679</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">31.1% &mdash; word-level pronunciation errors</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.25); background:rgba(62,255,139,0.04);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--green); font-weight:500;">Non-verbal prefix artifact</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--green);">367</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">16.8% &mdash; reference-bleed caught by custom RMS detector (defense in depth)</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">139</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">6.4% &mdash; both thresholds exceeded simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">CER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">10</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">0.5% &mdash; character-level substitutions below WER threshold</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     14 - 06e_cross_pipeline
+================================================== -->
+<section class="slide" id="s14">
+  <div class="inner">
+    <div class="eyebrow">Production Scale &mdash; All 6 Attack Pipelines</div>
+    <h2>Cross-pipeline comparison</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Production metrics from ~35K samples each (1,567 speakers). FishGram, Qwen3-TTS, OpenVoice, OuteTTS, and OmniVoice complete. Chatterbox in progress (21,192 / 35,927, 59%). CosyVoice dropped (no Spanish support).</p>
+
+    <table style="font-size:12px;">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>FishGram</th>
+          <th>Qwen3TTS</th>
+          <th>OpenVoice</th>
+          <th>Chatterbox</th>
+          <th>OuteTTS</th>
+          <th>OmniVoice</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td>
+          <td>VQGAN vocoder</td>
+          <td>Dual-Track codec</td>
+          <td>VITS tone-color</td>
+          <td>Flow-matching</td>
+          <td>LLM + DAC codec</td>
+          <td>Diffusion LM</td>
+        </tr>
+        <tr>
+          <td>Model size</td>
+          <td><strong>4B</strong></td>
+          <td>1.7B</td>
+          <td>~200M</td>
+          <td>500M</td>
+          <td>0.6B</td>
+          <td>~1.5B</td>
+        </tr>
+        <tr>
+          <td>Samples generated</td>
+          <td>35,927</td>
+          <td>35,927</td>
+          <td>35,544</td>
+          <td style="color:var(--amber);">21,192*</td>
+          <td>35,461</td>
+          <td>35,927</td>
+        </tr>
+        <tr>
+          <td>Passed validation</td>
+          <td>34,197</td>
+          <td>31,568</td>
+          <td>29,626</td>
+          <td>&mdash;</td>
+          <td>25,642</td>
+          <td>33,743</td>
+        </tr>
+        <tr>
+          <td>Pass rate</td>
+          <td class="pass"><strong>95.2%</strong></td>
+          <td class="pass">87.9%</td>
+          <td class="warn">83.4%</td>
+          <td>&mdash;</td>
+          <td class="warn">72.3%</td>
+          <td class="pass">93.9%</td>
+        </tr>
+        <tr>
+          <td>Avg WER</td>
+          <td>2.17%</td>
+          <td>1.46%</td>
+          <td>1.50%</td>
+          <td>&mdash;</td>
+          <td>2.36%</td>
+          <td class="pass"><strong>1.06%</strong></td>
+        </tr>
+        <tr>
+          <td>Avg CER</td>
+          <td>0.70%</td>
+          <td>0.59%</td>
+          <td>0.45%</td>
+          <td>&mdash;</td>
+          <td>0.85%</td>
+          <td class="pass"><strong>0.30%</strong></td>
+        </tr>
+        <tr>
+          <td>Avg NISQA MOS</td>
+          <td class="pass"><strong>4.571</strong></td>
+          <td>4.371</td>
+          <td>4.409</td>
+          <td>&mdash;</td>
+          <td>4.453</td>
+          <td>4.284</td>
+        </tr>
+        <tr>
+          <td>Avg speaker similarity</td>
+          <td>0.602</td>
+          <td class="pass"><strong>0.720</strong></td>
+          <td class="fail">0.394</td>
+          <td>&mdash;</td>
+          <td class="fail">0.462</td>
+          <td>0.686</td>
+        </tr>
+        <tr>
+          <td>Total audio (passed)</td>
+          <td>36.1h</td>
+          <td>40.1h</td>
+          <td>37.2h</td>
+          <td>&mdash;</td>
+          <td>30.9h</td>
+          <td>39.3h</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="font-size:10px; color:var(--muted2); margin-top:6px;">* Chatterbox still running as of 2026-05-10 (RTF 31-45x); ETA early June.</div>
+
+    <div style="margin-top:22px;" class="callout hi">
+      <strong style="color:var(--white);">Production-scale findings.</strong> <strong style="color:var(--white);">OmniVoice</strong> achieves the lowest WER (1.06%) and CER (0.30%) of the suite at 93.9% pass rate &mdash; competitive with FishGram on quality, with stronger speaker fidelity than FishGram (0.686 vs 0.602). <strong style="color:var(--white);">Qwen3-TTS</strong> remains the most dangerous attack by speaker similarity (0.720). <strong style="color:var(--white);">FishGram</strong> still leads on pass rate (95.2%) and NISQA (4.571). <strong style="color:var(--white);">OpenVoice</strong> and <strong style="color:var(--white);">OuteTTS</strong> have the weakest voice cloning (SIM 0.394 and 0.462) &mdash; easiest for embedding-based detectors. The 6 architectures span 200M to 4B parameters and 5 distinct synthesis paradigms (VQGAN, LM+codec, VITS-style, flow-matching, LM+wavtokenizer, diffusion LM) &mdash; the diversity ensures detectors cannot overfit to a single synthesis fingerprint.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     15 - 07_rejected_samples
+================================================== -->
+<section class="slide tall" id="s15">
   <div class="inner">
     <div class="eyebrow">Production — Rejection Analysis</div>
     <h2>Rejected samples across pipelines</h2>
@@ -1673,9 +1844,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     15 - 08_demo_outetts
+     16 - 08_demo_outetts
 ================================================== -->
-<section class="slide" id="s15">
+<section class="slide" id="s16">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 06</div>
     <h2>Bonafide vs OuteTTS</h2>
@@ -1731,9 +1902,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     16 - 09_demo_cosyvoice
+     17 - 09_demo_cosyvoice
 ================================================== -->
-<section class="slide" id="s16">
+<section class="slide" id="s17">
   <div class="inner">
     <div class="eyebrow">Negative Finding — CosyVoice 2</div>
     <h2>CosyVoice: no Spanish support</h2>
@@ -1786,9 +1957,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     17 - 09b_datasets_intro
+     18 - 09b_datasets_intro
 ================================================== -->
-<section class="slide" id="s17">
+<section class="slide" id="s18">
   <div class="inner">
     <div class="eyebrow">Literature Review</div>
     <h2>Datasets investigation</h2>
@@ -1854,9 +2025,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     18 - 10_lrlspoof
+     19 - 10_lrlspoof
 ================================================== -->
-<section class="slide tall" id="s18">
+<section class="slide tall" id="s19">
   <div class="inner">
     <div class="eyebrow">Related Work — LRLSpoof</div>
     <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
@@ -1919,9 +2090,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     19 - 11_speechfake
+     20 - 11_speechfake
 ================================================== -->
-<section class="slide" id="s19">
+<section class="slide" id="s20">
   <div class="inner">
     <div class="eyebrow">Related Work — SpeechFake-MD</div>
     <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
@@ -2020,9 +2191,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     20 - 12_hispaspoof
+     21 - 12_hispaspoof
 ================================================== -->
-<section class="slide tall" id="s20">
+<section class="slide tall" id="s21">
   <div class="inner">
     <div class="eyebrow">Related Work — HISPASpoof</div>
     <h2>HISPASpoof: Spanish Speech Forensics</h2>
@@ -2129,9 +2300,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     21 - 12b_partial_spoof_intro
+     22 - 12b_partial_spoof_intro
 ================================================== -->
-<section class="slide" id="s21">
+<section class="slide" id="s22">
   <div class="glow" style="width:600px;height:600px;background:var(--amber);bottom:-250px;left:-150px;"></div>
   <div class="inner" style="max-width:800px;">
     <div class="eyebrow">Novel Contribution</div>
@@ -2176,9 +2347,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     22 - 13_partial_spoof
+     23 - 13_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s22">
+<section class="slide tall" id="s23">
   <div class="inner">
     <div class="eyebrow">Novel Contribution — Partial Spoof</div>
     <h2>Word-level partial spoof for Spanish</h2>
@@ -2295,9 +2466,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     23 - 13a_partial_spoof_visual
+     24 - 13a_partial_spoof_visual
 ================================================== -->
-<section class="slide" id="s23">
+<section class="slide" id="s24">
   <div class="glow" style="width:500px;height:500px;background:var(--amber);top:-200px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
@@ -2374,9 +2545,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     24 - 13b_splice_challenge
+     25 - 13b_splice_challenge
 ================================================== -->
-<section class="slide" id="s24">
+<section class="slide" id="s25">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
     <h2>The splice boundary challenge</h2>
@@ -2449,9 +2620,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     25 - 13c_technique_cut_paste
+     26 - 13c_technique_cut_paste
 ================================================== -->
-<section class="slide" id="s25">
+<section class="slide" id="s26">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 1 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Direct cut-paste</h2>
@@ -2511,9 +2682,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     26 - 13d_technique_ola_hanning
+     27 - 13d_technique_ola_hanning
 ================================================== -->
-<section class="slide" id="s26">
+<section class="slide" id="s27">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 2 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">OLA Hanning</h2>
@@ -2567,9 +2738,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     27 - 13e_technique_linear
+     28 - 13e_technique_linear
 ================================================== -->
-<section class="slide" id="s27">
+<section class="slide" id="s28">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 3 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Linear crossfade</h2>
@@ -2622,9 +2793,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     28 - 13f_technique_cosine
+     29 - 13f_technique_cosine
 ================================================== -->
-<section class="slide" id="s28">
+<section class="slide" id="s29">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 4 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">Cosine (equal-power)</h2>
@@ -2677,9 +2848,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     29 - 13g_technique_half_sine
+     30 - 13g_technique_half_sine
 ================================================== -->
-<section class="slide" id="s29">
+<section class="slide" id="s30">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 5 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Square-root (half-sine)</h2>
@@ -2732,9 +2903,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     30 - 13h_technique_logarithmic
+     31 - 13h_technique_logarithmic
 ================================================== -->
-<section class="slide" id="s30">
+<section class="slide" id="s31">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 6 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Logarithmic crossfade</h2>
@@ -2788,9 +2959,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     31 - 13i_technique_parabola
+     32 - 13i_technique_parabola
 ================================================== -->
-<section class="slide" id="s31">
+<section class="slide" id="s32">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 7 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Inverted parabola</h2>
@@ -2843,9 +3014,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     32 - 13j_technique_summary
+     33 - 13j_technique_summary
 ================================================== -->
-<section class="slide tall" id="s32">
+<section class="slide tall" id="s33">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof &mdash; Summary</div>
     <h2>Technique distribution &amp; literature gaps</h2>
@@ -2921,9 +3092,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     33 - 13k_splice_quality_problem
+     34 - 13k_splice_quality_problem
 ================================================== -->
-<section class="slide" id="s33">
+<section class="slide" id="s34">
   <div class="glow" style="width:500px;height:500px;background:var(--red);bottom:-250px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Discovery &mdash; Listening Tests</div>
@@ -2983,9 +3154,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     34 - 13l_splice_quality_solution
+     35 - 13l_splice_quality_solution
 ================================================== -->
-<section class="slide tall" id="s34">
+<section class="slide tall" id="s35">
   <div class="glow" style="width:500px;height:500px;background:var(--green);top:-200px;left:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Solution &mdash; Smart Selection + Quality Gate</div>
@@ -3098,9 +3269,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     35 - 13m_prefilter_pipeline
+     36 - 13m_prefilter_pipeline
 ================================================== -->
-<section class="slide tall" id="s35">
+<section class="slide tall" id="s36">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Partial Spoof Pipeline &mdash; Quality Filters</div>
     <h2>Two-gate pre-filter before splicing</h2>
@@ -3235,9 +3406,344 @@ audio {
 </section>
 
 <!-- ==================================================
-     36 - 13n_demo_partial_spoof
+     37 - 13ma_boundary_jitter
 ================================================== -->
-<section class="slide tall" id="s36">
+<section class="slide tall" id="s37">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Partial Spoof &mdash; Boundary Jitter (Step 5b)</div>
+    <h2>Homogenize boundary anomalies so the splice no longer stands out</h2>
+    <p style="margin-bottom:22px; max-width:760px;">After Step 5 splices the cloned word, the only unusual boundaries are the two around the spoof. A detector exploits "find the noisy boundary" as a shortcut. Step 5b applies the same kind of structural manipulations to <strong style="color:var(--white);">every</strong> internal boundary so the spoof no longer stands out.</p>
+
+    <!-- Detector shortcut motivation -->
+    <div class="callout danger" style="margin-bottom:26px;">
+      <strong style="color:var(--red);">Negroni et al. (2024):</strong> 6.16&nbsp;% EER on PartialSpoof with <strong>zero training</strong>, purely by analyzing dynamic-range discontinuity at the splice join. <strong style="color:var(--red);">Muller (2024):</strong> detectors generalize via dataset-specific shortcuts (silence length, spectral cleanness), not synthesis features.
+    </div>
+
+    <h3 style="margin-bottom:12px;">Per-boundary independent coin flip</h3>
+    <div class="card-sm" style="margin-bottom:22px;">
+      <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7;">
+<span style="color:var(--amber);">for</span> <span style="color:var(--white);">each internal boundary i (right-to-left):</span><br>
+&nbsp;&nbsp;<span style="color:var(--amber);">if</span> <span style="color:var(--white);">rng.uniform() &lt; </span><span style="color:var(--green);">JITTER_PROBABILITY = 0.5</span><span style="color:var(--white);">:</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--white);">op = uniform_pick(</span><span style="color:var(--green);">truncate</span><span style="color:var(--white);">,</span> <span style="color:var(--green);">overlap</span><span style="color:var(--white);">,</span> <span style="color:var(--green);">bleed</span><span style="color:var(--white);">)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--white);">apply(audio, op, uniform_magnitude_within_range)</span><br>
+&nbsp;&nbsp;<span style="color:var(--amber);">else</span><span style="color:var(--white);">:</span> <span style="color:var(--muted2);">leave boundary natural</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.55;">
+        Spoof boundaries receive the <strong style="color:var(--white);">same coin flip</strong> on top of the splice. Seed = <span style="font-family:'JetBrains Mono',monospace;">JITTER_SEED + sha256(splice_key)[:4]</span> for reproducibility.
+      </div>
+    </div>
+
+    <!-- The maxent payoff: count-distribution mixing -->
+    <h3 style="margin-bottom:12px;">Why p = 0.5: count-distribution mixing</h3>
+    <div class="two" style="gap:24px; margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Before jitter (deterministic)</div>
+        <table style="font-size:12px;">
+          <thead>
+            <tr><th>Boundary type</th><th>Manipulations</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>bonafide-bonafide</td><td><strong>0</strong> (always)</td></tr>
+            <tr><td>spoof</td><td class="fail"><strong>1</strong> (always)</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px; color:var(--red); margin-top:6px;">Detector classifies trivially on count.</div>
+      </div>
+
+      <div>
+        <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">After jitter (p = 0.5)</div>
+        <table style="font-size:12px;">
+          <thead>
+            <tr><th>Boundary type</th><th>Distribution over count</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>bonafide-bonafide</td><td><strong>0</strong> (50&nbsp;%) or <strong>1</strong> (50&nbsp;%)</td></tr>
+            <tr><td>spoof</td><td><strong>1</strong> (50&nbsp;%) or <strong>2</strong> (50&nbsp;%)</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:11px; color:var(--green); margin-top:6px;">Both share equal mass at count = 1 &rarr; ambiguous.</div>
+      </div>
+    </div>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Word interiors stay intact.</strong> All three operations act only at boundaries -- never inside a word. With p = 0.5 per boundary, the probability that both flanking boundaries of a word flip natural is 0.25. By construction, <strong style="color:var(--white);">~25 % of non-spoof words remain bit-identical to the bonafide</strong>. Intelligibility is preserved; only the boundary fingerprint is homogenized.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     38 - 13mab_jitter_operations
+================================================== -->
+<section class="slide tall" id="s38">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Three Structural Operations</div>
+    <h2>Truncate, overlap, bleed: chosen uniformly when the coin flips heads</h2>
+    <p style="margin-bottom:22px; max-width:760px;">Each operation imitates a specific splice artifact, so a manipulated bonafide-bonafide boundary is acoustically indistinguishable from a real splice boundary at the spectral level. Magnitudes are drawn uniformly at random within ranges anchored to Spanish phonetics and to the LlamaPartialSpoof crossfade convention.</p>
+
+    <table style="font-size:13px; margin-bottom:24px;">
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Magnitude</th>
+          <th>Effect on audio</th>
+          <th>Mimics splice artifact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong style="color:#3b82f6;">truncate</strong></td>
+          <td>10&nbsp;-&nbsp;40&nbsp;ms</td>
+          <td>Cut left tail or right head &rarr; abrupt onset/offset</td>
+          <td>Hard cut/paste splice (no crossfade)</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--green);">overlap</strong></td>
+          <td>30&nbsp;-&nbsp;80&nbsp;ms</td>
+          <td>Sum left tail with right head, Hanning fade</td>
+          <td>OLA-Hanning crossfade splice</td>
+        </tr>
+        <tr>
+          <td><strong style="color:var(--amber);">bleed</strong></td>
+          <td>20&nbsp;-&nbsp;60&nbsp;ms</td>
+          <td>Insert fragment of one word into the other &rarr; pre/post-echo</td>
+          <td>Tail bleed of crossfade splice</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="two" style="gap:24px; margin-bottom:22px;">
+      <div>
+        <h3 style="margin-bottom:12px;">Per-boundary probability table</h3>
+        <div class="card-sm">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.8;">
+            <span style="color:var(--muted);">P(natural)</span>             <span style="color:var(--white);">= 0.500</span><br>
+            <span style="color:var(--muted);">P(truncate left_tail)</span>  <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(truncate right_head)</span> <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(overlap hanning)</span>     <span style="color:var(--white);">= 0.167</span><br>
+            <span style="color:var(--muted);">P(bleed L&rarr;R)</span>            <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted);">P(bleed R&rarr;L)</span>            <span style="color:var(--white);">= 0.083</span><br>
+            <span style="color:var(--muted2); border-top:1px dashed var(--border); padding-top:4px; display:inline-block; margin-top:4px;">total</span>                  <span style="color:var(--white);">= 1.000</span>
+          </div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-top:10px; line-height:1.55;">
+          Uniform pick among ops because we have no prior knowledge of which artifact type the detector is most sensitive to &mdash; that would require running the detector first (circular).
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:12px;">Magnitude grounding</h3>
+        <div class="card-sm" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:var(--green);">Overlap (30-80 ms)</strong> matches the LlamaPartialSpoof crossfade range (Luong et&nbsp;al. 2024) exactly. Same temporal scale as the splice itself.
+          </div>
+        </div>
+        <div class="card-sm" style="margin-bottom:12px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:#3b82f6;">Truncate (10-40 ms)</strong> stays below Spanish syllable nucleus duration (~50-90 ms) so intelligibility is preserved. 10 ms minimum is at the threshold of audibility.
+          </div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">
+            <strong style="color:var(--amber);">Bleed (20-60 ms)</strong> covers Spanish VOT for voiceless stops (4-29 ms) plus consonant-vowel transition &mdash; inserted fragment sounds like a partial phoneme, not a full second phoneme.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     39 - 13mb_jitter_audio_1
+================================================== -->
+<section class="slide tall" id="s39">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Audio 1 (W1 tier)</div>
+    <h2>"Necesito que me des informacion sobre el mural..."</h2>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Speaker <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>, 18 words, 1 cloned word ("Necesito"). 17 internal boundaries. After Step 5b: 2 truncate, 3 overlap, 4 bleed, 8 natural. Drift -46 ms.</p>
+
+    <!-- Audio row -->
+    <div class="three" style="gap:14px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Bonafide (original)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/spanish_dataset/bonafide_artition_Dataset_by_Speaker/arf_00295/train/arf_00295_00208418741.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); margin-bottom:6px;">Spliced W1 (no jitter)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/spliced/QWEN3TTS_PSW1_arf_00295_arf_00295_00208418741.wav"></audio>
+      </div>
+      <div style="background:rgba(62,255,139,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:6px;">Jittered W1J</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/jittered/QWEN3TTS_PSW1_arf_00295_arf_00295_00208418741.wav"></audio>
+      </div>
+    </div>
+
+    <table style="font-size:11.5px; margin-bottom:18px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Word</th>
+          <th>Span (s)</th>
+          <th>Left boundary</th>
+          <th>Right boundary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>1</td><td><strong style="color:var(--red);">Necesito</strong></td><td>1.20 - 1.84</td><td><span style="color:var(--muted2);">utterance start</span></td><td><span style="color:var(--green);">overlap</span> 51.5 ms</td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr><td>2</td><td>que</td><td>1.84 - 2.08</td><td><span style="color:var(--green);">overlap</span> 51.5 ms</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr><td>3</td><td>me</td><td>2.08 - 2.24</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--amber);">bleed</span> 42.2 ms L&rarr;R</td><td>touched R</td></tr>
+        <tr><td>4</td><td>des</td><td>2.24 - 2.56</td><td><span style="color:var(--amber);">bleed</span> 42.2 ms</td><td><span style="color:var(--green);">overlap</span> 50.1 ms</td><td>touched both</td></tr>
+        <tr><td>5</td><td>informacion</td><td>2.56 - 2.88</td><td><span style="color:var(--green);">overlap</span> 50.1 ms</td><td><span style="color:var(--amber);">bleed</span> 45.5 ms L&rarr;R</td><td>touched both</td></tr>
+        <tr><td>6</td><td>sobre</td><td>2.88 - 3.12</td><td><span style="color:var(--amber);">bleed</span> 45.5 ms</td><td>truncate 16.9 ms RH</td><td>touched both</td></tr>
+        <tr><td>7</td><td>el</td><td>3.12 - 3.28</td><td>truncate 16.9 ms RH</td><td><span style="color:var(--amber);">bleed</span> 28.1 ms L&rarr;R</td><td>touched both</td></tr>
+        <tr><td>8</td><td>mural</td><td>3.28 - 3.60</td><td><span style="color:var(--amber);">bleed</span> 28.1 ms</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>9</td><td>que</td><td>3.60 - 3.76</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>10</td><td>hicieron</td><td>3.76 - 4.08</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>11</td><td>Frida</td><td>4.08 - 4.48</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>12</td><td>Kahlo</td><td>4.48 - 4.88</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 25.0 ms RH</td><td>touched R</td></tr>
+        <tr><td>13</td><td>y</td><td>4.88 - 4.96</td><td>truncate 25.0 ms RH</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr><td>14</td><td>Diego</td><td>4.96 - 5.28</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--amber);">bleed</span> 24.8 ms R&rarr;L</td><td>touched R</td></tr>
+        <tr><td>15</td><td>Rivera</td><td>5.28 - 5.68</td><td><span style="color:var(--amber);">bleed</span> 24.8 ms</td><td><span style="color:var(--green);">overlap</span> 42.9 ms</td><td>touched both</td></tr>
+        <tr><td>16</td><td>antes</td><td>5.84 - 6.08</td><td><span style="color:var(--green);">overlap</span> 42.9 ms</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>17</td><td>de</td><td>6.08 - 6.24</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>18</td><td>morir</td><td>6.24 - 6.80</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">utterance end</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong style="color:var(--white);">Tally.</strong> 1 spoof, 5 clean (29 %), 12 touched. Note <strong style="color:var(--white);">boundary 0 (1.84 s)</strong>: it is BOTH the right edge of "Necesito" (the spoof crossfade) AND received an overlap jitter on top -- exactly the boundary a detector would target as "the splice", now stacked with a second manipulation. The 3-word clean cluster <strong style="color:var(--white);">"que hicieron Frida"</strong> (3.60-4.48 s) is a stretch where the audio is pure bonafide passthrough.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     40 - 13mc_jitter_audio_2
+================================================== -->
+<section class="slide tall" id="s40">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Audio 2 (W1 tier)</div>
+    <h2>"Segun la television y los medios, hubieron bastantes muertos por el terremoto."</h2>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Speaker <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>, 12 words, 1 cloned word ("muertos"). 11 internal boundaries. After Step 5b: 3 truncate, 0 overlap, 2 bleed, 6 natural. Drift +24 ms.</p>
+
+    <!-- Audio row -->
+    <div class="three" style="gap:14px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Bonafide (original)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/spanish_dataset/bonafide_artition_Dataset_by_Speaker/arf_00295/train/arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); margin-bottom:6px;">Spliced W1 (no jitter)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/spliced/QWEN3TTS_PSW1_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(62,255,139,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:6px;">Jittered W1J</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/jittered/QWEN3TTS_PSW1_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+    </div>
+
+    <table style="font-size:12px; margin-bottom:18px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Word</th>
+          <th>Span (s)</th>
+          <th>Left boundary</th>
+          <th>Right boundary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Segun</td><td>0.32 - 1.04</td><td><span style="color:var(--muted2);">utterance start</span></td><td><span style="color:var(--amber);">bleed</span> 44.9 ms R&rarr;L</td><td>touched R</td></tr>
+        <tr><td>2</td><td>la</td><td>1.04 - 1.20</td><td><span style="color:var(--amber);">bleed</span> 44.9 ms</td><td><span style="color:var(--amber);">bleed</span> 31.4 ms R&rarr;L</td><td>touched both</td></tr>
+        <tr><td>3</td><td>television</td><td>1.20 - 1.76</td><td><span style="color:var(--amber);">bleed</span> 31.4 ms</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>4</td><td>y</td><td>1.76 - 1.92</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>5</td><td>los</td><td>1.92 - 2.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 13.2 ms RH</td><td>touched R</td></tr>
+        <tr><td>6</td><td>medios,</td><td>2.00 - 2.32</td><td>truncate 13.2 ms RH</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>7</td><td>hubieron</td><td>2.48 - 2.96</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>8</td><td>bastantes</td><td>2.96 - 3.36</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural (= spoof start)</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>9</td><td><strong style="color:var(--red);">muertos</strong></td><td>3.36 - 3.68</td><td><span style="color:var(--muted2);">natural (jitter tails)</span></td><td>truncate 10.1 ms RH</td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr><td>10</td><td>por</td><td>3.68 - 3.84</td><td>truncate 10.1 ms RH</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr><td>11</td><td>el</td><td>3.84 - 4.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 28.8 ms RH</td><td>touched R</td></tr>
+        <tr><td>12</td><td>terremoto.</td><td>4.00 - 4.88</td><td>truncate 28.8 ms RH</td><td><span style="color:var(--muted2);">utterance end</span></td><td>touched L</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong style="color:var(--white);">Tally.</strong> 1 spoof, 3 clean (27 %), 8 touched. <strong style="color:var(--white);">Spoof boundary at 3.36 s flipped natural</strong> -- the cloned "muertos" enters via crossfade splice but the jitter coin landed tails on its left edge. Adjacent word "bastantes" therefore qualifies as CLEAN despite being right next to the spoof. The right edge of "muertos" (3.68 s) did get a 10 ms truncate stacked on top of the splice. This audio has no overlaps -- pure truncate-and-bleed sample for this random plan.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     41 - 13md_jitter_audio_3
+================================================== -->
+<section class="slide tall" id="s41">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Audio 3 (W2 tier)</div>
+    <h2>Same source as Audio 2, two cloned words ("hubieron" + "muertos")</h2>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Speaker <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>, 12 words, 2 cloned. 11 internal boundaries. Different RNG seed than W1 (seeded by splice_key) so a different jitter plan emerges. After Step 5b: 3 truncate, 1 overlap, 1 bleed, 6 natural. Drift -67 ms.</p>
+
+    <!-- Audio row -->
+    <div class="three" style="gap:14px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Bonafide (original)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/spanish_dataset/bonafide_artition_Dataset_by_Speaker/arf_00295/train/arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); margin-bottom:6px;">Spliced W2 (no jitter)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/spliced/QWEN3TTS_PSW2_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(62,255,139,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:6px;">Jittered W2J</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/jittered/QWEN3TTS_PSW2_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+    </div>
+
+    <table style="font-size:12px; margin-bottom:18px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Word</th>
+          <th>Span (s)</th>
+          <th>Left boundary</th>
+          <th>Right boundary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="background:rgba(62,255,139,0.08);"><td>1</td><td>Segun</td><td>0.32 - 1.04</td><td><span style="color:var(--muted2);">utterance start</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>2</td><td>la</td><td>1.04 - 1.20</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>3</td><td>television</td><td>1.20 - 1.76</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>4</td><td>y</td><td>1.76 - 1.92</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>5</td><td>los</td><td>1.92 - 2.00</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--green);">overlap</span> 39.6 ms</td><td>touched R</td></tr>
+        <tr><td>6</td><td>medios,</td><td>2.00 - 2.32</td><td><span style="color:var(--green);">overlap</span> 39.6 ms</td><td><span style="color:var(--amber);">bleed</span> 43.1 ms R&rarr;L (= spoof start)</td><td>touched both</td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>7</td><td><strong style="color:var(--red);">hubieron</strong></td><td>2.48 - 2.96</td><td><span style="color:var(--amber);">bleed</span> 43.1 ms (splice + jitter)</td><td>truncate 29.6 ms RH (splice + jitter)</td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr style="background:rgba(245,166,35,0.08);"><td>8</td><td>bastantes</td><td>2.96 - 3.36</td><td>truncate 29.6 ms RH (= spoof end of hubieron)</td><td>truncate 30.9 ms RH (= spoof start of muertos)</td><td><strong style="color:var(--amber);">SANDWICHED</strong></td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>9</td><td><strong style="color:var(--red);">muertos</strong></td><td>3.36 - 3.68</td><td>truncate 30.9 ms RH (splice + jitter, cut_paste)</td><td><span style="color:var(--muted2);">natural (jitter tails, cut_paste)</span></td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>10</td><td>por</td><td>3.68 - 3.84</td><td><span style="color:var(--muted2);">natural (= spoof end of muertos)</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>11</td><td>el</td><td>3.84 - 4.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 10.3 ms RH</td><td>touched R</td></tr>
+        <tr><td>12</td><td>terremoto.</td><td>4.00 - 4.88</td><td>truncate 10.3 ms RH</td><td><span style="color:var(--muted2);">utterance end</span></td><td>touched L</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Tally.</strong> 2 spoof, 5 clean (50 %), 4 touched, 1 sandwiched. The 4-word clean run <strong style="color:var(--white);">"Segun la television y"</strong> at the start (0.32-1.92 s) is pure bonafide passthrough. <strong style="color:var(--white);">"bastantes"</strong> (between the two spoofs) takes hits on both sides because both spoof boundaries flipped heads -- it ends up with two truncates flanking it. The cloned "muertos" was spliced with <span style="font-family:'JetBrains Mono',monospace;">cut_paste</span> (the rare 10 % no-crossfade fade), and its left boundary stacks the cut_paste with a 30.9 ms truncate jitter -- the most aggressive single boundary in the three samples. Listen carefully there.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     42 - 13n_demo_partial_spoof
+================================================== -->
+<section class="slide tall" id="s42">
   <div class="glow" style="width:400px;height:400px;background:var(--blue);top:-150px;right:-150px;"></div>
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Demo &mdash; Partial Spoof Pipeline &middot; Qwen3-TTS</div>
@@ -3401,56 +3907,67 @@ audio {
 </section>
 
 <!-- ==================================================
-     37 - 14_next_steps
+     43 - 14_next_steps
 ================================================== -->
-<section class="slide" id="s37">
+<section class="slide" id="s43">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
     <h2>Next steps</h2>
     <div class="div"></div>
 
-    <div style="display:flex; flex-direction:column; max-width:700px;">
-      <div class="step" style="padding:24px 0;">
+    <div style="display:flex; flex-direction:column; max-width:740px;">
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(62,255,139,0.15); color:var(--green);">01</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production runs — FishGram + Qwen + OpenVoice <span class="tag green">Complete</span></div>
-          <div class="step-desc" style="font-size:15px;">3 of 5 attack pipelines at production scale (~35K samples each, 1,567 speakers). FishGram: 95.2% pass rate. Qwen3-TTS: 87.9%. OpenVoice: 83.4%. Full metrics in slides 14-17.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Attack production runs &mdash; 5 of 6 complete <span class="tag amber">Chatterbox 59%</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Done: FishGram (95.2% pass), Qwen (87.9%), OpenVoice (83.4%), OuteTTS (72.3%), OmniVoice (93.9%). ~155K passed samples across 1,567 speakers. Chatterbox at 21,192 / 35,927 (59%), ETA early June.</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0;">
+
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">02</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — Chatterbox + OuteTTS <span class="tag amber">In Progress</span></div>
-          <div class="step-desc" style="font-size:15px;">Chatterbox running on GPU 2 (~35,927 samples, ~40h estimated). OuteTTS queued next. Both use MATCH_BONAFIDE_COUNT for 1:1 bonafide ratio. Checkpoint/resume enabled for crash recovery.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Partial spoof multi-backend production <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Attack mix <strong style="color:var(--white);">50% OmniVoice / 30% Qwen / 20% FishGram</strong> &mdash; the three highest-fidelity attacks. Extend per-speaker file partition to 3-way so each backend draws from disjoint bonafide utterances. Same 7-step pipeline (Parakeet -&gt; clone -&gt; MMS align -&gt; valley-score select -&gt; splice -&gt; validate -&gt; format).</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0;">
+
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">03</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Partial spoof pipeline — production run <span class="tag amber">Testing</span></div>
-          <div class="step-desc" style="font-size:15px;">7-step pipeline validated end-to-end with Qwen strategy. Clone quality being refined. Next: production run across all speakers with multiple attack backends. Novel contribution — first partial spoof for Latin American Spanish.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Boundary jitter datasets at scale <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Qwen jitter pilot validated end-to-end. Produce full-scale jitter datasets for Qwen and OmniVoice (`_jitter` folders, system_id `*_PSW{N}J`, audio_id 16M-18M) using the disjoint "jitter" partition. Two new datasets alongside the main partial_spoof.</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0; border-bottom:none;">
-        <div class="step-num" style="font-size:14px;">04</div>
+
+      <div class="step" style="padding:20px 0;">
+        <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">04</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Start writing the paper</div>
-          <div class="step-desc" style="font-size:15px;">Begin drafting the thesis paper with dataset description (HABLA 2.0 structure, speaker demographics, accent distribution), attack pipeline methodology (6 TTS systems + partial spoof), quality validation framework (WER/CER/NISQA/SIM), and comparison with related work (HISPASpoof, LRLSpoof, SpeechFake-MD).</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Augmentation pilot &mdash; validate structure, plan percentages <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Pilot codec (MP3/Opus low bitrate), additive noise (MUSAN), and RIR convolution on a small subset to confirm the final dataset structure (train/dev/eval, protocol files) survives augmentation cleanly. Then plan per-augmentation percentage targets for the production dataset (e.g. 30/30/40 clean/codec/noise).</div>
+        </div>
+      </div>
+
+      <div class="step" style="padding:20px 0; border-bottom:none;">
+        <div class="step-num" style="font-size:14px;">05</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Paper drafting</div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Continue thesis paper. New technical contributions to document: <strong style="color:var(--white);">boundary jitter</strong> as defense against the "find the noisy boundary" detector shortcut (Negroni 2024); <strong style="color:var(--white);">prefix-bleed detector + reference-cut fix</strong> for diffusion-LM TTS (OmniVoice); first partial-spoof dataset for Latin American Spanish with 6-TTS architectural diversity.</div>
         </div>
       </div>
     </div>
 
     <div class="div"></div>
     <div style="display:flex; justify-content:space-between;">
-      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 · Universidad de los Andes · April 2026</div>
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 &middot; Universidad de los Andes &middot; May 2026</div>
       <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace;">Tomas Acosta</div>
     </div>
   </div>
 </section>
 
 <script>
-const N = 37;
+const N = 43;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');

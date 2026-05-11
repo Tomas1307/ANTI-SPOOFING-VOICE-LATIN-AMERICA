@@ -1,0 +1,119 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Production Scale &mdash; All 6 Attack Pipelines</div>
+    <h2>Cross-pipeline comparison</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Production metrics from ~35K samples each (1,567 speakers). FishGram, Qwen3-TTS, OpenVoice, OuteTTS, and OmniVoice complete. Chatterbox in progress (21,192 / 35,927, 59%). CosyVoice dropped (no Spanish support).</p>
+
+    <table style="font-size:12px;">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>FishGram</th>
+          <th>Qwen3TTS</th>
+          <th>OpenVoice</th>
+          <th>Chatterbox</th>
+          <th>OuteTTS</th>
+          <th>OmniVoice</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Architecture</td>
+          <td>VQGAN vocoder</td>
+          <td>Dual-Track codec</td>
+          <td>VITS tone-color</td>
+          <td>Flow-matching</td>
+          <td>LLM + DAC codec</td>
+          <td>Diffusion LM</td>
+        </tr>
+        <tr>
+          <td>Model size</td>
+          <td><strong>4B</strong></td>
+          <td>1.7B</td>
+          <td>~200M</td>
+          <td>500M</td>
+          <td>0.6B</td>
+          <td>~1.5B</td>
+        </tr>
+        <tr>
+          <td>Samples generated</td>
+          <td>35,927</td>
+          <td>35,927</td>
+          <td>35,544</td>
+          <td style="color:var(--amber);">21,192*</td>
+          <td>35,461</td>
+          <td>35,927</td>
+        </tr>
+        <tr>
+          <td>Passed validation</td>
+          <td>34,197</td>
+          <td>31,568</td>
+          <td>29,626</td>
+          <td>&mdash;</td>
+          <td>25,642</td>
+          <td>33,743</td>
+        </tr>
+        <tr>
+          <td>Pass rate</td>
+          <td class="pass"><strong>95.2%</strong></td>
+          <td class="pass">87.9%</td>
+          <td class="warn">83.4%</td>
+          <td>&mdash;</td>
+          <td class="warn">72.3%</td>
+          <td class="pass">93.9%</td>
+        </tr>
+        <tr>
+          <td>Avg WER</td>
+          <td>2.17%</td>
+          <td>1.46%</td>
+          <td>1.50%</td>
+          <td>&mdash;</td>
+          <td>2.36%</td>
+          <td class="pass"><strong>1.06%</strong></td>
+        </tr>
+        <tr>
+          <td>Avg CER</td>
+          <td>0.70%</td>
+          <td>0.59%</td>
+          <td>0.45%</td>
+          <td>&mdash;</td>
+          <td>0.85%</td>
+          <td class="pass"><strong>0.30%</strong></td>
+        </tr>
+        <tr>
+          <td>Avg NISQA MOS</td>
+          <td class="pass"><strong>4.571</strong></td>
+          <td>4.371</td>
+          <td>4.409</td>
+          <td>&mdash;</td>
+          <td>4.453</td>
+          <td>4.284</td>
+        </tr>
+        <tr>
+          <td>Avg speaker similarity</td>
+          <td>0.602</td>
+          <td class="pass"><strong>0.720</strong></td>
+          <td class="fail">0.394</td>
+          <td>&mdash;</td>
+          <td class="fail">0.462</td>
+          <td>0.686</td>
+        </tr>
+        <tr>
+          <td>Total audio (passed)</td>
+          <td>36.1h</td>
+          <td>40.1h</td>
+          <td>37.2h</td>
+          <td>&mdash;</td>
+          <td>30.9h</td>
+          <td>39.3h</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="font-size:10px; color:var(--muted2); margin-top:6px;">* Chatterbox still running as of 2026-05-10 (RTF 31-45x); ETA early June.</div>
+
+    <div style="margin-top:22px;" class="callout hi">
+      <strong style="color:var(--white);">Production-scale findings.</strong> <strong style="color:var(--white);">OmniVoice</strong> achieves the lowest WER (1.06%) and CER (0.30%) of the suite at 93.9% pass rate &mdash; competitive with FishGram on quality, with stronger speaker fidelity than FishGram (0.686 vs 0.602). <strong style="color:var(--white);">Qwen3-TTS</strong> remains the most dangerous attack by speaker similarity (0.720). <strong style="color:var(--white);">FishGram</strong> still leads on pass rate (95.2%) and NISQA (4.571). <strong style="color:var(--white);">OpenVoice</strong> and <strong style="color:var(--white);">OuteTTS</strong> have the weakest voice cloning (SIM 0.394 and 0.462) &mdash; easiest for embedding-based detectors. The 6 architectures span 200M to 4B parameters and 5 distinct synthesis paradigms (VQGAN, LM+codec, VITS-style, flow-matching, LM+wavtokenizer, diffusion LM) &mdash; the diversity ensures detectors cannot overfit to a single synthesis fingerprint.
+    </div>
+  </div>
+</section>
