@@ -22,5 +22,9 @@
       "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/utils\")",
       "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/strategies\")"
     ]
-  }
+  },
+  "enabledMcpjsonServers": [
+    "engram"
+  ],
+  "enableAllProjectMcpServers": true
 }

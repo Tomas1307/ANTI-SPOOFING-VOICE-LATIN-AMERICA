@@ -1,0 +1,51 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Demo &mdash; OmniVoice</div>
+    <h2>OmniVoice: Spanish voice cloning</h2>
+    <p style="margin-bottom:36px; max-width:640px;">OmniVoice was evaluated as an additional attack system for Latin American Spanish. Unlike CosyVoice, it produces fluent Spanish output with strong intelligibility. Sample below: speaker arf_00295 (Argentina Female), single-shot clone from a reference utterance.</p>
+
+    <div class="two" style="gap:32px; margin-bottom:28px;">
+      <div class="audio-card">
+        <div>
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Original &middot; Bonafide</div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">Argentina &middot; Female &middot; Spanish</div>
+        </div>
+        <audio controls src="data/attacks/omnivoice_output/references/arf_00295_ref.wav"></audio>
+      </div>
+
+      <div class="audio-card">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--green);">Cloned &middot; OmniVoice</div>
+            <span class="tag green" style="margin-left:0;">OMNIVOICE</span>
+          </div>
+          <div style="font-size:16px; font-weight:600; color:var(--white); margin-bottom:4px;">arf_00295 &mdash; synthetic</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2);">"Fue profesor de literatura, poeta, periodista de prensa y television."</div>
+        </div>
+        <audio controls src="data/attacks/omnivoice_output/generated/OMNIVOICE_arf_00295_OMNIVOICE_TEXT_00002.wav"></audio>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:32px;">
+      <div class="callout">
+        <strong style="color:var(--green);">Why it works:</strong> OmniVoice handles Spanish phonology natively and preserves the reference speaker's timbre with high fidelity. RTF below 0.35 makes it competitive with Qwen3-TTS on speed while producing cleaner short utterances.
+      </div>
+      <div>
+        <h3 style="margin-bottom:12px;">OmniVoice validation (arf_00295 / sample 2)</h3>
+        <table style="font-size:13px;">
+          <tbody>
+            <tr><td>Duration</td><td><strong>5.14s</strong></td></tr>
+            <tr><td>RTF</td><td class="pass">0.20 (fast)</td></tr>
+            <tr><td>WER &middot; CER</td><td class="pass">0.0% &middot; 0.0%</td></tr>
+            <tr><td>NISQA MOS</td><td class="pass">4.99 (high quality)</td></tr>
+            <tr><td>Speaker similarity</td><td>0.714</td></tr>
+            <tr><td>Status</td><td class="pass"><strong>VIABLE</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
