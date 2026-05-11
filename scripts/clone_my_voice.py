@@ -35,6 +35,7 @@ from loguru import logger
 from omnivoice import OmniVoice
 
 from app.pipeline.omnivoice_attack.settings import settings
+from app.pipeline.omnivoice_attack.utils.reference_transcriber import transcribe_audio
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,8 +57,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ref-text",
         type=str,
-        required=True,
-        help="Exact transcript of the reference audio (required by OmniVoice).",
+        default=None,
+        help=(
+            "Exact transcript of the reference audio. If omitted, the audio is "
+            "auto-transcribed with Parakeet TDT (same model used in production "
+            "Step 4 validation)."
+        ),
     )
     parser.add_argument(
         "--text",
@@ -210,6 +215,13 @@ def main() -> None:
         target_sr=settings.SAMPLE_RATE,
     )
 
+    if args.ref_text is None:
+        logger.info("No --ref-text provided; transcribing reference with Parakeet TDT...")
+        ref_text = transcribe_audio(ref_path, language=args.language)
+        logger.info(f"Parakeet transcript: \"{ref_text}\"")
+    else:
+        ref_text = args.ref_text
+
     model = load_model(
         device=args.device,
         dtype_name=settings.DTYPE,
@@ -220,7 +232,7 @@ def main() -> None:
         model=model,
         text=args.text,
         ref_audio=ref_path,
-        ref_text=args.ref_text,
+        ref_text=ref_text,
         output_path=args.output,
         num_step=args.num_step,
         speed=args.speed,
