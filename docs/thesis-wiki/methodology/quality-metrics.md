@@ -49,6 +49,15 @@ Every generated sample passes through automated quality validation before inclus
 - **Acceptable range:** [0.75, 1.25] (configurable via MAX_STRETCH_RATIO)
 - **Purpose:** Limits time-stretching distortion. Words requiring stretch outside this range are ineligible for replacement.
 
+### Non-Verbal Prefix RMS (OmniVoice Only)
+- **Tool:** `app/utils/prefix_trimmer.py` -> `detect_nonverbal_prefix_artifact`
+- **Formula:** `pre_rms_db = 20 * log10(rms(audio[0 : word_timestamps[0].start]))`
+- **Rejection threshold:** `pre_rms_db > -55 dBFS` (settable via `NONVERBAL_PREFIX_RMS_FLOOR_DB`)
+- **Purpose:** Catches OmniVoice's reference-voice-bleed artifact, where a 200-600 ms voice fragment from the reference clip leaks into the leading audio frames. The fragment is sub-syllabic, so Parakeet TDT does not transcribe it -- WER stays at 0.0 and the existing word-alignment-based prefix detector misses it. This metric measures whether there is audible non-linguistic energy in the gap before the first transcribed word.
+- **Empirical reference points (2026-05-06 validation, n=6):** OmniVoice artifacts measure `pre_rms_db in [-25, -22]` dB; clean samples measure `pre_rms_db = -120` dB (silence floor). The -55 dB threshold is bracketed by a 30 dB margin above the artifact band and a 65 dB margin below the silence band.
+- **Why reject and not trim:** Trimming risks cutting the natural Spanish vowel onset (e.g., the leading `/e/` of "Eurídice"). Rejection lets the retry loop produce a fresh clean sample without surgery. Up to `MAX_GENERATION_RETRIES = 5` rounds.
+- **Known limitation:** If Parakeet absorbs the bleed into the first word's start time (`word_timestamps[0].start ≈ 0`), the pre-speech window is empty and the detector returns False. Forced phoneme alignment would close this gap; deferred.
+
 ## Threshold Summary
 
 | Metric | Threshold | Action |
@@ -61,6 +70,7 @@ Every generated sample passes through automated quality validation before inclus
 | Valley score | > 0.65 | Word ineligible for selection |
 | Stretch ratio | outside [0.75, 1.25] | Word ineligible |
 | Word duration | < 200ms | Word ineligible |
+| Non-verbal prefix RMS | > -55 dBFS (OmniVoice only) | Reject sample, retry up to 5x |
 
 ## Related Pages
 - [Partial Spoof Approach](partial-spoof-approach.md) — valley score design and edge cases

@@ -1,0 +1,124 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Attack Pipeline &mdash; OmniVoice (k2-fsa)</div>
+    <h2>OmniVoice: 646-language diffusion TTS with reference-bleed handling</h2>
+    <p style="margin-bottom:24px; max-width:780px;">Diffusion language model from k2-fsa supporting 646 languages, with 27,559 hours of Spanish training data &mdash; the largest Spanish coverage in any open zero-shot TTS we evaluated. Required custom post-processing because diffusion sampling occasionally bleeds the reference voice into the leading audio frames in a way that ASR-based detection cannot see.</p>
+
+    <!-- Model facts row -->
+    <div class="three" style="margin-bottom:14px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--white); margin-top:6px;">Diffusion LM</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Architecture</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">646</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Languages</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:20px; font-weight:700; color:var(--green); letter-spacing:-0.5px;">27,559 h</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Spanish training data</div>
+      </div>
+    </div>
+    <div class="three" style="margin-bottom:28px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">10s</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Reference audio</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:20px; font-weight:700; color:var(--amber); letter-spacing:-0.5px;">RTF ~0.025</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Speed (40&times; real-time)</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--white); margin-top:6px;">24 kHz native</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Sample rate (resampled to 16 kHz)</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <h3 style="margin-bottom:12px;">Reference voice bleed: an artifact ASR cannot see</h3>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Diffusion sampling occasionally emits a fragment of the reference voice (200&ndash;600 ms) before the prompt content begins. The fragment is sub-syllabic, so Parakeet TDT does not transcribe it &mdash; WER stays at 0.0 even though the audio is clearly contaminated. Word-alignment-based prefix detectors (used for Qwen3-TTS hallucinated words) are blind to this failure mode.</p>
+
+    <!-- Empirical signal table -->
+    <div class="two" style="gap:24px; margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Empirical signal (validation set, 6 samples)</div>
+        <div class="card-sm" style="border-color:rgba(245,166,35,0.2); margin-bottom:10px;">
+          <div style="font-size:11px; color:var(--muted); line-height:1.7;">
+            <strong style="color:var(--red);">Artifact samples:</strong><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">T_first &asymp; 0.56&ndash;0.64 s</span><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">pre_RMS &asymp; -22 to -25 dB</span><br>
+            <span style="font-size:11px; color:var(--muted2);">(only 2&ndash;5 dB below speech level)</span>
+          </div>
+        </div>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2);">
+          <div style="font-size:11px; color:var(--muted); line-height:1.7;">
+            <strong style="color:var(--green);">Clean samples:</strong><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">T_first = 0.0 &ndash; 0.08 s</span><br>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">pre_RMS = -120 dB</span><br>
+            <span style="font-size:11px; color:var(--muted2);">(silence floor)</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Discriminator margin</div>
+        <div class="card-sm">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">
+            Threshold of <strong style="color:var(--white);">-55 dBFS</strong> sits<br>
+            <span style="color:var(--green);">+30 dB above the artifact band</span><br>
+            <span style="color:var(--green);">+65 dB below the silence band</span>
+          </div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:11px; background:#0d0d0d; border:1px solid var(--border); border-radius:4px; padding:10px; margin-top:10px;">
+          <span style="color:var(--muted2);">pre_rms_db</span> <span style="color:var(--white);">=</span> <span style="color:var(--green);">20 &middot; log10</span><span style="color:var(--white);">(rms[0:T_first])</span><br>
+          <span style="color:var(--amber);">if</span> <span style="color:var(--white);">pre_rms_db &gt; -55: </span><span style="color:var(--red);">reject</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-bottom:12px;">Two-layer detection + retry loop</h3>
+    <div style="display:flex; align-items:center; gap:0; margin-bottom:24px; overflow-x:auto;">
+
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 3</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Generate</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">OmniVoice diffusion</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:#111; border:1px solid var(--border); border-radius:6px; padding:10px 14px; text-align:center; min-width:90px; flex-shrink:0;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--muted2); margin-bottom:4px;">STEP 4a</div>
+        <div style="font-size:12px; font-weight:600; color:var(--white);">Transcribe</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Parakeet TDT + timestamps</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(245,166,35,0.08); border:1px solid rgba(245,166,35,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:120px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--amber); margin-bottom:4px;">LAYER 1</div>
+        <div style="font-size:12px; font-weight:700; color:var(--amber);">Word align</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Trim hallucinated prefix words</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--amber); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">TRIM</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(62,255,139,0.08); border:1px solid rgba(62,255,139,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:130px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--green); margin-bottom:4px;">LAYER 2</div>
+        <div style="font-size:12px; font-weight:700; color:var(--green);">pre_RMS &gt; -55 dB</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Reject non-verbal bleed</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--green); color:#000; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">REJECT</div>
+      </div>
+      <div style="font-size:18px; color:var(--muted2); padding:0 6px;">&rarr;</div>
+
+      <div style="background:rgba(255,77,79,0.08); border:1px solid rgba(255,77,79,0.4); border-radius:6px; padding:10px 14px; text-align:center; min-width:120px; flex-shrink:0; position:relative;">
+        <div style="font-size:9px; letter-spacing:2px; color:var(--red); margin-bottom:4px;">RETRY</div>
+        <div style="font-size:12px; font-weight:700; color:var(--red);">up to 5&times;</div>
+        <div style="font-size:10px; color:var(--muted); margin-top:2px;">Regenerate &amp; revalidate</div>
+        <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--red); color:#fff; font-size:8px; font-weight:700; padding:1px 6px; border-radius:3px; letter-spacing:1px;">LOOP</div>
+      </div>
+    </div>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Root cause identified and fixed.</strong> The bleed traced to <span style="font-family:'JetBrains Mono',monospace;">audio_concatenation.py</span> slicing the last bonafide file mid-word to hit a 10&nbsp;s target. OmniVoice's diffusion conditioning attempted to "complete" the cut-off pattern at the start of generation. Fix: stop at the last fitting file, snap to silence in the edge case, always append 200&nbsp;ms trailing silence so the reference ends cleanly. Post-fix validation: <strong style="color:var(--green);">6/6 passed first attempt</strong>, zero non-verbal-prefix rejections, zero retries needed. <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span> -- previously deterministic-fail across 6 attempts -- now passes cleanly. Detector + retry kept as defense in depth.
+    </div>
+  </div>
+</section>

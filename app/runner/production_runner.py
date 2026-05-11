@@ -26,6 +26,12 @@ PIPELINES = {
         "system_id": "FISHGRAM",
         "output_dir_setting": "data/fishgram_output",
     },
+    "3": {
+        "name": "omnivoice",
+        "display": "OmniVoice (k2-fsa, diffusion LM, 646 languages)",
+        "system_id": "OMNIVOICE",
+        "output_dir_setting": "data/omnivoice_output",
+    },
 }
 
 
@@ -346,6 +352,8 @@ class ProductionRunner:
             self._execute_qwen(run_mode)
         elif self.pipeline_name == "fishgram":
             self._execute_fishgram(run_mode)
+        elif self.pipeline_name == "omnivoice":
+            self._execute_omnivoice(run_mode)
 
     def _execute_qwen(self, run_mode: Dict):
         """Execute Qwen3-TTS pipeline with retry loop.
@@ -417,6 +425,48 @@ class ProductionRunner:
                 pipeline_cls=FishGramAttackPipeline,
                 config_cls=FishGramPipelineConfig,
                 system_id="FISHGRAM",
+            )
+
+    def _execute_omnivoice(self, run_mode: Dict):
+        """Execute OmniVoice pipeline with retry loop.
+
+        OmniVoice runs as a local diffusion language model loaded into the
+        active GPU process; no HTTP server is required. Step 4 may reject
+        samples for non-verbal prefix artifacts (reference voice bleed) in
+        addition to the standard WER/CER and duration checks; the retry
+        loop regenerates them until clean or MAX_GENERATION_RETRIES is hit.
+
+        Args:
+            run_mode: Dict with step toggles and skip_existing flag.
+        """
+        from app.pipeline.omnivoice_attack import (
+            OmniVoiceAttackPipeline,
+            settings,
+        )
+        from app.pipeline.omnivoice_attack.schemas.pipeline_config import (
+            OmniVoicePipelineConfig,
+        )
+
+        settings.VALIDATION_MODE = False
+
+        config = OmniVoicePipelineConfig(
+            run_step_1=run_mode["run_step_1"],
+            run_step_2=run_mode["run_step_2"],
+            run_step_3=run_mode["run_step_3"],
+            run_step_4=run_mode["run_step_4"],
+            run_step_5=run_mode["run_step_5"],
+            skip_existing_step_3=run_mode["skip_existing"],
+        )
+
+        pipeline = OmniVoiceAttackPipeline(config=config)
+        pipeline.run()
+
+        if run_mode["run_step_3"] and run_mode["run_step_4"]:
+            self._retry_rejected(
+                settings=settings,
+                pipeline_cls=OmniVoiceAttackPipeline,
+                config_cls=OmniVoicePipelineConfig,
+                system_id="OMNIVOICE",
             )
 
     def _retry_rejected(self, settings, pipeline_cls, config_cls, system_id: str):

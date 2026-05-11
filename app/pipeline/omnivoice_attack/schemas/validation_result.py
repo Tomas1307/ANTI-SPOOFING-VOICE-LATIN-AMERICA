@@ -48,6 +48,14 @@ class ValidationResult(BaseModel):
         default=0,
         description="Number of samples where a spurious prefix was detected and trimmed"
     )
+    nonverbal_prefix_rejection_count: int = Field(
+        default=0,
+        description=(
+            "Number of samples rejected because pre-speech RMS exceeded the "
+            "NONVERBAL_PREFIX_RMS_FLOOR_DB floor (reference voice bleed, breath, "
+            "click). These samples are sent to the retry loop for regeneration."
+        )
+    )
     avg_nisqa: float = Field(
         default=0.0,
         description="Average NISQA MOS score across validated samples (1.0-5.0 scale)"

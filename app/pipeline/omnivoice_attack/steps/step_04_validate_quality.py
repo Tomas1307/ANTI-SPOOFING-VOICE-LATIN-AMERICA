@@ -8,10 +8,13 @@ Validates synthetic speech using:
   3. Parakeet TDT transcription with word-level timestamps.
   4. Spurious prefix trimming: detects extra words hallucinated at the
      beginning of the audio, trims them, then re-transcribes.
-  5. WER/CER computation against the original text. Target is 0.0 for both.
+  5. Non-verbal prefix rejection: detects audible non-linguistic content
+     before the first transcribed word (reference voice bleed, breath,
+     click). Such samples are rejected so the retry loop can regenerate.
+  6. WER/CER computation against the original text. Target is 0.0 for both.
      Samples exceeding WER_MAX_ACCEPTABLE or CER_MAX_ACCEPTABLE are rejected.
-  6. NISQA MOS estimation (informational only, does not reject).
-  7. ECAPA-TDNN speaker similarity (informational only, does not reject).
+  7. NISQA MOS estimation (informational only, does not reject).
+  8. ECAPA-TDNN speaker similarity (informational only, does not reject).
 
 Audio is loaded via librosa with sr=settings.SAMPLE_RATE, which transparently
 resamples OmniVoice's 24 kHz output to 16 kHz for Parakeet input.
@@ -31,7 +34,11 @@ from app.utils.ecapa_similarity import EcapaSimilarity
 from app.utils.metrics_writer import MetricsWriter
 from app.utils.nisqa_scorer import NisqaScorer
 from app.utils.parakeet_transcriber import ParakeetTranscriber
-from app.utils.prefix_trimmer import detect_prefix_trim_point, trim_audio_prefix
+from app.utils.prefix_trimmer import (
+    detect_nonverbal_prefix_artifact,
+    detect_prefix_trim_point,
+    trim_audio_prefix,
+)
 from app.utils.wer_cer import compute_cer, compute_wer
 
 
@@ -105,6 +112,7 @@ class QualityValidator:
         nisqa_scores = []
         similarity_scores = []
         prefix_trim_count = 0
+        nonverbal_prefix_rejection_count = 0
         ref_embeddings = {}
 
         logger.info(f"Validating {len(generated)} samples...")
@@ -141,8 +149,30 @@ class QualityValidator:
             trim_seconds = detect_prefix_trim_point(word_timestamps, text)
             if trim_seconds > 0.0:
                 trim_audio_prefix(audio_path, trim_seconds, audio_path)
+                audio, sr = librosa.load(audio_path, sr=settings.SAMPLE_RATE)
                 transcription, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
                 prefix_trim_count += 1
+
+            is_nonverbal_artifact, pre_rms_db = detect_nonverbal_prefix_artifact(
+                audio=audio,
+                sample_rate=sr,
+                word_timestamps=word_timestamps,
+                silence_floor_db=settings.NONVERBAL_PREFIX_RMS_FLOOR_DB,
+            )
+            if is_nonverbal_artifact:
+                nonverbal_prefix_rejection_count += 1
+                rejected.append({
+                    "sample_id": sample_id,
+                    "audio_duration": float(audio_duration),
+                    "pre_rms_db": float(pre_rms_db),
+                    "t_first": float(word_timestamps[0].start) if word_timestamps else 0.0,
+                    "transcription": transcription,
+                    "reason": (
+                        f"Non-verbal prefix artifact: pre_RMS {pre_rms_db:.1f}dB "
+                        f"> floor {settings.NONVERBAL_PREFIX_RMS_FLOOR_DB:.1f}dB"
+                    ),
+                })
+                continue
 
             sample_wer = compute_wer(text, transcription)
             sample_cer = compute_cer(text, transcription)
@@ -205,6 +235,7 @@ class QualityValidator:
         logger.info(f"  Passed              : {len(validated)}/{len(generated)} ({pass_rate:.1f}%)")
         logger.info(f"  Rejected            : {len(rejected)}")
         logger.info(f"  Prefix trims        : {prefix_trim_count}")
+        logger.info(f"  Non-verbal prefix rejections: {nonverbal_prefix_rejection_count}")
         logger.info(f"  Average WER         : {avg_wer:.4f}")
         logger.info(f"  Average CER         : {avg_cer:.4f}")
         logger.info(f"  Average NISQA MOS   : {avg_nisqa:.2f}")
@@ -230,6 +261,7 @@ class QualityValidator:
             avg_wer=avg_wer,
             avg_cer=avg_cer,
             prefix_trim_count=prefix_trim_count,
+            nonverbal_prefix_rejection_count=nonverbal_prefix_rejection_count,
             avg_nisqa=avg_nisqa,
             avg_speaker_similarity=avg_sim,
         )

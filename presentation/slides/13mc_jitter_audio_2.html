@@ -1,0 +1,56 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Boundary Jitter &mdash; Audio 2 (W1 tier)</div>
+    <h2>"Segun la television y los medios, hubieron bastantes muertos por el terremoto."</h2>
+    <p style="margin-bottom:18px; max-width:780px; font-size:13px; color:var(--muted);">Speaker <span style="font-family:'JetBrains Mono',monospace;">arf_00295</span>, 12 words, 1 cloned word ("muertos"). 11 internal boundaries. After Step 5b: 3 truncate, 0 overlap, 2 bleed, 6 natural. Drift +24 ms.</p>
+
+    <!-- Audio row -->
+    <div class="three" style="gap:14px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Bonafide (original)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/bonafide_dataset_by_speaker/arf_00295/train/arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber); margin-bottom:6px;">Spliced W1 (no jitter)</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/spliced/QWEN3TTS_PSW1_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+      <div style="background:rgba(62,255,139,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:10px;">
+        <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--green); margin-bottom:6px;">Jittered W1J</div>
+        <audio controls preload="metadata" style="width:100%;" src="data/attacks/qwen_partial_spoof_jitter/jittered/QWEN3TTS_PSW1_arf_00295_arf_00295_00500370856.wav"></audio>
+      </div>
+    </div>
+
+    <table style="font-size:12px; margin-bottom:18px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Word</th>
+          <th>Span (s)</th>
+          <th>Left boundary</th>
+          <th>Right boundary</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Segun</td><td>0.32 - 1.04</td><td><span style="color:var(--muted2);">utterance start</span></td><td><span style="color:var(--amber);">bleed</span> 44.9 ms R&rarr;L</td><td>touched R</td></tr>
+        <tr><td>2</td><td>la</td><td>1.04 - 1.20</td><td><span style="color:var(--amber);">bleed</span> 44.9 ms</td><td><span style="color:var(--amber);">bleed</span> 31.4 ms R&rarr;L</td><td>touched both</td></tr>
+        <tr><td>3</td><td>television</td><td>1.20 - 1.76</td><td><span style="color:var(--amber);">bleed</span> 31.4 ms</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>4</td><td>y</td><td>1.76 - 1.92</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr><td>5</td><td>los</td><td>1.92 - 2.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 13.2 ms RH</td><td>touched R</td></tr>
+        <tr><td>6</td><td>medios,</td><td>2.00 - 2.32</td><td>truncate 13.2 ms RH</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>7</td><td>hubieron</td><td>2.48 - 2.96</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(62,255,139,0.08);"><td>8</td><td>bastantes</td><td>2.96 - 3.36</td><td><span style="color:var(--muted2);">natural</span></td><td><span style="color:var(--muted2);">natural (= spoof start)</span></td><td class="ok"><strong>CLEAN</strong></td></tr>
+        <tr style="background:rgba(239,68,68,0.08);">
+          <td>9</td><td><strong style="color:var(--red);">muertos</strong></td><td>3.36 - 3.68</td><td><span style="color:var(--muted2);">natural (jitter tails)</span></td><td>truncate 10.1 ms RH</td><td class="fail"><strong>SPOOF</strong></td>
+        </tr>
+        <tr><td>10</td><td>por</td><td>3.68 - 3.84</td><td>truncate 10.1 ms RH</td><td><span style="color:var(--muted2);">natural</span></td><td>touched L</td></tr>
+        <tr><td>11</td><td>el</td><td>3.84 - 4.00</td><td><span style="color:var(--muted2);">natural</span></td><td>truncate 28.8 ms RH</td><td>touched R</td></tr>
+        <tr><td>12</td><td>terremoto.</td><td>4.00 - 4.88</td><td>truncate 28.8 ms RH</td><td><span style="color:var(--muted2);">utterance end</span></td><td>touched L</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong style="color:var(--white);">Tally.</strong> 1 spoof, 3 clean (27 %), 8 touched. <strong style="color:var(--white);">Spoof boundary at 3.36 s flipped natural</strong> -- the cloned "muertos" enters via crossfade splice but the jitter coin landed tails on its left edge. Adjacent word "bastantes" therefore qualifies as CLEAN despite being right next to the spoof. The right edge of "muertos" (3.68 s) did get a 10 ms truncate stacked on top of the splice. This audio has no overlaps -- pure truncate-and-bleed sample for this random plan.
+    </div>
+  </div>
+</section>

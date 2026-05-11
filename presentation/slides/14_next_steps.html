@@ -5,40 +5,51 @@
     <h2>Next steps</h2>
     <div class="div"></div>
 
-    <div style="display:flex; flex-direction:column; max-width:700px;">
-      <div class="step" style="padding:24px 0;">
+    <div style="display:flex; flex-direction:column; max-width:740px;">
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(62,255,139,0.15); color:var(--green);">01</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production runs — FishGram + Qwen + OpenVoice <span class="tag green">Complete</span></div>
-          <div class="step-desc" style="font-size:15px;">3 of 5 attack pipelines at production scale (~35K samples each, 1,567 speakers). FishGram: 95.2% pass rate. Qwen3-TTS: 87.9%. OpenVoice: 83.4%. Full metrics in slides 14-17.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Attack production runs &mdash; 5 of 6 complete <span class="tag amber">Chatterbox 59%</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Done: FishGram (95.2% pass), Qwen (87.9%), OpenVoice (83.4%), OuteTTS (72.3%), OmniVoice (93.9%). ~155K passed samples across 1,567 speakers. Chatterbox at 21,192 / 35,927 (59%), ETA early June.</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0;">
+
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">02</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Production run — Chatterbox + OuteTTS <span class="tag amber">In Progress</span></div>
-          <div class="step-desc" style="font-size:15px;">Chatterbox running on GPU 2 (~35,927 samples, ~40h estimated). OuteTTS queued next. Both use MATCH_BONAFIDE_COUNT for 1:1 bonafide ratio. Checkpoint/resume enabled for crash recovery.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Partial spoof multi-backend production <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Attack mix <strong style="color:var(--white);">50% OmniVoice / 30% Qwen / 20% FishGram</strong> &mdash; the three highest-fidelity attacks. Extend per-speaker file partition to 3-way so each backend draws from disjoint bonafide utterances. Same 7-step pipeline (Parakeet -&gt; clone -&gt; MMS align -&gt; valley-score select -&gt; splice -&gt; validate -&gt; format).</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0;">
+
+      <div class="step" style="padding:20px 0;">
         <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">03</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Partial spoof pipeline — production run <span class="tag amber">Testing</span></div>
-          <div class="step-desc" style="font-size:15px;">7-step pipeline validated end-to-end with Qwen strategy. Clone quality being refined. Next: production run across all speakers with multiple attack backends. Novel contribution — first partial spoof for Latin American Spanish.</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Boundary jitter datasets at scale <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Qwen jitter pilot validated end-to-end. Produce full-scale jitter datasets for Qwen and OmniVoice (`_jitter` folders, system_id `*_PSW{N}J`, audio_id 16M-18M) using the disjoint "jitter" partition. Two new datasets alongside the main partial_spoof.</div>
         </div>
       </div>
-      <div class="step" style="padding:24px 0; border-bottom:none;">
-        <div class="step-num" style="font-size:14px;">04</div>
+
+      <div class="step" style="padding:20px 0;">
+        <div class="step-num" style="font-size:14px; background:rgba(245,166,35,0.15); color:var(--amber);">04</div>
         <div>
-          <div class="step-title" style="font-size:18px; margin-bottom:8px;">Continue writing the paper</div>
-          <div class="step-desc" style="font-size:15px;">Continue drafting the thesis paper with dataset description (HABLA 2.0 structure, speaker demographics, accent distribution), attack pipeline methodology (6 TTS systems + partial spoof), quality validation framework (WER/CER/NISQA/SIM), and comparison with related work (HISPASpoof, LRLSpoof, SpeechFake-MD).</div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Augmentation pilot &mdash; validate structure, plan percentages <span class="tag amber">Next</span></div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Pilot codec (MP3/Opus low bitrate), additive noise (MUSAN), and RIR convolution on a small subset to confirm the final dataset structure (train/dev/eval, protocol files) survives augmentation cleanly. Then plan per-augmentation percentage targets for the production dataset (e.g. 30/30/40 clean/codec/noise).</div>
+        </div>
+      </div>
+
+      <div class="step" style="padding:20px 0; border-bottom:none;">
+        <div class="step-num" style="font-size:14px;">05</div>
+        <div>
+          <div class="step-title" style="font-size:18px; margin-bottom:6px;">Continue writing the paper</div>
+          <div class="step-desc" style="font-size:14px; line-height:1.55;">Continue thesis paper. New technical contributions to document: <strong style="color:var(--white);">boundary jitter</strong> as defense against the "find the noisy boundary" detector shortcut (Negroni 2024); <strong style="color:var(--white);">prefix-bleed detector + reference-cut fix</strong> for diffusion-LM TTS (OmniVoice); first partial-spoof dataset for Latin American Spanish with 6-TTS architectural diversity.</div>
         </div>
       </div>
     </div>
 
     <div class="div"></div>
     <div style="display:flex; justify-content:space-between;">
-      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 · Universidad de los Andes · April 2026</div>
+      <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">HABLA 2.0 &middot; Universidad de los Andes &middot; May 2026</div>
       <div style="font-size:11px; color:var(--muted2); font-family:'JetBrains Mono',monospace;">Tomas Acosta</div>
     </div>
   </div>
