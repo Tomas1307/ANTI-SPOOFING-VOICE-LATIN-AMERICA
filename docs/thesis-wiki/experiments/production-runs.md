@@ -234,6 +234,75 @@ Use this as the bookmark when picking up later. Items struck through are done.
 - [ ] Detector EER comparison on main vs jitter datasets
 - [ ] Update this page with results after each milestone
 
+---
+
+## HABLA-Spoof Production Sweep Runbook (2026-05-20)
+
+Twelve jobs total: six attacks (OmniVoice 40%, Qwen 20%, FishGram 10%, OpenVoice 10%, Chatterbox 10%, OuteTTS 10%) crossed with two partitions (`not_jittered`, `jittered`). Driven by the dispatch manifest at `data/manifests/partial_spoof_plan.csv` so every job processes a disjoint slice of bonafide files.
+
+### Step 0 -- Generate the manifest (one-time, any GPU venv)
+
+```bash
+export CUDA_VISIBLE_DEVICES=1
+source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+python -m app.scripts.generate_partial_spoof_manifest
+deactivate
+```
+
+Outputs:
+- `data/manifests/partial_spoof_plan.csv` -- the dispatch table (~35,927 rows)
+- `data/manifests/partial_spoof_plan_summary.json` -- target vs actual attack marginals, speaker coverage, tier potential
+- `data/manifests/bonafide_transcripts_full.json` -- cached Parakeet output reused by every per-attack run
+
+Audit before launching: target weights should match `settings.ATTACK_WEIGHTS` exactly; actual marginal should be within ~1% of target by construction; every speaker must appear in the manifest (or the speaker had too few words to clear `MIN_WORDS_W1=4`).
+
+### Step 1 -- Run the 12 per-attack jobs
+
+Each job runs in its attack's isolated venv. The orchestrator's `runbook` mode prints the exact commands:
+
+```bash
+python -m app.runner.partial_spoof_orchestrator --mode runbook --gpu 1
+```
+
+A representative command (substitute attack + venv + partition):
+
+```bash
+export CUDA_VISIBLE_DEVICES=1
+source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/omnivoice_env/bin/activate
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+python -m app.runner.partial_spoof_orchestrator \
+    --mode single --attack omnivoice --partition not_jittered
+deactivate
+```
+
+Each job writes to `data/partial_spoof_output/<attack>/<partition>/` and is restartable via the per-cell checkpoint at `.checkpoint.json`. Progress is visible via:
+
+```bash
+python -m app.runner.partial_spoof_orchestrator --mode status
+```
+
+### Step 2 -- Aggregate corpus tables
+
+After all 12 cells have produced `samples.csv` and `spoofed_words.csv`:
+
+```bash
+source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
+python -m app.runner.partial_spoof_orchestrator --mode aggregate
+deactivate
+```
+
+Outputs in `data/partial_spoof_output/`:
+- `corpus_samples.csv` -- master per-sample table (~82k rows expected)
+- `corpus_spoofed_words.csv` -- master per-spoofed-word table (~200k rows expected, frame-level label source)
+- `corpus_summary.json` -- final marginals: per-attack totals, per-partition totals, per-quality-flag counts, target vs actual weights
+
+### Operational notes
+
+- GPU pinning: prefer GPUs 1 and 3 (per `CLAUDE.md`, GPUs 0 and 2 are shared with other researchers). Run Chatterbox + OuteTTS in parallel on different GPUs since their RTF is highest.
+- Wall-clock estimate: dominated by Chatterbox (~1.5-2.5 days per partition) and OuteTTS (~10-15 hours per partition). OmniVoice and the others combined should complete in under 24h.
+- Keep-bad-stuff: `ENABLE_STEP_6_REJECTION = False`. Low-quality samples land in the corpus labeled `quality_flag='low'`; the upstream clone gate (ECAPA SIM >= 0.60) still drops obvious non-attacks but nothing past Step 5 gets filtered for WER/NISQA.
+
 ## Related Pages
 
 - [Partial Spoof Approach](../methodology/partial-spoof-approach.md) -- algorithmic details and justifications for jitter

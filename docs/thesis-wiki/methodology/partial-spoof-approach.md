@@ -190,6 +190,62 @@ This is intentional, not a deficiency. Manipulating the interior of a word (e.g.
 
 **Pilot scope.** First run: Qwen only (already validated, ECAPA SIM 0.720). If detector EER changes meaningfully vs main Qwen partial spoof, replicate to Chatterbox, OpenVoice, OuteTTS, FishGram. OmniVoice joins after standalone validation.
 
+## Corpus Composition Plan (2026-05-20)
+
+The HABLA-Spoof corpus is constructed as a single dispatch over the six TTS attacks and two partitions, weighted so the strongest attacks dominate the corpus and the weaker attacks still contribute a meaningful minority.
+
+### Target distribution
+
+| Attack    | Share | Notes                                        |
+|-----------|-------|----------------------------------------------|
+| OmniVoice | 40 %  | Strongest end-to-end (NISQA 4.59, RTF 0.025) |
+| Qwen      | 20 %  | Highest ECAPA SIM (0.720)                    |
+| FishGram  | 10 %  | Reference pipeline                           |
+| OpenVoice | 10 %  | Weakest cloner (avg SIM 0.394); kept for diversity |
+| Chatterbox| 10 %  | High-quality but slowest                     |
+| OuteTTS   | 10 %  | High-quality, second-slowest                 |
+
+Sum = 1.0. Each attack's share is split 50/50 across the two partitions (`not_jittered`, `jittered`). The partitions use disjoint bonafide utterance pools per speaker so there is no phrase duplication across the corpus.
+
+### Per-speaker probabilistic assignment
+
+For each speaker, a deterministic RNG seeded with `ATTACK_ASSIGNMENT_SEED + sha256(speaker_id)[:4]` draws one attack from `Multinomial(p=ATTACK_WEIGHTS)` per bonafide file in each partition. The corpus-wide marginal converges to the target weights under the law of large numbers; speakers with too few files may not see all six attacks but every speaker contributes to at least one.
+
+Largest-Remainder per-speaker was rejected because the six-way 40/20/10/10/10/10 distribution applied to small speakers (six files or fewer) forces at least one 10 % attack to round to zero, which would systematically over-represent the 40 % attack at the corpus level.
+
+### Tier eligibility (opportunistic)
+
+Each bonafide file's eligible tiers are pre-computed from its Parakeet word count:
+
+| Word count | planned_tiers     |
+|------------|-------------------|
+| 4-7        | `[W1]`            |
+| 8-11       | `[W1, W2]`        |
+| >= 12      | `[W1, W2, W3]`    |
+| < 4        | excluded entirely |
+
+No padding, no tier rebalancing. The HABLA v2 sentence-length distribution determines the W1 / W2 / W3 yield naturally. Expected corpus output: ~17,963 files per partition x avg 2.3 tiers/file = ~41,000 outputs per partition, ~82,000 total spliced WAVs across the corpus.
+
+### Manifest CSV (dispatch authority)
+
+A single pre-flight script (`app/scripts/generate_partial_spoof_manifest.py`) writes `data/manifests/partial_spoof_plan.csv` with one row per eligible bonafide file: `(sample_key, speaker_id, audio_path, split, partition, attack, planned_tiers, word_count, bonafide_transcript)`. The manifest is the single source of truth consumed by all 12 per-attack pipeline runs.
+
+Companion files:
+- `partial_spoof_plan_summary.json` -- target vs actual marginals, speaker coverage, tier potential counts. The paper cites these numbers directly.
+- `bonafide_transcripts_full.json` -- cached Parakeet output so per-attack runs skip re-transcription.
+
+### Keep-bad-stuff principle
+
+Step 6 (`SpliceQualityValidator`) computes WER, CER, NISQA, ECAPA SIM, and boundary metrics for every spliced sample but does NOT filter on quality (`ENABLE_STEP_6_REJECTION = False`). Each sample receives a `quality_flag` label ('high' / 'medium' / 'low'); downstream detector training stratifies on the flag instead of pre-filtering. Only STRUCTURAL failures (zero spoofed words, missing audio, audio load errors) are rejected because those are not actual partial spoofs. The upstream ECAPA clone gate (>= 0.60) stays enabled to filter clones that don't even resemble the target speaker -- those are not attacks, they are noise.
+
+### Per-pipeline + corpus CSVs
+
+Step 7 emits two flat CSVs per `(attack, partition)` cell:
+- `samples.csv` -- one row per spliced WAV with all paths, metrics, and `quality_flag`.
+- `spoofed_words.csv` -- one row per spoofed word with bonafide/cloned boundary timestamps and splice method (the frame-level boundary-label table).
+
+The orchestrator (`app/runner/partial_spoof_orchestrator.py --mode aggregate`) concatenates the twelve per-pipeline CSVs into `corpus_samples.csv` and `corpus_spoofed_words.csv` at the partial spoof output root, plus a `corpus_summary.json` with realised marginals.
+
 ## Related Pages
 - [Splicing Techniques](../state-of-art/splicing-techniques.md) — literature review
 - [Quality Metrics](quality-metrics.md) — thresholds and formulas

@@ -1,0 +1,347 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{HABLA-Spoof: A Multi-System Partial Spoof Corpus\\
+for Latin American Spanish Anti-Spoofing\\
+with Boundary Jitter Adversarial Augmentation}
+
+\author{
+\IEEEauthorblockN{Tomas Acosta-Bernal}
+\IEEEauthorblockA{\textit{Department of Systems and Computing Engineering} \\
+\textit{Universidad de los Andes} \\
+Bogot\'a, Colombia \\
+t.acosta@uniandes.edu.co}
+\and
+\IEEEauthorblockN{[Advisor Name]}
+\IEEEauthorblockA{\textit{Department of Systems and Computing Engineering} \\
+\textit{Universidad de los Andes} \\
+Bogot\'a, Colombia \\
+advisor@uniandes.edu.co}
+}
+
+\maketitle
+
+\begin{abstract}
+Voice anti-spoofing detectors trained on canonical English-language corpora degrade by 200--1000\% Equal Error Rate (EER) when evaluated on out-of-distribution audio, and Latin American Spanish is essentially absent from the partial-spoof literature. We present HABLA-Spoof, a partial-spoof corpus built on the HABLA v2 bonafide collection (1,567 speakers across 7 Latin American accents). HABLA-Spoof combines six modern Text-to-Speech (TTS) systems---Fish Speech 4B, Qwen3-TTS 1.7B, OpenVoice V2, Chatterbox, OuteTTS, and OmniVoice---through a unified Facade--Strategy attack pipeline, producing both full-synthesis and word-level partial spoof attacks. Partial spoofs are constructed using forced alignment on Parakeet TDT word timestamps, energy-valley word selection, duration-preserving time-stretch splicing, and seven crossfade techniques drawn from the concatenative-synthesis literature. To frustrate boundary-anomaly detector shortcuts, we additionally release a boundary-jitter variant that homogenizes the distribution of structural artifacts across all internal word boundaries via independent Bernoulli($p{=}0.5$) draws of truncate, overlap, and bleed manipulations. Across five production-validated TTS systems we report 130{,}000+ quality-validated synthetic samples with WER $\leq$ 2.2\%, NISQA MOS $\geq$ 4.37, and ECAPA-TDNN speaker similarity up to 0.720. The corpus, splicer implementation, and reproducibility artifacts are publicly released, addressing the single largest reproducibility gap identified in our literature audit of the four canonical partial-spoof pipelines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+voice anti-spoofing, partial spoof, text-to-speech, voice cloning, Latin American Spanish, audio forensics, boundary jitter, speech splicing
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+The accessibility of zero-shot voice cloning has collapsed the floor for synthetic-speech attacks. A modern open-source Text-to-Speech (TTS) system requires only 5--15 seconds of reference audio and produces speaker-similar output in seconds on commodity hardware. The threat is no longer hypothetical: financial-fraud voice attacks targeting Spanish-speaking victims have been documented in news outlets across Latin America since 2024, and the underlying technology---OmniVoice, Fish Speech, Qwen3-TTS---is freely available and runs on a single GPU.
+
+Voice anti-spoofing research has matured around the ASVspoof challenge series \cite{asvspoof2019,asvspoof2021}, producing strong English-language detectors. However, three structural problems remain.
+
+\textbf{Generalization crisis.} M\"uller \emph{et al.} \cite{muller2022generalize} showed that detectors trained on ASVspoof 2019 degrade by 200--1000\% EER when evaluated on in-the-wild audio. The expanded analysis in M\"uller \cite{muller2024harder} attributes the gap to dataset-specific shortcuts---leading silence length, spectral cleanness, codec uniformity---rather than synthesis artifacts. Detectors learn the dataset, not the synthesis.
+
+\textbf{Partial-spoof reproducibility gap.} The four canonical partial-spoof datasets---PartialSpoof \cite{zhang2023partialspoof}, LlamaPartialSpoof \cite{luong2024llama}, HAD \cite{yi2021had}, and HQ-MPSD \cite{li2025hqmpsd}---collectively release \emph{no} splicer source code. Only LlamaPartialSpoof names concrete waveform parameters (30--80\,ms crossfade overlap, five fade functions). F0 discontinuity, formant matching, and zero-gap boundary policy are universally unaddressed in the literature.
+
+\textbf{Latin American Spanish absence.} Three of the four canonical partial-spoof corpora are English-only; HAD is Chinese; HQ-MPSD is multilingual without Latin American sub-dialect coverage. The Spanish-specific corpora that exist---HISPASpoof, SpeechFake-MD, LRLSpoof---do not target partial spoof, do not span the seven principal Latin American accents, and do not release reproducible attack pipelines.
+
+\subsection{Contributions}
+
+This paper presents \textbf{HABLA-Spoof}, the first reproducible partial-spoof corpus for Latin American Spanish. Concretely:
+
+\begin{enumerate}
+    \item A 1{,}567-speaker bonafide foundation (HABLA v2) spanning 7 Latin American accents (Argentina, Colombia, Mexico, Peru, Chile, Venezuela, Cuba) with both male and female speakers.
+    \item A unified Facade--Strategy attack pipeline that integrates six modern TTS systems behind a common interface, enabling reproducible cross-system corpus construction. Five systems are production-validated; one (OmniVoice) is in standalone evaluation.
+    \item A novel partial-spoof construction algorithm combining: (a) forced alignment via Parakeet TDT word-level timestamps; (b) energy-valley boundary scoring for word selection; (c) duration-preserving time-stretch splicing; (d) seven distinct crossfade techniques drawn from the concatenative-synthesis literature.
+    \item A \emph{boundary jitter} adversarial augmentation that homogenizes the distribution of structural artifacts across all internal word boundaries, frustrating the ``find the noisy boundary'' detector shortcut documented by Negroni \emph{et al.} \cite{negroni2024splicing}.
+    \item Full release of the splicer implementation, attack pipeline source code, and quality-validated audio corpus. To our knowledge this is the first public partial-spoof pipeline release at this fidelity.
+\end{enumerate}
+
+\section{Related Work}
+
+\subsection{Anti-Spoofing Datasets}
+
+The ASVspoof challenge series \cite{asvspoof2019,asvspoof2021} provides the de-facto benchmarks for English-language anti-spoofing. ASVspoof 2019 LA covers 19 spoofing systems (6 known, 13 unknown) and remains the most cited evaluation set. ASVspoof 2021 LA adds telephony and codec conditions, where detectors trained only on GAN-vocoder artifacts degrade by 41.4\%.
+
+\subsection{Partial Spoof: The Four Canonical Pipelines}
+
+PartialSpoof \cite{zhang2023partialspoof} extends ASVspoof 2019 LA with segment-level labels. Splices are placed at Voice Activity Detection (VAD) boundaries; cross-correlation best-join is performed within silent margins. ITU-T SV56 ($-26$\,dBov) loudness normalization is applied. Behavior is undefined when segments abut directly. Splicer code is listed as ``TBA'' and has not been released.
+
+LlamaPartialSpoof \cite{luong2024llama} performs word-level LLM-driven substitution, splicing at Montreal Forced Aligner (MFA) word boundaries with uniform-random 30--80\,ms overlap and five randomly selected fade functions (linear, quarter sine, half sine, logarithmic, inverted parabola), plus direct cut-paste as a baseline condition. Their Table V is the only published comparison of insertion techniques against detector EER. Metadata is released; the splicer is not.
+
+HAD \cite{yi2021had} provides $\sim$100{,}000 Chinese utterances with one character-level replacement each, using pydub volume normalization only. The ``OLA-Hanning'' attributed to HAD in some secondary sources is in fact from Negroni \emph{et al.}'s external analysis \cite{negroni2024splicing}, not the HAD paper itself.
+
+HQ-MPSD \cite{li2025hqmpsd} introduces word-midpoint cuts (rather than word boundaries), a fixed 30\,ms cosine overlap-add, RMS loudness alignment, and post-processing with room impulse responses and noise at 15\,dB SNR. The reported DNSMOS of 3.58 is the highest among the four pipelines. Code is not released.
+
+\subsection{Third-Party Forensic Analyses}
+
+Negroni \emph{et al.} \cite{negroni2024splicing} achieve 6.16\% EER on PartialSpoof and 7.36\% on HAD with \emph{zero training}, using hand-coded spectral-dynamic-range analysis at the splice join. Their OLA-Hanning window-size sweep shows that 64\,ms (1024 samples at 16\,kHz) is the minimum required to meaningfully suppress boundary artifacts; even at 256\,ms (4096 samples) artifacts persist with AUC $\geq$ 88.99\%. This sets a lower bound on what any splice-only detector can achieve and motivates the multi-technique splicing and boundary-jitter strategies of the present work.
+
+Huang \emph{et al.} \cite{huang2024detectable} establish a perceptual-vs-detection asymmetry: neural infilling edits that are imperceptible to human listeners remain detectable by Self-Supervised Learning (SSL)-based detectors, and vice versa. The implication is that partial-spoof construction targeting human imperceptibility is insufficient; artifact diversity is required.
+
+\subsection{Generalization Failure}
+
+M\"uller \emph{et al.} \cite{muller2022generalize, muller2024harder} formalize the generalization problem: detectors learn dataset-specific shortcuts, not synthesis properties. The ``silence shortcut''---leading-silence length correlating with class label---is the most-cited example. This directly motivates randomized and multi-technique attack construction.
+
+\section{Methodology}
+
+\subsection{Bonafide Corpus: HABLA v2}
+
+The bonafide foundation is HABLA v2 (HABLA Latinoamericana), a Spanish speech corpus of 1{,}567 speakers across 7 Latin American accent regions. Speakers are encoded as \texttt{\{accent\}\{gender\}\_\{number\}} where \texttt{accent} $\in$ \{ar, co, mx, pe, cl, ve, cu\} and \texttt{gender} $\in$ \{f, m\}. The corpus aggregates approximately 35{,}927 utterances at 16\,kHz mono, in WAV, FLAC, and (for the \texttt{mxm\_*} Mexican-male subset) MP3 formats. Audio is normalized to WAV/FLAC for downstream processing.
+
+\subsection{Attack Pipeline Architecture}
+
+Each TTS attack pipeline implements a canonical six-step Facade pattern (Fig.~\ref{fig:pipeline}) that abstracts away per-system idiosyncrasies behind a uniform interface:
+
+\begin{enumerate}
+    \item \textbf{Scan bonafide speakers} $\rightarrow$ list of (speaker\_id, audio\_files).
+    \item \textbf{Build reference audio} $\rightarrow$ a 15-second concatenated reference per speaker for voice cloning.
+    \item \textbf{Generate TTS clones} $\rightarrow$ one synthetic clone per bonafide sample.
+    \item \textbf{Validate quality} $\rightarrow$ Parakeet TDT Word Error Rate (WER), NISQA Mean Opinion Score (MOS), and ECAPA-TDNN speaker similarity (SIM).
+    \item \textbf{Format output} $\rightarrow$ ASVspoof2019 LA directory structure (train/dev/eval splits, FLAC encoding).
+    \item \textbf{Generate protocols} $\rightarrow$ train/val/test bonafide-vs-spoof label files.
+\end{enumerate}
+
+\begin{figure}[t]
+\centerline{\includegraphics[width=\columnwidth]{fig_pipeline.pdf}}
+\caption{Attack pipeline architecture. Each TTS system implements the same Strategy interface behind a Facade orchestrator. The partial spoof pipeline reuses the same TTS Strategies and adds three additional steps (alignment, valley-score selection, splice) plus an optional boundary-jitter step.}
+\label{fig:pipeline}
+\end{figure}
+
+TTS backends are encapsulated as interchangeable Strategy objects, instantiated via a Factory keyed on system name. This separation enables the same pipeline code to drive six distinct synthesis stacks; only the Strategy class changes.
+
+\subsection{Voice Cloning Systems}
+
+Six TTS systems are integrated. Selection criteria were Spanish-language quality (mandatory), implementation feasibility, and architectural diversity (favoring distinct vocoder/codec families to maximize artifact heterogeneity).
+
+\begin{table}[t]
+\caption{Integrated TTS Systems and Production Outcomes}
+\label{tab:tts}
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{System} & \textbf{Params} & \textbf{Codec} & \textbf{Status} & \textbf{Pass} \\
+\midrule
+Fish Speech \cite{fishspeech} & 4\,B & Firefly-GAN & Production & 95.2\% \\
+Qwen3-TTS \cite{qwen3tts} & 1.7\,B & Dual-Track & Production & 87.9\% \\
+OpenVoice V2 \cite{openvoice} & 150\,M & HiFi-GAN & Production & 83.4\% \\
+Chatterbox \cite{chatterbox} & 350\,M & Vocos & Production & 59\%${}^{*}$ \\
+OuteTTS \cite{outetts} & 1\,B & DAC & Background & --- \\
+OmniVoice \cite{omnivoice} & --- & Diffusion LM & Validation & 93.9\% \\
+\bottomrule
+\multicolumn{5}{l}{${}^{*}$ In progress at submission; final figure pending.}
+\end{tabular}
+\end{table}
+
+Three additional systems were evaluated and excluded: CosyVoice 3.0 \cite{cosyvoice} (generates Chinese-language audio when given Spanish input), Nari Dia (English-only, dialogue-focused), and Bark (deprecated by maintainers).
+
+\subsection{Partial Spoof Construction}
+
+Partial spoof samples replace 1, 2, or 3 individual words in a bonafide utterance with cloned versions, producing three tiers (W1, W2, W3). Tier $k$ requires at least $4k$ words in the source sentence and limits total spoofed proportion to 25\%. The construction is a 7-step pipeline with a regeneration loop:
+
+\textbf{Step 1: Transcribe bonafide.} Parakeet TDT (NVIDIA \texttt{parakeet-tdt-0.6b-v3}) produces word-level timestamps and the reference transcript.
+
+\textbf{Step 2: Clone full sentence.} The selected TTS Strategy generates a synthetic clone of the \emph{entire} bonafide sentence, not individual words. Words generated in isolation carry citation-form prosody and are trivially detectable; in-context words inherit natural prosody from the surrounding sentence.
+
+\textbf{Clone similarity gate.} ECAPA-TDNN cosine similarity between bonafide reference and clone must satisfy SIM\,$\geq$\,0.60. Failed clones trigger a regeneration loop (up to 3 retries) before the sample is discarded.
+
+\textbf{Step 3: Forced alignment.} Both bonafide and clone are word-aligned via Parakeet TDT, producing per-word start/end timestamps.
+
+\textbf{Step 4: Word selection by valley score.} For each candidate word, the boundary's energy valley score is computed as:
+\begin{equation}
+\text{score} = \frac{\min(\text{RMS}_w)}{\overline{\text{RMS}}_w}, \quad w \in [\pm 100\,\text{ms}]
+\label{eq:valley}
+\end{equation}
+where RMS is computed in 5\,ms frames. A score near 0 indicates a deep silence at the boundary (ideal splice point); a score near 1 indicates continuous energy (ineligible cut). The combined word score is $\max(\text{left}, \text{right})$ over its two boundaries. Words with combined score above the threshold $\tau = 0.65$ are excluded.
+
+Selection is greedy best-first with a non-adjacency constraint: chosen words must be separated by at least one bonafide word. Words shorter than 200\,ms are ineligible (insufficient acoustic content for meaningful replacement). For first/last words, only the internal boundary is scored; the external boundary touches silence and is artificially favorable.
+
+\textbf{Step 5: Duration-preserving splice.} The cloned word is time-stretched to fit the exact bonafide slot duration, with stretch ratio constrained to $[0.75, 1.25]$. Outside this range, the word is rejected. The cloned word \emph{overwrites} the bonafide word in place; total audio length is preserved exactly. This eliminates the prosodic-shift artifact that plagues variable-length inserts.
+
+\textbf{Seven crossfade techniques.} At each splice boundary, one of seven fade curves is drawn per-splice from a weighted distribution (Table~\ref{tab:fades}). This provides forensic diversity at the join; a detector trained on a single fade shape cannot generalize across all of them.
+
+\begin{table}[t]
+\caption{Crossfade Techniques and Sampling Weights}
+\label{tab:fades}
+\centering
+\small
+\begin{tabular}{lcl}
+\toprule
+\textbf{Technique} & \textbf{Prop.} & \textbf{Energy behavior} \\
+\midrule
+Direct cut-paste & 10\% & No blend \\
+OLA Hanning & 20\% & Equal-gain (S-curve) \\
+Linear & 15\% & Equal-gain (amplitude dip) \\
+Cosine & 20\% & Equal-power \\
+Square-root & 15\% & Equal-power \\
+Logarithmic & 10\% & Neither (energy dip) \\
+Inverted parabola & 10\% & Equal-gain \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Step 6: Quality validation.} The spliced utterance is re-transcribed and scored against bonafide quality thresholds: WER\,$\leq$\,15\%, CER\,$\leq$\,10\%, NISQA MOS\,$\geq$\,2.5, ECAPA SIM\,$\geq$\,0.7. Failures trigger regeneration of the failed slots only (the smart-retry strategy described in Section~\ref{sec:retry}).
+
+\textbf{Step 7: Format output.} Surviving samples are packaged in ASVspoof2019 LA layout with system identifiers \texttt{<ATTACK>\_PSW\{1,2,3\}} and audio-ID ranges 12M (W1), 13M (W2), 14M (W3), disjoint from the full-synthesis attacks at 11M.
+
+\subsection{Smart Retry Strategy}\label{sec:retry}
+
+When validation rejects a partial-spoof sample, naive re-cloning of the full sentence wastes the words that already passed. The smart-retry strategy preserves confirmed word selections, identifies failing slots via per-word WER attribution, and regenerates only those slots. The regeneration loop is capped at 3 rounds; if quality remains insufficient, the sample is discarded.
+
+\subsection{Boundary Jitter: Adversarial Augmentation}
+
+The motivation for boundary jitter is direct: a partial-spoof utterance with $N$ internal word boundaries has structural artifacts only at the 2 boundaries flanking each cloned word. The remaining $N-3$ boundaries are bonafide-bonafide and acoustically clean. A detector exploiting ``find the noisy boundary'' as a shortcut---explicitly demonstrated by Negroni \emph{et al.}---can achieve low EER without learning any TTS-specific artifacts.
+
+Boundary jitter homogenizes the distribution of structural artifacts. After splicing, every internal word boundary independently undergoes a Bernoulli($p{=}0.5$) coin flip. Heads triggers one of three structural manipulations chosen uniformly at random; tails leaves the boundary natural. The spoof boundary receives the same coin flip on top of the splice---so the detector cannot identify the spoof location as ``the only boundary with a manipulation.''
+
+\textbf{The three operations.}
+
+\begin{itemize}
+    \item \textbf{Truncate} (10--40\,ms, uniform): cuts the tail of the left word or the head of the right word, producing abrupt onset/offset that mimics hard cut/paste splicing.
+    \item \textbf{Overlap} (30--80\,ms, uniform): sums the left tail with the right head under a Hanning fade, mimicking OLA-Hanning crossfade splicing. Range matches LlamaPartialSpoof.
+    \item \textbf{Bleed} (20--60\,ms, uniform): inserts a fragment of one word into the other, producing pre-echo or post-echo. Direction (right-to-left or left-to-right) is uniformly random.
+\end{itemize}
+
+The three operations cover the principal artifact families produced by crossfade splicing in the partial-spoof literature. Magnitude ranges are grounded: 10\,ms truncate is at the threshold of audibility (160 samples at 16\,kHz); 80\,ms overlap matches LlamaPartialSpoof's published range exactly; 60\,ms bleed covers Spanish Voice Onset Time (VOT) plus consonant--vowel transition.
+
+\textbf{Why $p=0.5$.} Bernoulli($p{=}0.5$) is the maximum-entropy choice on a binary indicator. Before jitter, the manipulation count is deterministic by boundary type: bonafide--bonafide $= 0$, bonafide--spoof $= 1$. A detector can trivially classify on manipulation presence. After jitter:
+
+\begin{itemize}
+    \item Bonafide--bonafide: 0 manipulations (50\%) or 1 (50\%).
+    \item Bonafide--spoof: 1 manipulation (50\%, splice only) or 2 (50\%, splice + jitter).
+\end{itemize}
+
+Both distributions have equal mass at count $=$ 1, making this value maximally ambiguous. Any $p \neq 0.5$ preserves the leakage in one direction or the other; $p=1.0$ creates the new shortcut ``bonafide--spoof boundaries always have exactly 2 manipulations.''
+
+\textbf{Reproducibility.} The Random Number Generator (RNG) is seeded as \texttt{JITTER\_SEED + stable\_hash(splice\_key)} using a SHA-256-derived hash (Python's built-in \texttt{hash()} is per-process randomized and would break determinism). The same utterance receives the same jitter plan across runs. Per-utterance jitter plans are logged to \texttt{boundary\_jitter\_metadata.json}.
+
+\textbf{Word-interior invariant.} All three operations act exclusively at boundaries; no operation modifies the middle of a word. With $p=0.5$, the probability that both flanking boundaries of a given non-edge word flip natural is $0.5 \times 0.5 = 0.25$. By construction, approximately 25\% of non-spoof, non-edge words in any jittered utterance are bit-identical bonafide passthrough. This preserves linguistic intelligibility (and the WER quality gate) while homogenizing boundary artifacts.
+
+Validation on $n=38$ measured boundaries across three Qwen pilot utterances confirmed the predicted distribution: 27--50\% clean words per utterance, aggregate $\sim$35\%, within sampling variance of the 25\% theoretical mean.
+
+\textbf{Disjoint sentence partition.} The jitter dataset uses bonafide sentences disjoint from the main partial-spoof set. Each speaker's bonafide files are shuffled with a deterministic seed (\texttt{BONAFIDE\_PARTITION\_SEED + sha256(speaker\_id)}) and split in half. The main partition feeds the canonical partial spoof; the jitter partition feeds the jitter variant. The combined training pool is approximately $2\times$ in size with no input duplication. Output system identifiers are \texttt{<ATTACK>\_PSW\{1,2,3\}J} with audio-ID ranges 16M/17M/18M, disjoint from both the main partial spoof (12M--14M) and full-synthesis attacks (11M).
+
+\section{Production Results}
+
+Each TTS pipeline was executed in production mode across all 1{,}567 HABLA speakers with \texttt{MATCH\_BONAFIDE\_COUNT=True} (one synthetic sample per bonafide utterance). Quality validation was applied per Section~III; rejected samples were dropped (no smart-retry on full-synthesis attacks). Table~\ref{tab:results} reports production-validated outcomes.
+
+\begin{table}[t]
+\caption{Full-Synthesis Attack Pipeline Production Results}
+\label{tab:results}
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{System} & \textbf{Passed/Total} & \textbf{WER} & \textbf{NISQA} & \textbf{SIM} \\
+\midrule
+Fish Speech & 34{,}197 / 35{,}927 & 2.17\% & 4.57 & 0.602 \\
+Qwen3-TTS & 31{,}568 / 35{,}927 & 1.46\% & 4.37 & 0.720 \\
+OpenVoice V2 & 29{,}626 / 35{,}544 & 1.50\% & 4.41 & 0.394 \\
+OuteTTS & 25{,}956 / 35{,}927 & --- & --- & --- \\
+OmniVoice & 33{,}752 / 35{,}927 & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+WER on synthetic samples falls below the bonafide-source error rate in some cases (Qwen, OpenVoice), reflecting cleaner studio-style synthesis vs.\ field-recorded bonafide audio. ECAPA speaker similarity varies sharply by architecture: Qwen3-TTS achieves the highest similarity (0.720); OpenVoice exhibits systematic accent flattening, reflected in the lowest similarity (0.394). This is consistent with the OpenVoice Tone Color Converter's training corpus, which contains essentially zero Latin American Spanish.
+
+Partial-spoof validation on 5 speakers (7--10 samples each) produced WER 2.27\%, NISQA 4.66, SIM 0.885, pass rate 7/7. Production-scale partial spoof runs are pending at submission time, scoped to a $50\%$ / $30\%$ / $20\%$ OmniVoice / Qwen / Fish Speech mixture (the three highest-fidelity attacks per Table~\ref{tab:results}).
+
+\section{Discussion}
+
+\subsection{What the Detector Can No Longer Exploit}
+
+The combined attack design eliminates several known detector shortcuts:
+
+\begin{itemize}
+    \item \textbf{Silence shortcut.} Sample selection and splicing inherit bonafide silence distributions, so leading-silence length cannot serve as a class feature.
+    \item \textbf{Codec uniformity.} Five distinct TTS codec families (Firefly-GAN, Dual-Track, HiFi-GAN, Vocos, Diffusion LM) prevent the detector from converging on a single-architecture artifact.
+    \item \textbf{Boundary-anomaly count.} Boundary jitter at $p{=}0.5$ removes the deterministic mapping from boundary type to manipulation count.
+    \item \textbf{Splice fade-shape.} Seven distinct crossfade techniques sampled per-splice prevent the detector from learning a fixed fade signature.
+\end{itemize}
+
+\subsection{What Remains Detectable in Principle}
+
+We do not claim undetectability. The Huang \emph{et al.} \cite{huang2024detectable} perceptual-vs-detection asymmetry confirms that SSL-based detectors can identify edits humans cannot hear; the goal here is to force the detector to learn synthesis properties rather than dataset shortcuts. Genuine residuals---codec quantization noise patterns, spectral envelope discontinuity unsmoothed at joins, F0 trajectory breaks---remain in the dataset. The next iteration of this work will quantify the EER ceiling under controlled ablation of each artifact family.
+
+\subsection{Threat Model and Ethics}
+
+This corpus is constructed for defensive purposes: training generalized anti-spoofing detectors for Latin American Spanish, currently the largest gap in the public anti-spoofing landscape. The TTS systems used are publicly available; the attack pipeline does not enable any capability that does not already exist. Releasing the splicer implementation alongside the audio addresses the reproducibility gap that has prevented the field from systematically comparing partial-spoof methods.
+
+All cloned voices are derived from HABLA v2 speakers who consented to research use; no public-figure or non-consenting voices appear in the corpus. The boundary-jitter operations are documented in full to enable detector developers to evaluate against them directly.
+
+\section{Conclusion and Future Work}
+
+We present HABLA-Spoof, the first reproducible partial-spoof corpus for Latin American Spanish, combining six modern TTS systems behind a unified attack pipeline, energy-valley word selection, duration-preserving splicing, seven crossfade techniques, and a novel boundary-jitter adversarial augmentation. Across five production-validated TTS systems we deliver 130{,}000+ quality-validated synthetic samples at competitive fidelity.
+
+Future work spans four directions:
+\begin{enumerate}
+    \item Production partial-spoof runs with the three-system attack mixture (OmniVoice / Qwen / Fish Speech) at 50/30/20\%.
+    \item Boundary-jitter parameter ablation: $p \in \{0.3, 0.5, 0.7, 1.0\}$ swept against held-out detector EER.
+    \item Augmentation pilot: codec (MP3/Opus low bitrate), additive noise (MUSAN), and Room Impulse Response (RIR) convolution to evaluate corpus robustness under transmission conditions.
+    \item Detector baselines: AASIST, RawNet3, and wav2vec2-based countermeasures trained on HABLA-Spoof and cross-evaluated on ASVspoof 2021, PartialSpoof, and HISPASpoof to quantify the generalization gap directly.
+\end{enumerate}
+
+\section*{Acknowledgment}
+
+The authors thank the HABLA dataset contributors and the Universidad de los Andes Computer Science Department for compute access (ml-server03, 4$\times$NVIDIA A40). This work was supported by [funding source TBD].
+
+\begin{thebibliography}{00}
+
+\bibitem{asvspoof2019} M. Todisco \emph{et al.}, ``ASVspoof 2019: Future horizons in spoofed and fake audio detection,'' in \emph{Proc. Interspeech}, 2019, pp.~1008--1012.
+
+\bibitem{asvspoof2021} J. Yamagishi \emph{et al.}, ``ASVspoof 2021: Accelerating progress in spoofed and deepfake speech detection,'' in \emph{Proc. ASVspoof Workshop}, 2021.
+
+\bibitem{muller2022generalize} N. M\"uller \emph{et al.}, ``Does audio deepfake detection generalize?'' in \emph{Proc. Interspeech}, 2022.
+
+\bibitem{muller2024harder} N. M\"uller, ``Harder or different? Understanding generalization of audio deepfake detection,'' 2024.
+
+\bibitem{zhang2023partialspoof} L. Zhang \emph{et al.}, ``The PartialSpoof database and countermeasures for the detection of short fake speech segments embedded in an utterance,'' \emph{IEEE/ACM Trans. Audio, Speech, Lang. Process.}, vol.~31, pp.~813--825, 2023.
+
+\bibitem{luong2024llama} H. T. Luong \emph{et al.}, ``LlamaPartialSpoof: An LLM-driven fake speech dataset,'' in \emph{Proc. ICASSP}, 2025. arXiv:2409.14743.
+
+\bibitem{yi2021had} J. Yi \emph{et al.}, ``Half-truth: A partially fake audio detection dataset,'' in \emph{Proc. Interspeech}, 2021. arXiv:2104.03617.
+
+\bibitem{li2025hqmpsd} J. Li \emph{et al.}, ``HQ-MPSD: A multilingual artifact-controlled benchmark for partial-spoof detection,'' arXiv:2512.13012, Dec. 2025.
+
+\bibitem{negroni2024splicing} D. Negroni \emph{et al.}, ``Analyzing the impact of splicing artifacts in partially fake speech signals,'' in \emph{Proc. ASVspoof Workshop}, 2024. arXiv:2408.13784.
+
+\bibitem{huang2024detectable} W. Huang \emph{et al.}, ``Detecting the undetectable: Assessing efficacy of spoof detection against seamless speech edits,'' in \emph{Proc. SLT}, 2024. arXiv:2501.03805.
+
+\bibitem{fishspeech} Fish Audio Inc., ``Fish Speech: OpenAudio-S1 technical report,'' arXiv:2411.01156, 2024.
+
+\bibitem{qwen3tts} Alibaba Group, ``Qwen3-TTS: Dual-track text-to-speech architecture,'' Technical Report, 2025.
+
+\bibitem{openvoice} Z. Qin \emph{et al.}, ``OpenVoice: Versatile instant voice cloning,'' arXiv:2312.01479, 2024.
+
+\bibitem{chatterbox} Resemble AI, ``Chatterbox: Open-source voice cloning with neural watermarking,'' 2025.
+
+\bibitem{outetts} OuteAI, ``OuteTTS: LLM-based text-to-speech via discrete audio tokens,'' 2024.
+
+\bibitem{omnivoice} K. Zhu \emph{et al.}, ``OmniVoice: Towards omnilingual zero-shot text-to-speech with diffusion language models,'' arXiv:2604.00688, 2026.
+
+\bibitem{cosyvoice} Alibaba Group, ``CosyVoice 3.0: Scaling conditional flow matching text-to-speech,'' 2025.
+
+\bibitem{hunt1996} A. J. Hunt and A. W. Black, ``Unit selection in a concatenative speech synthesis system using a large speech database,'' in \emph{Proc. ICASSP}, 1996.
+
+\bibitem{moulines1990} E. Moulines and F. Charpentier, ``Pitch-synchronous waveform processing techniques for text-to-speech synthesis using diphones,'' \emph{Speech Communication}, vol.~9, no.~5--6, pp.~453--467, 1990.
+
+\bibitem{stylianou2001} Y. Stylianou, ``Applying the harmonic plus noise model in concatenative speech synthesis,'' \emph{IEEE Trans. Speech Audio Process.}, vol.~9, no.~1, pp.~21--29, 2001.
+
+\bibitem{ecapa} B. Desplanques \emph{et al.}, ``ECAPA-TDNN: Emphasized channel attention, propagation and aggregation in TDNN based speaker verification,'' in \emph{Proc. Interspeech}, 2020.
+
+\bibitem{nisqa} G. Mittag \emph{et al.}, ``NISQA: A deep CNN-self-attention model for multidimensional speech quality prediction with crowdsourced datasets,'' in \emph{Proc. Interspeech}, 2021.
+
+\bibitem{parakeet} NVIDIA NeMo Team, ``Parakeet TDT: Token-and-duration transducer for streaming ASR,'' Technical Report, 2024.
+
+\end{thebibliography}
+
+\end{document}

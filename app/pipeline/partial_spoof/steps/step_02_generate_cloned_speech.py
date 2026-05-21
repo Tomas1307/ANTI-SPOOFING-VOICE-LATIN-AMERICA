@@ -5,12 +5,18 @@ For each transcribed bonafide utterance, generates the same sentence
 using the configured voice cloning attack strategy with the speaker's
 reference audio. The cloned audio will be used in Step 3 for forced
 alignment and in Step 5 for word-level extraction and splicing.
+
+Resumable via the optional CheckpointManager: every successful clone
+commit calls checkpoint.mark_cloned(sample_key) before moving on, so a
+killed run loses at most the in-flight sample. Generation errors are
+recorded as recoverable failures and retried up to MAX_GENERATION_RETRIES
+on subsequent runs; quality failures are NEVER filtered at this layer
+(keep-bad-stuff principle).
 """
 import json
-import time
 from pathlib import Path
+from typing import Optional
 
-import numpy as np
 import soundfile as sf
 from loguru import logger
 from tqdm import tqdm
@@ -21,20 +27,22 @@ from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy
 from app.pipeline.partial_spoof.utils.audio_concatenation import (
     concatenate_with_padding,
 )
+from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
 
 
 class ClonedSpeechGenerator:
     """Generates voice-cloned speech for bonafide utterances.
 
     Delegates generation to an AttackStrategy instance and manages
-    reference audio preparation, output directory creation, and
-    metadata recording.
+    reference audio preparation, output directory creation, metadata
+    recording, and per-sample checkpointing.
 
     Attributes:
         output_dir: Base output directory for pipeline artifacts.
         strategy: The voice cloning attack strategy to use.
         reference_duration: Target duration for speaker reference clips.
         skip_existing: Skip generation for samples with existing output files.
+        checkpoint: Optional CheckpointManager for per-clone resume.
     """
 
     def __init__(
@@ -45,6 +53,7 @@ class ClonedSpeechGenerator:
         skip_existing: bool = False,
         seed_offset: int = 0,
         regenerate_keys: list | None = None,
+        checkpoint: Optional[CheckpointManager] = None,
     ) -> None:
         """Initialize cloned speech generator.
 
@@ -56,6 +65,9 @@ class ClonedSpeechGenerator:
             seed_offset: Offset added to TTS seed for regeneration rounds.
             regenerate_keys: If set, only regenerate these sample keys
                 (deletes existing cloned files for these keys first).
+            checkpoint: Optional CheckpointManager. When provided, Step 2
+                marks every successful clone for resume and records
+                recoverable failures with retry counters.
         """
         self.strategy = strategy
         self.output_dir = output_dir or settings.OUTPUT_DIR
@@ -63,6 +75,7 @@ class ClonedSpeechGenerator:
         self.skip_existing = skip_existing
         self.seed_offset = seed_offset
         self.regenerate_keys = set(regenerate_keys) if regenerate_keys else None
+        self.checkpoint = checkpoint
 
     def execute(self) -> ClonedGenerationResult:
         """Generate cloned speech for all transcribed bonafide utterances.
@@ -108,6 +121,18 @@ class ClonedSpeechGenerator:
                     total_generated += 1
                 continue
 
+            if (
+                self.checkpoint is not None
+                and self.checkpoint.is_abandoned(
+                    sample_key, settings.MAX_GENERATION_RETRIES
+                )
+            ):
+                logger.debug(
+                    f"Skipping abandoned sample (retries exhausted): {sample_key}"
+                )
+                failed_generations.append(sample_key)
+                continue
+
             if speaker_id not in reference_cache:
                 failed_generations.append(sample_key)
                 continue
@@ -118,7 +143,15 @@ class ClonedSpeechGenerator:
                 output_path.unlink()
                 logger.debug(f"Deleted old clone for regeneration: {sample_key}")
 
-            if self.skip_existing and output_path.exists():
+            checkpoint_says_done = (
+                self.checkpoint is not None
+                and self.checkpoint.is_cloned(sample_key)
+            )
+            if (
+                self.skip_existing
+                and (output_path.exists() or checkpoint_says_done)
+                and output_path.exists()
+            ):
                 info = sf.info(str(output_path))
                 generation_metadata[sample_key] = {
                     "speaker_id": speaker_id,
@@ -162,9 +195,23 @@ class ClonedSpeechGenerator:
                     "skipped_existing": False,
                 }
 
+                if self.checkpoint is not None:
+                    self.checkpoint.mark_cloned(sample_key)
+
             except Exception as exc:
                 logger.error(f"Generation failed for {sample_key}: {exc}")
                 failed_generations.append(sample_key)
+                if self.checkpoint is not None:
+                    retries = self.checkpoint.record_failure(
+                        sample_key,
+                        CheckpointManager.truncate_error(exc),
+                    )
+                    if retries > settings.MAX_GENERATION_RETRIES:
+                        logger.warning(
+                            f"Sample {sample_key} exceeded "
+                            f"MAX_GENERATION_RETRIES={settings.MAX_GENERATION_RETRIES}; "
+                            "marked abandoned."
+                        )
 
         self.strategy.cleanup()
 

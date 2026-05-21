@@ -13,6 +13,10 @@ from app.pipeline.partial_spoof.schemas.formatting_result import FormattingResul
 from app.pipeline.partial_spoof.schemas.word_alignment import WordAlignment
 from app.pipeline.partial_spoof.schemas.spliced_word_info import SplicedWordInfo
 from app.pipeline.partial_spoof.schemas.splice_metadata_entry import SpliceMetadataEntry
+from app.pipeline.partial_spoof.schemas.manifest_entry import ManifestEntry
+from app.pipeline.partial_spoof.schemas.manifest_summary import ManifestSummary
+from app.pipeline.partial_spoof.schemas.generation_failure import GenerationFailure
+from app.pipeline.partial_spoof.schemas.checkpoint_state import CheckpointState
 
 __all__ = [
     "PartialSpoofPipelineConfig",
@@ -27,4 +31,8 @@ __all__ = [
     "WordAlignment",
     "SplicedWordInfo",
     "SpliceMetadataEntry",
+    "ManifestEntry",
+    "ManifestSummary",
+    "GenerationFailure",
+    "CheckpointState",
 ]

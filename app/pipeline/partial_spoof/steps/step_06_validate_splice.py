@@ -1,16 +1,24 @@
 """
-Step 6: Validate Splice Quality
+Step 6: Validate Splice Quality (metrics-only by default).
 
-Validates spliced partial spoof audio using:
-1. Rejection of samples with zero spoofed words (no actual splice performed).
-2. Parakeet TDT transcription of the spliced audio.
-3. WER/CER computation against the original bonafide transcript.
-4. Boundary continuity metrics (spectral flux, energy delta).
-5. NISQA MOS quality estimation (informational, no rejection).
-6. ECAPA-TDNN speaker similarity vs bonafide reference (informational).
+Computes per-sample quality metrics:
+1. Parakeet TDT transcription of the spliced audio.
+2. WER/CER computation against the original bonafide transcript.
+3. Boundary continuity metrics (spectral flux, energy delta).
+4. NISQA MOS quality estimation.
+5. ECAPA-TDNN speaker similarity vs bonafide reference.
+6. quality_flag ('high', 'medium', 'low') derived from the WER/NISQA/SIM
+   thresholds.
 
-Samples are rejected if they have no spoofed words or if WER exceeds
-the configured threshold.
+Default behaviour (ENABLE_STEP_6_REJECTION=False, keep-bad-stuff
+principle): every sample with valid metrics lands in quality_data with
+its quality_flag label; nothing is filtered for quality reasons. Only
+STRUCTURAL failures are rejected — zero spoofed words, missing audio
+files, audio load errors — because those are not actual partial spoof
+samples.
+
+Legacy behaviour (ENABLE_STEP_6_REJECTION=True): WER/CER above
+wer_max/cer_max trigger rejection.
 """
 import json
 from pathlib import Path
@@ -44,24 +52,36 @@ class SpliceQualityValidator:
         cer_max: Hard CER rejection ceiling.
     """
 
+    QUALITY_FLAG_HIGH_WER = 0.10
+    QUALITY_FLAG_MEDIUM_WER = 0.30
+    QUALITY_FLAG_HIGH_NISQA = 4.0
+    QUALITY_FLAG_HIGH_SIM = 0.50
+
     def __init__(
         self,
         output_dir: Path | None = None,
         wer_max: float = 0.30,
         cer_max: float = 0.20,
+        enable_rejection: bool | None = None,
     ) -> None:
         """Initialize splice quality validator.
 
         Args:
             output_dir: Output directory (default: from settings).
-            wer_max: Maximum acceptable WER (default: 0.30, more lenient
-                than full-synthesis pipelines since splicing introduces
-                minor boundary artifacts).
-            cer_max: Maximum acceptable CER (default: 0.20).
+            wer_max: Maximum acceptable WER for legacy rejection mode.
+            cer_max: Maximum acceptable CER for legacy rejection mode.
+            enable_rejection: When True, samples failing wer_max/cer_max
+                are dropped (legacy). When False (default), all samples
+                are kept with their quality_flag label. When None, the
+                value is read from settings.ENABLE_STEP_6_REJECTION.
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
         self.wer_max = wer_max
         self.cer_max = cer_max
+        if enable_rejection is None:
+            self.enable_rejection = settings.ENABLE_STEP_6_REJECTION
+        else:
+            self.enable_rejection = enable_rejection
 
     def execute(self) -> SpliceQualityResult:
         """Validate quality of all spliced samples.
@@ -131,11 +151,14 @@ class SpliceQualityValidator:
                 total_energy_delta += bm["energy_delta"]
                 total_boundaries += 1
 
-            if sample_wer > self.wer_max or sample_cer > self.cer_max:
+            wer_fail = sample_wer > self.wer_max
+            cer_fail = sample_cer > self.cer_max
+
+            if self.enable_rejection and (wer_fail or cer_fail):
                 reasons = []
-                if sample_wer > self.wer_max:
+                if wer_fail:
                     reasons.append(f"WER {sample_wer:.3f} > {self.wer_max:.3f}")
-                if sample_cer > self.cer_max:
+                if cer_fail:
                     reasons.append(f"CER {sample_cer:.3f} > {self.cer_max:.3f}")
                 rejected.append({
                     "sample_id": splice_key,
@@ -156,6 +179,12 @@ class SpliceQualityValidator:
                 ref_embeddings[speaker_id], audio_path
             )
 
+            quality_flag = self._derive_quality_flag(
+                wer=sample_wer,
+                nisqa=sample_nisqa,
+                speaker_similarity=sample_sim,
+            )
+
             quality_data[splice_key] = {
                 "spliced_audio_path": str(audio_path),
                 "transcript": original_text,
@@ -168,6 +197,9 @@ class SpliceQualityValidator:
                 "spoofed_words_count": len(entry["spoofed_words"]),
                 "spoof_duration_ratio": entry["spoof_duration_ratio"],
                 "boundary_metrics": boundary_metrics,
+                "quality_flag": quality_flag,
+                "wer_threshold_exceeded": bool(wer_fail),
+                "cer_threshold_exceeded": bool(cer_fail),
                 "passed": True,
             }
 
@@ -214,6 +246,36 @@ class SpliceQualityValidator:
             avg_spectral_flux=avg_flux,
             avg_energy_delta=avg_energy,
         )
+
+    def _derive_quality_flag(
+        self,
+        wer: float,
+        nisqa: float,
+        speaker_similarity: float,
+    ) -> str:
+        """Classify a sample as high/medium/low quality from its metrics.
+
+        Used as a stratification label downstream; never causes rejection
+        under the keep-bad-stuff principle. Thresholds are class-level
+        constants so detector-training code can read the same values.
+
+        Args:
+            wer: Word Error Rate from Parakeet on the spliced audio.
+            nisqa: NISQA MOS score (1.0-5.0).
+            speaker_similarity: ECAPA-TDNN cosine vs bonafide reference.
+
+        Returns:
+            'high', 'medium', or 'low'.
+        """
+        if (
+            wer <= self.QUALITY_FLAG_HIGH_WER
+            and nisqa >= self.QUALITY_FLAG_HIGH_NISQA
+            and speaker_similarity >= self.QUALITY_FLAG_HIGH_SIM
+        ):
+            return "high"
+        if wer <= self.QUALITY_FLAG_MEDIUM_WER:
+            return "medium"
+        return "low"
 
     def _compute_all_boundary_metrics(
         self,

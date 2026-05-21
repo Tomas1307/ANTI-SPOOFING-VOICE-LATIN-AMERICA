@@ -7,7 +7,7 @@ Global application settings belong in app/config.py instead.
 import torch
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class PartialSpoofSettings(BaseModel):
@@ -235,17 +235,87 @@ class PartialSpoofSettings(BaseModel):
 
     # === Bonafide File Partition (Step 1) ===
     BONAFIDE_FILE_PARTITION: str = Field(
-        default="main",
-        description="Per-speaker bonafide file partition: 'main' or 'jitter'. "
+        default="not_jittered",
+        description="Per-speaker bonafide file partition: 'not_jittered' or 'jittered'. "
                     "Files are shuffled deterministically per speaker (seeded) and split 50/50; "
-                    "'main' takes the first half, 'jitter' takes the second half. "
-                    "Ensures the boundary jitter dataset uses sentences disjoint from main partial spoof.",
+                    "'not_jittered' takes the first half, 'jittered' takes the second half. "
+                    "Ensures the boundary jitter dataset uses sentences disjoint from the "
+                    "non-jittered partial spoof dataset.",
     )
     BONAFIDE_PARTITION_SEED: int = Field(
         default=42,
         description="Seed for the per-speaker bonafide file partition shuffle. "
                     "Combined with a deterministic speaker hash so the same speaker always "
-                    "yields the same main/jitter split across runs.",
+                    "yields the same not_jittered/jittered split across runs.",
+    )
+
+    # === Manifest-Driven Attack Dispatch ===
+    ATTACK_WEIGHTS: Dict[str, float] = Field(
+        default={
+            "omnivoice": 0.40,
+            "qwen": 0.20,
+            "fishgram": 0.10,
+            "openvoice": 0.10,
+            "chatterbox": 0.10,
+            "outetts": 0.10,
+        },
+        description="Probabilistic weights for per-file attack assignment in the "
+                    "dispatch manifest. Must sum to 1.0. Applied per-speaker via "
+                    "multinomial draw so each speaker's files are distributed "
+                    "across attacks in proportion to these weights. Corpus-wide "
+                    "marginal converges to these weights under independence.",
+    )
+    ATTACK_ASSIGNMENT_SEED: int = Field(
+        default=42,
+        description="Base seed for the per-speaker attack-assignment RNG. "
+                    "Combined with sha256(speaker_id) so the same speaker always "
+                    "yields the same attack assignment across manifest regenerations. "
+                    "Independent of BONAFIDE_PARTITION_SEED so the two stages do not "
+                    "couple.",
+    )
+    MANIFEST_PATH: Path = Field(
+        default=Path("data/manifests/partial_spoof_plan.csv"),
+        description="Path to the pre-flight dispatch manifest CSV. One row per "
+                    "eligible bonafide file with assigned (attack, partition, planned_tiers).",
+    )
+    MANIFEST_SUMMARY_PATH: Path = Field(
+        default=Path("data/manifests/partial_spoof_plan_summary.json"),
+        description="Path to the manifest summary JSON sidecar (corpus marginals, "
+                    "speaker coverage, target vs actual attack weights).",
+    )
+    MANIFEST_SLICE_ATTACK: Optional[str] = Field(
+        default=None,
+        description="Runtime override: restrict the pipeline to the manifest slice "
+                    "for this attack only. Set by the facade config; None means "
+                    "use settings.ATTACK_SYSTEM as the slice key.",
+    )
+    MANIFEST_SLICE_PARTITION: Optional[str] = Field(
+        default=None,
+        description="Runtime override: restrict the pipeline to the manifest slice "
+                    "for this partition only. None means use "
+                    "settings.BONAFIDE_FILE_PARTITION as the slice key.",
+    )
+
+    # === Checkpointing and Retry Budget ===
+    ENABLE_CHECKPOINT_RESUME: bool = Field(
+        default=True,
+        description="When True, Steps 2/5/5b read OUTPUT_DIR/.checkpoint.json on "
+                    "startup and skip sample_keys already marked complete. When False, "
+                    "the pipeline re-runs all samples from scratch (and overwrites WAVs).",
+    )
+    MAX_GENERATION_RETRIES: int = Field(
+        default=3,
+        description="Maximum number of Step 2 regeneration attempts per sample for "
+                    "RECOVERABLE errors only (CUDA OOM, model exception, NaN audio, "
+                    "zero-byte output). Quality failures are NEVER retried at this "
+                    "layer under the keep-bad-stuff principle.",
+    )
+    ENABLE_STEP_6_REJECTION: bool = Field(
+        default=False,
+        description="When False (default), Step 6 computes WER/CER/NISQA/ECAPA/boundary "
+                    "metrics for every sample but does NOT reject any. Every spliced WAV "
+                    "lands in the corpus with its quality_flag label. When True (legacy "
+                    "behaviour), low-quality samples are filtered out before Step 7.",
     )
 
     # === Boundary Jitter (Step 5b) ===
@@ -300,17 +370,17 @@ class PartialSpoofSettings(BaseModel):
     AUDIO_ID_START_W1_JITTER: int = Field(
         default=16000000,
         description="Starting audio ID for W1 tier under boundary jitter "
-                    "(16000000-16999999, disjoint from main W1 at 12M).",
+                    "(16000000-16999999, disjoint from non-jittered W1 at 12M).",
     )
     AUDIO_ID_START_W2_JITTER: int = Field(
         default=17000000,
         description="Starting audio ID for W2 tier under boundary jitter "
-                    "(17000000-17999999, disjoint from main W2 at 13M).",
+                    "(17000000-17999999, disjoint from non-jittered W2 at 13M).",
     )
     AUDIO_ID_START_W3_JITTER: int = Field(
         default=18000000,
         description="Starting audio ID for W3 tier under boundary jitter "
-                    "(18000000-18999999, disjoint from main W3 at 14M).",
+                    "(18000000-18999999, disjoint from non-jittered W3 at 14M).",
     )
 
     class Config:

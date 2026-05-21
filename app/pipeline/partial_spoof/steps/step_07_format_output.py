@@ -1,13 +1,27 @@
 """
-Step 7: Format Output to ASVspoof2019 LA Structure
+Step 7: Format Output to ASVspoof2019 LA Structure plus flat CSV exports.
 
 Converts validated partial spoof samples into the standard ASVspoof2019
 Logical Access directory structure with protocol files. Each sample is
 converted to FLAC format and assigned a unique audio ID within the
-tier-specific ID range (W1=12M, W2=13M, W3=14M).
+tier-specific ID range (W1=12M, W2=13M, W3=14M for non-jittered;
+W1=16M, W2=17M, W3=18M for jittered).
+
+Additionally emits two flat CSV exports for downstream analysis and
+corpus-level aggregation (consumed by the orchestrator):
+
+    samples.csv        - one row per spliced audio with all key
+                         metadata (paths, transcript, metrics, flags).
+    spoofed_words.csv  - one row per spoofed word (boundary-label table).
+
+Under the keep-bad-stuff principle, EVERY sample in quality_data is
+emitted regardless of WER / NISQA / SIM; the quality_flag column lets
+downstream training stratify on quality.
 """
+import csv
 import json
 from pathlib import Path
+from typing import Dict, List
 
 import librosa
 import soundfile as sf
@@ -37,12 +51,60 @@ TIER_ID_SETTINGS_JITTER = {
 }
 
 
+SAMPLES_CSV_FIELDS = [
+    "sample_key",
+    "speaker_id",
+    "split",
+    "partition",
+    "tier",
+    "attack",
+    "bonafide_audio_path",
+    "cloned_audio_path",
+    "spliced_audio_path",
+    "transcript",
+    "total_words",
+    "num_spoofed_words",
+    "spoof_word_ratio",
+    "spoof_duration_ratio",
+    "total_duration_s",
+    "wer",
+    "cer",
+    "nisqa",
+    "ecapa_sim_clone",
+    "ecapa_sim_final",
+    "quality_flag",
+    "has_jitter",
+    "jitter_ops_count",
+]
+
+SPOOFED_WORDS_CSV_FIELDS = [
+    "sample_key",
+    "attack",
+    "partition",
+    "tier",
+    "word",
+    "word_index",
+    "bonafide_start_s",
+    "bonafide_end_s",
+    "cloned_start_s",
+    "cloned_end_s",
+    "duration_ratio",
+    "crossfade_ms",
+    "effective_crossfade_ms",
+    "splice_method",
+    "margin_before_ms",
+    "margin_after_ms",
+]
+
+
 class OutputFormatter:
     """Formats partial spoof samples into ASVspoof2019 LA structure.
 
     Creates the standard LA directory with train/dev/eval splits, converts
     audio to FLAC, assigns sequential audio IDs per tier, and writes
-    protocol files with the 'partial_spoof' label.
+    protocol files with the 'partial_spoof' label. Also emits two flat
+    CSV exports (samples.csv, spoofed_words.csv) for downstream analysis
+    and corpus aggregation.
 
     Attributes:
         output_dir: Base output directory containing splice metadata.
@@ -97,12 +159,19 @@ class OutputFormatter:
 
         protocols = {"train": [], "dev": [], "eval": []}
         counts = {"train": 0, "dev": 0, "eval": 0}
+        clone_sim_map = self._load_clone_similarity_map()
+        jitter_map = self._load_jitter_map()
+        samples_rows: List[Dict] = []
+        spoofed_words_rows: List[Dict] = []
+        partition_label = settings.BONAFIDE_FILE_PARTITION
+        attack_label = self.system_id_prefix.lower()
 
         for splice_key, entry in tqdm(splice_metadata.items(), desc="Formatting LA output"):
             if splice_key not in quality_data:
                 continue
 
-            if not quality_data[splice_key].get("passed", True):
+            quality_entry = quality_data[splice_key]
+            if not quality_entry.get("passed", True):
                 continue
 
             audio_path = Path(entry["spliced_audio_path"])
@@ -141,6 +210,24 @@ class OutputFormatter:
             protocols[split].append(protocol_entry)
             counts[split] += 1
 
+            jitter_info = jitter_map.get(splice_key, {})
+            samples_rows.append(self._build_samples_row(
+                splice_key=splice_key,
+                entry=entry,
+                quality_entry=quality_entry,
+                split=split,
+                partition=partition_label,
+                attack=attack_label,
+                clone_sim=clone_sim_map.get(splice_key),
+                jitter_info=jitter_info,
+            ))
+            spoofed_words_rows.extend(self._build_spoofed_words_rows(
+                splice_key=splice_key,
+                entry=entry,
+                partition=partition_label,
+                attack=attack_label,
+            ))
+
         protocol_files = {}
         for split, entries in protocols.items():
             protocol_filename = f"ASVspoof2019.LA.cm.{split}.trl.txt"
@@ -153,9 +240,22 @@ class OutputFormatter:
         with open(detailed_metadata_path, "w", encoding="utf-8") as f:
             json.dump(splice_metadata, f, ensure_ascii=False, indent=2)
 
+        self._write_csv(
+            path=self.output_dir / "samples.csv",
+            fieldnames=SAMPLES_CSV_FIELDS,
+            rows=samples_rows,
+        )
+        self._write_csv(
+            path=self.output_dir / "spoofed_words.csv",
+            fieldnames=SPOOFED_WORDS_CSV_FIELDS,
+            rows=spoofed_words_rows,
+        )
+
         logger.info(
             f"Step 7 complete: LA output at {la_dir}. "
-            f"Samples: {counts}"
+            f"Samples: {counts}. "
+            f"samples.csv={len(samples_rows)}, "
+            f"spoofed_words.csv={len(spoofed_words_rows)}."
         )
 
         return FormattingResult(
@@ -163,3 +263,165 @@ class OutputFormatter:
             protocol_files=protocol_files,
             total_samples=counts,
         )
+
+    def _load_clone_similarity_map(self) -> Dict[str, float]:
+        """Load clone_similarity_filter.json into a sample_key -> sim dict.
+
+        Returns:
+            Map from sample_key (without tier suffix) to clone ECAPA SIM.
+            Empty dict if the file is absent.
+        """
+        path = self.output_dir / "clone_similarity_filter.json"
+        if not path.exists():
+            return {}
+        with open(path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        return {key: float(entry.get("similarity", 0.0)) for key, entry in raw.items()}
+
+    def _load_jitter_map(self) -> Dict[str, Dict]:
+        """Load boundary_jitter_metadata.json into a splice_key -> info dict.
+
+        Returns:
+            Map from splice_key (sample_key plus tier) to a dict with
+            has_jitter, jitter_ops_count, and the operation breakdown.
+            Empty dict if the file is absent or jitter was disabled.
+        """
+        path = self.output_dir / "boundary_jitter_metadata.json"
+        if not path.exists():
+            return {}
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning(f"Could not parse jitter metadata at {path}: {exc}")
+            return {}
+        result: Dict[str, Dict] = {}
+        per_sample = payload if isinstance(payload, dict) else {}
+        for splice_key, entry in per_sample.items():
+            ops = entry.get("operation_counts", {}) if isinstance(entry, dict) else {}
+            applied = sum(int(v) for k, v in ops.items() if k != "natural")
+            result[splice_key] = {
+                "has_jitter": applied > 0,
+                "jitter_ops_count": applied,
+            }
+        return result
+
+    def _build_samples_row(
+        self,
+        splice_key: str,
+        entry: Dict,
+        quality_entry: Dict,
+        split: str,
+        partition: str,
+        attack: str,
+        clone_sim: float | None,
+        jitter_info: Dict,
+    ) -> Dict:
+        """Flatten one splice + quality entry into a samples.csv row.
+
+        Args:
+            splice_key: Per-tier primary key (sample_key plus tier suffix).
+            entry: Row from splice_metadata.json.
+            quality_entry: Row from splice_quality_metadata.json.
+            split: Normalised split label ('train', 'dev', 'eval').
+            partition: 'not_jittered' or 'jittered'.
+            attack: Lowercase attack identifier.
+            clone_sim: Optional ECAPA SIM at Step 2 -> 3 gate.
+            jitter_info: Output of _load_jitter_map for this key.
+
+        Returns:
+            Dict suitable for csv.DictWriter.writerow.
+        """
+        sample_key_no_tier = splice_key.rsplit("_", 1)[0]
+        return {
+            "sample_key": splice_key,
+            "speaker_id": entry.get("speaker_id", ""),
+            "split": split,
+            "partition": partition,
+            "tier": entry.get("tier", ""),
+            "attack": attack,
+            "bonafide_audio_path": entry.get("bonafide_audio_path", ""),
+            "cloned_audio_path": entry.get("cloned_audio_path", ""),
+            "spliced_audio_path": entry.get("spliced_audio_path", ""),
+            "transcript": entry.get("transcript", ""),
+            "total_words": entry.get("total_words", 0),
+            "num_spoofed_words": len(entry.get("spoofed_words", [])),
+            "spoof_word_ratio": entry.get("spoof_word_ratio", 0.0),
+            "spoof_duration_ratio": entry.get("spoof_duration_ratio", 0.0),
+            "total_duration_s": entry.get("total_duration_s", 0.0),
+            "wer": quality_entry.get("wer", ""),
+            "cer": quality_entry.get("cer", ""),
+            "nisqa": quality_entry.get("nisqa_mos", ""),
+            "ecapa_sim_clone": (
+                f"{clone_sim:.4f}" if clone_sim is not None else ""
+            ),
+            "ecapa_sim_final": quality_entry.get("speaker_similarity", ""),
+            "quality_flag": quality_entry.get("quality_flag", ""),
+            "has_jitter": bool(jitter_info.get("has_jitter", False)),
+            "jitter_ops_count": int(jitter_info.get("jitter_ops_count", 0)),
+        }
+
+    def _build_spoofed_words_rows(
+        self,
+        splice_key: str,
+        entry: Dict,
+        partition: str,
+        attack: str,
+    ) -> List[Dict]:
+        """Expand one splice entry's spoofed_words list into CSV rows.
+
+        Args:
+            splice_key: Per-tier primary key.
+            entry: Row from splice_metadata.json.
+            partition: 'not_jittered' or 'jittered'.
+            attack: Lowercase attack identifier.
+
+        Returns:
+            List of dicts (one per spoofed word) suitable for DictWriter.
+        """
+        rows: List[Dict] = []
+        tier = entry.get("tier", "")
+        for word_info in entry.get("spoofed_words", []):
+            rows.append({
+                "sample_key": splice_key,
+                "attack": attack,
+                "partition": partition,
+                "tier": tier,
+                "word": word_info.get("word", ""),
+                "word_index": word_info.get("word_index", ""),
+                "bonafide_start_s": word_info.get("bonafide_start_s", ""),
+                "bonafide_end_s": word_info.get("bonafide_end_s", ""),
+                "cloned_start_s": word_info.get("cloned_start_s", ""),
+                "cloned_end_s": word_info.get("cloned_end_s", ""),
+                "duration_ratio": word_info.get("duration_ratio", ""),
+                "crossfade_ms": word_info.get("crossfade_ms", ""),
+                "effective_crossfade_ms": word_info.get(
+                    "effective_crossfade_ms", ""
+                ),
+                "splice_method": word_info.get("splice_method", ""),
+                "margin_before_ms": word_info.get("margin_before_ms", ""),
+                "margin_after_ms": word_info.get("margin_after_ms", ""),
+            })
+        return rows
+
+    def _write_csv(
+        self,
+        path: Path,
+        fieldnames: List[str],
+        rows: List[Dict],
+    ) -> None:
+        """Write a list of dict rows to a CSV file.
+
+        Args:
+            path: Output CSV path; parent directory created if needed.
+            fieldnames: Column order.
+            rows: Row dicts in column order.
+        """
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL,
+            )
+            writer.writeheader()
+            for row in rows:
+                writer.writerow(row)

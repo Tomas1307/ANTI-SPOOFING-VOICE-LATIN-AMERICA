@@ -72,8 +72,39 @@ class PartialSpoofPipelineConfig(BaseModel):
     )
     bonafide_file_partition_override: Optional[str] = Field(
         default=None,
-        description="Override settings.BONAFIDE_FILE_PARTITION ('main' or 'jitter'). "
+        description="Override settings.BONAFIDE_FILE_PARTITION "
+                    "('not_jittered' or 'jittered'). "
                     "None preserves the settings value.",
+    )
+    manifest_path_override: Optional[Path] = Field(
+        default=None,
+        description="Override settings.MANIFEST_PATH. When None, the default "
+                    "manifest path from settings is used. Set explicitly when "
+                    "the manifest lives somewhere non-standard.",
+    )
+    manifest_slice_attack_override: Optional[str] = Field(
+        default=None,
+        description="Manifest slice attack identifier. When set, Step 1 "
+                    "short-circuits Parakeet and loads only this attack's "
+                    "files from the cached transcripts. None preserves "
+                    "settings.MANIFEST_SLICE_ATTACK or falls back to "
+                    "settings.ATTACK_SYSTEM.",
+    )
+    manifest_slice_partition_override: Optional[str] = Field(
+        default=None,
+        description="Manifest slice partition identifier ('not_jittered' or "
+                    "'jittered'). None preserves settings.MANIFEST_SLICE_PARTITION "
+                    "or falls back to settings.BONAFIDE_FILE_PARTITION.",
+    )
+    use_manifest: bool = Field(
+        default=False,
+        description="Master switch for manifest-driven dispatch. When True, the "
+                    "facade loads a ManifestLoader from manifest_path_override "
+                    "(or settings.MANIFEST_PATH), passes it into Step 1, and "
+                    "templates the output directory as "
+                    "data/partial_spoof_output/<attack>/<partition>/. When False, "
+                    "legacy per-attack output paths and Step 1 partition shuffle "
+                    "are used.",
     )
 
     class Config:

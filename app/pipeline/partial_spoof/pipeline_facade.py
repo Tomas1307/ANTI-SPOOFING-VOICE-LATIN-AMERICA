@@ -12,6 +12,7 @@ Includes a two-level retry system:
 """
 import json
 from pathlib import Path
+from typing import Optional
 
 import librosa
 import numpy as np
@@ -27,6 +28,8 @@ from app.pipeline.partial_spoof.steps.step_05_splice_audio import AudioSplicer
 from app.pipeline.partial_spoof.steps.step_05b_apply_boundary_jitter import BoundaryJitterApplier
 from app.pipeline.partial_spoof.steps.step_06_validate_splice import SpliceQualityValidator
 from app.pipeline.partial_spoof.steps.step_07_format_output import OutputFormatter
+from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
+from app.pipeline.partial_spoof.utils.manifest_loader import ManifestLoader
 from app.pipeline.partial_spoof.utils.strategy_factory import create_attack_strategy
 
 MAX_REGENERATIONS = 3
@@ -54,6 +57,8 @@ class PartialSpoofPipeline:
         """
         self.config = config or PartialSpoofPipelineConfig()
         self._apply_config_overrides()
+        self.manifest_loader: Optional[ManifestLoader] = self._load_manifest()
+        self.checkpoint: Optional[CheckpointManager] = self._build_checkpoint()
         logger.info(f"PartialSpoofPipeline initialized for {self.config.attack_system}")
 
     def _apply_config_overrides(self) -> None:
@@ -69,13 +74,91 @@ class PartialSpoofPipeline:
             settings.ENABLE_BOUNDARY_JITTER = self.config.enable_boundary_jitter_override
         if self.config.bonafide_file_partition_override is not None:
             settings.BONAFIDE_FILE_PARTITION = self.config.bonafide_file_partition_override
+        if self.config.manifest_path_override is not None:
+            settings.MANIFEST_PATH = self.config.manifest_path_override
+        if self.config.manifest_slice_attack_override is not None:
+            settings.MANIFEST_SLICE_ATTACK = self.config.manifest_slice_attack_override
+        if self.config.manifest_slice_partition_override is not None:
+            settings.MANIFEST_SLICE_PARTITION = (
+                self.config.manifest_slice_partition_override
+            )
+
         if self.config.output_dir_override:
             settings.OUTPUT_DIR = self.config.output_dir_override
+        elif self.config.use_manifest:
+            partition = settings.BONAFIDE_FILE_PARTITION
+            settings.OUTPUT_DIR = (
+                Path("data/partial_spoof_output")
+                / self.config.attack_system
+                / partition
+            )
         else:
             base_name = f"data/{self.config.attack_system}_partial_spoof"
             if settings.ENABLE_BOUNDARY_JITTER:
                 base_name = f"{base_name}_jitter"
             settings.OUTPUT_DIR = Path(base_name)
+
+    def _load_manifest(self) -> Optional[ManifestLoader]:
+        """Load the dispatch manifest if manifest-driven mode is enabled.
+
+        Returns:
+            ManifestLoader with entries loaded from settings.MANIFEST_PATH,
+            or None when use_manifest is False or the manifest file is
+            absent.
+        """
+        if not self.config.use_manifest:
+            return None
+        if not settings.MANIFEST_PATH.exists():
+            logger.warning(
+                f"use_manifest=True but {settings.MANIFEST_PATH} does not exist. "
+                "Falling back to legacy mode."
+            )
+            return None
+        loader = ManifestLoader()
+        loader.load(settings.MANIFEST_PATH)
+        return loader
+
+    def _build_checkpoint(self) -> Optional[CheckpointManager]:
+        """Construct the per-(attack, partition) CheckpointManager.
+
+        Returns:
+            CheckpointManager keyed by (attack_system, partition) and
+            writing into OUTPUT_DIR/.checkpoint.json, or None when
+            ENABLE_CHECKPOINT_RESUME is False in settings.
+        """
+        if not settings.ENABLE_CHECKPOINT_RESUME:
+            return None
+        return CheckpointManager(
+            attack=self.config.attack_system,
+            partition=settings.BONAFIDE_FILE_PARTITION,
+            output_dir=settings.OUTPUT_DIR,
+        )
+
+    def _resolve_manifest_slice_attack(self) -> str:
+        """Return the manifest slice attack key for this run.
+
+        Order of precedence: explicit settings.MANIFEST_SLICE_ATTACK,
+        then the config attack_system.
+
+        Returns:
+            Attack identifier to filter the manifest by.
+        """
+        if settings.MANIFEST_SLICE_ATTACK is not None:
+            return settings.MANIFEST_SLICE_ATTACK
+        return self.config.attack_system
+
+    def _resolve_manifest_slice_partition(self) -> str:
+        """Return the manifest slice partition key for this run.
+
+        Order of precedence: explicit settings.MANIFEST_SLICE_PARTITION,
+        then settings.BONAFIDE_FILE_PARTITION.
+
+        Returns:
+            Partition identifier to filter the manifest by.
+        """
+        if settings.MANIFEST_SLICE_PARTITION is not None:
+            return settings.MANIFEST_SLICE_PARTITION
+        return settings.BONAFIDE_FILE_PARTITION
 
     def run(self) -> Path:
         """Execute the full partial spoof pipeline.
@@ -102,7 +185,14 @@ class PartialSpoofPipeline:
             # === STEP 1: Transcribe bonafide audio (runs once) ===
             if self.config.run_step_1:
                 logger.info("-" * 40)
-                step_1 = BonafideTranscriber()
+                if self.manifest_loader is not None:
+                    step_1 = BonafideTranscriber(
+                        manifest_loader=self.manifest_loader,
+                        manifest_attack=self._resolve_manifest_slice_attack(),
+                        manifest_partition=self._resolve_manifest_slice_partition(),
+                    )
+                else:
+                    step_1 = BonafideTranscriber()
                 result_1 = step_1.execute()
                 logger.info(
                     f"Step 1 result: {result_1.total_transcribed} transcribed, "
@@ -191,6 +281,7 @@ class PartialSpoofPipeline:
                 skip_existing=not is_retry,
                 seed_offset=seed_offset,
                 regenerate_keys=self._get_regen_keys(regen_round) if is_retry else None,
+                checkpoint=self.checkpoint,
             )
             result_2 = step_2.execute()
             logger.info(
@@ -237,7 +328,10 @@ class PartialSpoofPipeline:
             if self.config.run_step_5:
                 logger.info("-" * 40)
                 logger.info(f"{round_label}STEP 5: Splice Audio")
-                step_5 = AudioSplicer(attack_system_name=strategy.name())
+                step_5 = AudioSplicer(
+                    attack_system_name=strategy.name(),
+                    checkpoint=self.checkpoint,
+                )
                 result_5 = step_5.execute()
                 logger.info(
                     f"{round_label}Step 5: {result_5.total_spliced} spliced, "
