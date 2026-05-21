@@ -32,6 +32,7 @@ from app.pipeline.partial_spoof.schemas.pipeline_config import (
 )
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
+from app.runner.parallel_launcher import ParallelLauncher
 
 
 PARTITIONS: Tuple[str, str] = ("not_jittered", "jittered")
@@ -200,6 +201,99 @@ class PartialSpoofOrchestrator:
             "python -m app.runner.partial_spoof_orchestrator --mode aggregate"
         )
         logger.info("=" * 80)
+
+    def run_parallel(
+        self,
+        gpu: int,
+        max_concurrent: int,
+        skip_complete: bool = True,
+        order: str = "weighted",
+    ) -> None:
+        """Dispatch the full 12-job sweep with bounded concurrency on one GPU.
+
+        Each (attack, partition) cell runs in its own subprocess under
+        its own venv. The launcher caps concurrency to max_concurrent
+        and reaps-and-relaunches as jobs complete. Already-complete
+        cells (samples.csv present) are skipped when skip_complete is
+        True so the launcher is safe to re-invoke after a partial run.
+
+        Args:
+            gpu: GPU index to share across all children.
+            max_concurrent: Maximum number of concurrent children.
+                Recommended 4 on a 46 GB A40 (each pipeline ~8 GB peak).
+            skip_complete: When True, skip cells whose samples.csv
+                already exists. False forces dispatch of everything.
+            order: Job ordering policy. 'weighted' interleaves by
+                attack weight (largest first), 'alphabetic' uses
+                attack-then-partition lexical order, 'slow_first'
+                front-loads Chatterbox / OuteTTS so the fast attacks
+                can fill the remaining slots.
+        """
+        jobs = self._build_job_list(skip_complete=skip_complete, order=order)
+        if not jobs:
+            logger.info(
+                "No pending jobs (all cells already have samples.csv). "
+                "Use --no-skip-complete to force redispatch."
+            )
+            return
+
+        launcher = ParallelLauncher(
+            attack_venv_map=dict(ATTACK_VENV_HINTS),
+        )
+        launcher.launch(
+            jobs=jobs,
+            gpu=gpu,
+            max_concurrent=max_concurrent,
+        )
+
+    def _build_job_list(
+        self,
+        skip_complete: bool,
+        order: str,
+    ) -> List[Tuple[str, str]]:
+        """Build the (attack, partition) job list per order policy.
+
+        Args:
+            skip_complete: When True, drop cells whose samples.csv exists.
+            order: 'weighted', 'alphabetic', or 'slow_first'.
+
+        Returns:
+            Ordered list of (attack, partition) tuples to dispatch.
+        """
+        candidate_jobs: List[Tuple[str, str]] = []
+        if order == "weighted":
+            attacks_ordered = sorted(
+                self.attacks,
+                key=lambda a: self.attack_weights[a],
+                reverse=True,
+            )
+        elif order == "slow_first":
+            slow_set = {"chatterbox", "outetts"}
+            slow = [a for a in self.attacks if a in slow_set]
+            fast = [a for a in self.attacks if a not in slow_set]
+            attacks_ordered = slow + sorted(
+                fast, key=lambda a: self.attack_weights[a], reverse=True,
+            )
+        else:
+            attacks_ordered = sorted(self.attacks)
+
+        for attack in attacks_ordered:
+            for partition in PARTITIONS:
+                candidate_jobs.append((attack, partition))
+
+        if not skip_complete:
+            return candidate_jobs
+
+        pending: List[Tuple[str, str]] = []
+        for attack, partition in candidate_jobs:
+            samples_csv = self.corpus_root / attack / partition / "samples.csv"
+            if samples_csv.exists():
+                logger.info(
+                    f"  [SKIP] {attack}/{partition}: samples.csv already present"
+                )
+                continue
+            pending.append((attack, partition))
+        return pending
 
     def print_status(self) -> None:
         """Report progress per (attack, partition) cell.
@@ -407,7 +501,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--mode",
-        choices=("single", "aggregate", "runbook", "status"),
+        choices=("single", "aggregate", "runbook", "status", "parallel"),
         default="status",
         help="Operating mode (default: status).",
     )
@@ -425,7 +519,26 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--gpu",
         type=int,
         default=1,
-        help="GPU index embedded into the runbook commands (default: 1).",
+        help="GPU index for runbook commands or parallel children (default: 1).",
+    )
+    parser.add_argument(
+        "--max-concurrent",
+        type=int,
+        default=4,
+        help="Maximum concurrent pipelines for --mode parallel "
+             "(default: 4; safe ceiling on a 46 GB A40 with ~8 GB per pipeline).",
+    )
+    parser.add_argument(
+        "--order",
+        choices=("weighted", "alphabetic", "slow_first"),
+        default="weighted",
+        help="Job ordering policy for --mode parallel (default: weighted).",
+    )
+    parser.add_argument(
+        "--no-skip-complete",
+        action="store_true",
+        help="In --mode parallel, dispatch every (attack, partition) cell "
+             "even if samples.csv already exists. Default skips completed cells.",
     )
     return parser
 
@@ -447,5 +560,12 @@ if __name__ == "__main__":
         orchestrator.aggregate()
     elif args.mode == "runbook":
         orchestrator.print_runbook(gpu_default=args.gpu)
+    elif args.mode == "parallel":
+        orchestrator.run_parallel(
+            gpu=args.gpu,
+            max_concurrent=args.max_concurrent,
+            skip_complete=not args.no_skip_complete,
+            order=args.order,
+        )
     else:
         orchestrator.print_status()

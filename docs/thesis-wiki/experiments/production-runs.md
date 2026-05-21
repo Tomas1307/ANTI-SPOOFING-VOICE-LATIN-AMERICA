@@ -259,13 +259,32 @@ Audit before launching: target weights should match `settings.ATTACK_WEIGHTS` ex
 
 ### Step 1 -- Run the 12 per-attack jobs
 
-Each job runs in its attack's isolated venv. The orchestrator's `runbook` mode prints the exact commands:
+Two launch paths: serial (one job per terminal, full manual control) or **parallel on one GPU** (recommended, ~3-4x wall-clock reduction).
+
+**Parallel on one GPU.** Each pipeline consumes ~6-8 GB VRAM. On a 46 GB A40 the safe ceiling is 4 concurrent (~32 GB) with the 5th slot tight; 5 fits if no surprise allocations. The launcher dispatches into a free slot whenever any child finishes (reap-and-relaunch) so Chatterbox / OuteTTS occupy their slots for days while the fast attacks rotate through the others.
+
+```bash
+export CUDA_VISIBLE_DEVICES=1
+source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
+cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
+python -m app.runner.partial_spoof_orchestrator \
+    --mode parallel --gpu 1 --max-concurrent 4 --order slow_first
+deactivate
+```
+
+- `--max-concurrent 4` is the default (safe). Bump to 5 only after watching `nvidia-smi` during a stable steady-state segment.
+- `--order slow_first` front-loads Chatterbox + OuteTTS so they don't get stuck waiting behind faster jobs.
+- Resume after crash / kill: re-run the same command. Cells with a present `samples.csv` are skipped; use `--no-skip-complete` to force redispatch.
+- Per-child logs land in `logs/parallel_<attack>_<partition>.log`. Tail a specific job with `tail -f logs/parallel_chatterbox_jittered.log`.
+- SIGINT in the launcher propagates SIGTERM to all children. Send SIGINT twice to force-kill.
+
+**Serial (one job at a time).** Useful for debugging a single attack or when GPU contention with another researcher needs strict capping. The orchestrator's `runbook` mode prints the 12 individual commands:
 
 ```bash
 python -m app.runner.partial_spoof_orchestrator --mode runbook --gpu 1
 ```
 
-A representative command (substitute attack + venv + partition):
+A representative single-job command (substitute attack + venv + partition):
 
 ```bash
 export CUDA_VISIBLE_DEVICES=1
@@ -276,7 +295,7 @@ python -m app.runner.partial_spoof_orchestrator \
 deactivate
 ```
 
-Each job writes to `data/partial_spoof_output/<attack>/<partition>/` and is restartable via the per-cell checkpoint at `.checkpoint.json`. Progress is visible via:
+Each job (serial or parallel) writes to `data/partial_spoof_output/<attack>/<partition>/` and is restartable via the per-cell checkpoint at `.checkpoint.json`. Progress across all cells:
 
 ```bash
 python -m app.runner.partial_spoof_orchestrator --mode status
