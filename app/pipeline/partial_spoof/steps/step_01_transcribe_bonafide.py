@@ -36,6 +36,7 @@ from tqdm import tqdm
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.schemas.transcription_result import TranscriptionResult
 from app.pipeline.partial_spoof.utils.manifest_loader import ManifestLoader
+from app.pipeline.partial_spoof.utils.sample_key_builder import SampleKeyBuilder
 from app.utils.parakeet_transcriber import ParakeetTranscriber
 
 
@@ -238,7 +239,7 @@ class BonafideTranscriber:
                         skipped_short += 1
                         continue
 
-                    sample_key = f"{speaker_id}_{audio_path.stem}"
+                    sample_key = SampleKeyBuilder.build(speaker_id, audio_path.stem)
                     transcripts[sample_key] = {
                         "speaker_id": speaker_id,
                         "split": split,

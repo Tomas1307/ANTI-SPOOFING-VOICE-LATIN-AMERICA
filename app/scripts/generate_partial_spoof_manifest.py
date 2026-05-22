@@ -25,6 +25,7 @@ from tqdm import tqdm
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.utils.manifest_generator import ManifestGenerator
 from app.pipeline.partial_spoof.utils.manifest_loader import ManifestLoader
+from app.pipeline.partial_spoof.utils.sample_key_builder import SampleKeyBuilder
 from app.pipeline.partial_spoof.utils.tier_eligibility import TierEligibilityComputer
 from app.utils.parakeet_transcriber import ParakeetTranscriber
 
@@ -146,7 +147,7 @@ class ManifestPreflightRunner:
                     if word_count < settings.MIN_WORDS_W1:
                         skipped_short += 1
                         continue
-                    sample_key = f"{speaker_id}_{audio_path.stem}"
+                    sample_key = SampleKeyBuilder.build(speaker_id, audio_path.stem)
                     transcripts[sample_key] = {
                         "speaker_id": speaker_id,
                         "split": split,
