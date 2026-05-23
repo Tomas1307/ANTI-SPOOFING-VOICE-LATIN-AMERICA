@@ -25,9 +25,10 @@ import requests
 from loguru import logger
 
 from app.pipeline.fishgram_attack.settings import settings
+from app.utils.base_cloner import BaseCloner
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """FishGram cloning unit: HTTP-based cloning via Fish Speech API.
 
     The instance holds the API URL and (after load) confirms server
@@ -88,6 +89,7 @@ class Cloner:
         self,
         speaker_id: str,
         reference_audio_path: Path,
+        reference_text: str = "",
     ) -> None:
         """No-op for FishGram.
 
@@ -97,6 +99,7 @@ class Cloner:
         Args:
             speaker_id: HABLA speaker identifier (unused).
             reference_audio_path: Speaker reference audio path (unused).
+            reference_text: Reference transcript (unused).
         """
         return None
 

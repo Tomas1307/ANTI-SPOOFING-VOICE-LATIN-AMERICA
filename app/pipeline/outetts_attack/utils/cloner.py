@@ -32,9 +32,10 @@ import torchaudio
 from loguru import logger
 
 from app.pipeline.outetts_attack.settings import settings
+from app.utils.base_cloner import BaseCloner
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """OuteTTS cloning unit: load, per-speaker profile cache, clone_single.
 
     Attributes:
@@ -90,6 +91,7 @@ class Cloner:
         self,
         speaker_id: str,
         reference_audio_path: Path,
+        reference_text: str = "",
     ) -> None:
         """Create and cache the OuteTTS speaker profile.
 
@@ -97,6 +99,8 @@ class Cloner:
             speaker_id: HABLA speaker identifier (used in log messages).
             reference_audio_path: Speaker reference audio path. Used as
                 the cache key and passed to ``interface.create_speaker``.
+            reference_text: Reference transcript (unused; OuteTTS clones
+                from audio only).
 
         Raises:
             RuntimeError: If load() was not called first or profile

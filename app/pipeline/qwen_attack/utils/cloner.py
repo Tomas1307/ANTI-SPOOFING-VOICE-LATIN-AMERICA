@@ -25,9 +25,10 @@ from loguru import logger
 from qwen_tts import Qwen3TTSModel
 
 from app.pipeline.qwen_attack.settings import settings
+from app.utils.base_cloner import BaseCloner
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """Qwen3-TTS cloning unit: load, per-speaker prompt cache, clone_single.
 
     Attributes:

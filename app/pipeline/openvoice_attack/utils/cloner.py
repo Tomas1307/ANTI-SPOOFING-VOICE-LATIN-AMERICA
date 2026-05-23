@@ -33,9 +33,10 @@ from openvoice.api import ToneColorConverter
 from melo.api import TTS
 
 from app.pipeline.openvoice_attack.settings import settings
+from app.utils.base_cloner import BaseCloner
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """OpenVoice cloning unit: MeloTTS base + ToneColorConverter transfer.
 
     The instance holds:
@@ -104,6 +105,7 @@ class Cloner:
         self,
         speaker_id: str,
         reference_audio_path: Path,
+        reference_text: str = "",
     ) -> None:
         """Extract and cache the target_se for one speaker.
 
@@ -117,6 +119,8 @@ class Cloner:
             reference_audio_path: Speaker reference audio file. The
                 tone-colour embedding is extracted from this file via
                 ``se_extractor.get_se(vad=True)``.
+            reference_text: Reference transcript (unused; OpenVoice
+                clones from audio only).
 
         Raises:
             RuntimeError: If load() was not called first or extraction fails.

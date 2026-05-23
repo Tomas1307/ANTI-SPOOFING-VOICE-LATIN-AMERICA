@@ -3,8 +3,9 @@ Lazy-import dispatcher for the per-attack Cloner classes.
 
 Replaces the legacy ``strategy_factory`` that constructed duplicate
 partial_spoof strategy wrappers. Now every attack has exactly one
-Cloner -- defined inside ``<attack>_attack/utils/cloner.py`` -- and
-both the standalone Step 3 and partial_spoof Step 2 import from there.
+Cloner -- defined inside ``<attack>_attack/utils/cloner.py`` and
+subclassing ``app.utils.base_cloner.BaseCloner`` -- and both the
+standalone Step 3 and partial_spoof Step 2 import from there.
 
 Each branch imports lazily so the SDK heavy-loads (chatterbox, qwen_tts,
 omnivoice, outetts, melo, openvoice, requests) only get pulled in for
@@ -16,8 +17,10 @@ factory behaved.
 """
 from typing import Type
 
+from app.utils.base_cloner import BaseCloner
 
-def get_cloner_class(attack_system: str) -> Type:
+
+def get_cloner_class(attack_system: str) -> Type[BaseCloner]:
     """Resolve the Cloner class for the requested attack.
 
     Imports are performed inside each branch so that loading this
@@ -32,10 +35,10 @@ def get_cloner_class(attack_system: str) -> Type:
             'omnivoice'.
 
     Returns:
-        The Cloner class (not an instance) for the requested attack.
-        Callers instantiate it via ``CloneClass()`` and call
-        ``load()``, ``prepare_speaker()``, ``clone_single()``,
-        ``cleanup()`` per the documented contract.
+        The Cloner subclass (not an instance) for the requested attack.
+        All Cloners subclass ``BaseCloner``; callers instantiate via
+        ``CloneClass()`` and call ``load()``, ``prepare_speaker()``,
+        ``clone_single()``, ``cleanup()`` per the documented contract.
 
     Raises:
         ValueError: If attack_system is not recognised.

@@ -42,9 +42,8 @@ class ClonedSpeechGenerator:
     the documented contract.
 
     Attributes:
-        attack_system: Attack identifier (e.g. 'omnivoice', 'chatterbox').
         output_dir: Base output directory for pipeline artifacts.
-        cloner: Cloner instance resolved at construction time.
+        cloner: BaseCloner subclass instance resolved at construction time.
         reference_duration: Target duration for speaker reference clips.
         skip_existing: Skip generation for samples with existing output files.
         checkpoint: Optional CheckpointManager for per-clone resume.
@@ -79,7 +78,6 @@ class ClonedSpeechGenerator:
         Raises:
             ValueError: If attack_system is not recognised by the dispatcher.
         """
-        self.attack_system = attack_system
         cloner_cls = get_cloner_class(attack_system)
         self.cloner = cloner_cls()
         self.output_dir = output_dir or settings.OUTPUT_DIR
@@ -186,7 +184,14 @@ class ClonedSpeechGenerator:
 
             if speaker_id not in prepared_speakers:
                 try:
-                    self._prepare_speaker(speaker_id, ref_path)
+                    ref_text_for_prep = ""
+                    if self.cloner.NEEDS_REFERENCE_TRANSCRIPT:
+                        ref_text_for_prep = self._get_reference_transcript(speaker_id)
+                    self.cloner.prepare_speaker(
+                        speaker_id=speaker_id,
+                        reference_audio_path=ref_path,
+                        reference_text=ref_text_for_prep,
+                    )
                     prepared_speakers.add(speaker_id)
                 except Exception as exc:
                     logger.error(
@@ -277,31 +282,6 @@ class ClonedSpeechGenerator:
             failed_generations=failed_generations,
             avg_rtf=avg_rtf,
         )
-
-    def _prepare_speaker(self, speaker_id: str, ref_path: Path) -> None:
-        """Invoke Cloner.prepare_speaker with the right arguments per attack.
-
-        Qwen's Cloner.prepare_speaker needs the reference transcript;
-        the others either don't accept it or ignore it. Centralised here
-        to keep the dispatch decision out of the main loop.
-
-        Args:
-            speaker_id: HABLA speaker identifier.
-            ref_path: Per-speaker reference audio path (from
-                _prepare_reference above).
-        """
-        if self.attack_system == "qwen":
-            ref_text = self._get_reference_transcript(speaker_id)
-            self.cloner.prepare_speaker(
-                speaker_id=speaker_id,
-                reference_audio_path=ref_path,
-                reference_text=ref_text,
-            )
-        else:
-            self.cloner.prepare_speaker(
-                speaker_id=speaker_id,
-                reference_audio_path=ref_path,
-            )
 
     def _prepare_reference(self, speaker_id: str, refs_dir: Path) -> Path | None:
         """Prepare a reference audio clip for a speaker.

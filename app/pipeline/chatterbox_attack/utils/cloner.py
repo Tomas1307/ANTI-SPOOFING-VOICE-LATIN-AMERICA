@@ -39,10 +39,11 @@ from app.pipeline.chatterbox_attack.settings import settings
 from app.pipeline.chatterbox_attack.utils.perth_patcher import ensure_patched  # noqa: F401 — patches perth on import
 from app.pipeline.chatterbox_attack.utils.speech_trimmer import trim_trailing_noise
 from app.pipeline.chatterbox_attack.utils.watermark_remover import NoOpWatermarker
+from app.utils.base_cloner import BaseCloner
 from chatterbox.mtl_tts import ChatterboxMultilingualTTS
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """Chatterbox cloning unit: load + watermark bypass + SDPA patch + clone_single.
 
     Attributes:
@@ -87,6 +88,7 @@ class Cloner:
         self,
         speaker_id: str,
         reference_audio_path: Path,
+        reference_text: str = "",
     ) -> None:
         """No-op for Chatterbox.
 
@@ -97,6 +99,7 @@ class Cloner:
         Args:
             speaker_id: HABLA speaker identifier (unused).
             reference_audio_path: Speaker reference audio path (unused).
+            reference_text: Reference transcript (unused).
         """
         return None
 

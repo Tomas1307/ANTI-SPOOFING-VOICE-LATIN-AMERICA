@@ -31,9 +31,10 @@ from loguru import logger
 from omnivoice import OmniVoice
 
 from app.pipeline.omnivoice_attack.settings import settings
+from app.utils.base_cloner import BaseCloner
 
 
-class Cloner:
+class Cloner(BaseCloner):
     """OmniVoice cloning unit: load, clone_single, cleanup.
 
     The instance holds the loaded OmniVoice model. OmniVoice does not
@@ -86,6 +87,7 @@ class Cloner:
         self,
         speaker_id: str,
         reference_audio_path: Path,
+        reference_text: str = "",
     ) -> None:
         """No-op for OmniVoice.
 
@@ -98,6 +100,8 @@ class Cloner:
         Args:
             speaker_id: HABLA speaker identifier (unused).
             reference_audio_path: Speaker reference audio path (unused).
+            reference_text: Reference transcript (unused; OmniVoice uses
+                it only in clone_single via the same parameter there).
         """
         return None
 
