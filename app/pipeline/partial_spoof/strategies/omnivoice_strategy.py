@@ -91,6 +91,7 @@ class OmniVoiceStrategy(AttackStrategy):
             text=text,
             ref_audio=str(reference_audio_path),
             ref_text=reference_text,
+            language=omnivoice_settings.OMNIVOICE_LANGUAGE,
             num_step=omnivoice_settings.OMNIVOICE_NUM_STEP,
             speed=omnivoice_settings.OMNIVOICE_SPEED,
         )

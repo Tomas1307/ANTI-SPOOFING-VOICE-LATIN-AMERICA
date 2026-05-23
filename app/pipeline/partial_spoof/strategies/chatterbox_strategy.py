@@ -42,17 +42,38 @@ class ChatterboxStrategy(AttackStrategy):
         logger.info(f"ChatterboxStrategy: Model loaded on {device}")
 
     def _patch_sdpa_to_eager(self) -> None:
-        """Force eager attention for transformers >= 4.47 compatibility."""
+        """Force eager attention for transformers >= 4.47 compatibility.
+
+        transformers >= 4.47 raises when ``output_attentions=True`` is
+        requested on an SDPA attention module. Chatterbox's internal GPT
+        sets ``output_attentions``, so all sub-modules whose config
+        records ``_attn_implementation == 'sdpa'`` must be flipped to
+        ``'eager'`` BEFORE the first generate() call. Both
+        ``_attn_implementation`` and the duplicated
+        ``_attn_implementation_internal`` attribute have to be updated;
+        leaving the latter on ``'sdpa'`` causes transformers to revert
+        the choice. This routine mirrors
+        ``chatterbox_attack/steps/step_03_generate_speech.py::_patch_sdpa_to_eager``.
+        """
         if self.model is None:
             return
-        for attr_name in dir(self.model):
-            try:
-                attr = getattr(self.model, attr_name)
-                if isinstance(attr, torch.nn.Module) and hasattr(attr, "config"):
-                    if hasattr(attr.config, "_attn_implementation"):
-                        attr.config._attn_implementation = "eager"
-            except Exception:
-                pass
+        patched = 0
+        for attr_name in vars(self.model):
+            attr = getattr(self.model, attr_name)
+            if not isinstance(attr, torch.nn.Module):
+                continue
+            for _name, submodule in attr.named_modules():
+                config = getattr(submodule, "config", None)
+                if config is None:
+                    continue
+                if getattr(config, "_attn_implementation", None) == "sdpa":
+                    config._attn_implementation = "eager"
+                    config._attn_implementation_internal = "eager"
+                    patched += 1
+        if patched > 0:
+            logger.info(
+                f"ChatterboxStrategy: patched {patched} sub-module(s) from SDPA to eager"
+            )
 
     def generate(
         self,

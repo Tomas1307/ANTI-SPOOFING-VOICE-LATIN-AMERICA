@@ -1,17 +1,21 @@
 """
-Audio concatenation utilities for Qwen reference audio preparation.
+Compatibility shim - delegates to the canonical implementation at
+``app.utils.audio_concatenation``.
 
-Re-exports shared utilities from fishgram_attack to avoid code duplication.
-Both pipelines use the same audio concatenation logic for reference preparation.
+This pipeline previously re-exported from ``fishgram_attack``; both now
+point at the same canonical implementation.
 """
-from app.pipeline.fishgram_attack.utils.audio_concatenation import (
-    concatenate_with_padding,
-    normalize_audio,
+from app.utils.audio_concatenation import (
     clip_audio,
+    concatenate_with_padding,
+    find_nearest_silence_boundary,
+    normalize_audio,
 )
 
+
 __all__ = [
-    "concatenate_with_padding",
-    "normalize_audio",
     "clip_audio",
+    "concatenate_with_padding",
+    "find_nearest_silence_boundary",
+    "normalize_audio",
 ]

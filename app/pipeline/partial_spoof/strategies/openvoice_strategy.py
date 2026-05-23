@@ -2,14 +2,21 @@
 
 Wraps the OpenVoice V2 (MeloTTS + ToneColorConverter) pipeline for
 voice cloning. Does not require a reference transcript.
+
+Output audio is resampled to SAMPLE_RATE (16 kHz) so downstream stages
+(forced alignment, splicing, validation) see a consistent rate across
+all attacks - matches the behaviour of
+``openvoice_attack/steps/step_03_generate_speech.py``.
 """
 import time
 from pathlib import Path
 
-import torch
+import librosa
 import soundfile as sf
+import torch
 from loguru import logger
 
+from app.pipeline.partial_spoof.settings import settings as partial_spoof_settings
 from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy
 from app.pipeline.openvoice_attack.settings import settings as openvoice_settings
 
@@ -77,37 +84,51 @@ class OpenVoiceStrategy(AttackStrategy):
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         tmp_base_path = output_path.parent / f"_tmp_base_{output_path.stem}.wav"
-
-        speaker_ids = self.tts_model.hps.data.spk2id
-        speaker_key = list(speaker_ids.keys())[0]
-        self.tts_model.tts_to_file(
-            text=text,
-            speaker_id=speaker_ids[speaker_key],
-            output_path=str(tmp_base_path),
-            speed=openvoice_settings.MELO_SPEED,
+        tmp_converted_path = (
+            output_path.parent / f"_tmp_converted_{output_path.stem}.wav"
         )
 
-        ref_key = str(reference_audio_path)
-        if ref_key not in self.se_cache:
-            from openvoice.se_extractor import get_se
-            self.se_cache[ref_key] = get_se(
-                str(reference_audio_path),
-                self.tone_converter,
-                vad=True,
+        try:
+            speaker_ids = self.tts_model.hps.data.spk2id
+            speaker_key = list(speaker_ids.keys())[0]
+            self.tts_model.tts_to_file(
+                text=text,
+                speaker_id=speaker_ids[speaker_key],
+                output_path=str(tmp_base_path),
+                speed=openvoice_settings.MELO_SPEED,
             )
 
-        target_se = self.se_cache[ref_key]
-        source_se = self.tone_converter.extract_se(str(tmp_base_path))
+            ref_key = str(reference_audio_path)
+            if ref_key not in self.se_cache:
+                from openvoice.se_extractor import get_se
+                self.se_cache[ref_key] = get_se(
+                    str(reference_audio_path),
+                    self.tone_converter,
+                    vad=True,
+                )
 
-        self.tone_converter.convert(
-            audio_src_path=str(tmp_base_path),
-            src_se=source_se,
-            tgt_se=target_se,
-            output_path=str(output_path),
-        )
+            target_se = self.se_cache[ref_key]
+            source_se = self.tone_converter.extract_se(str(tmp_base_path))
 
-        if tmp_base_path.exists():
-            tmp_base_path.unlink()
+            self.tone_converter.convert(
+                audio_src_path=str(tmp_base_path),
+                src_se=source_se,
+                tgt_se=target_se,
+                output_path=str(tmp_converted_path),
+            )
+
+            audio, _ = librosa.load(
+                str(tmp_converted_path), sr=partial_spoof_settings.SAMPLE_RATE
+            )
+            sf.write(
+                str(output_path), audio, partial_spoof_settings.SAMPLE_RATE
+            )
+
+        finally:
+            if tmp_base_path.exists():
+                tmp_base_path.unlink()
+            if tmp_converted_path.exists():
+                tmp_converted_path.unlink()
 
         return time.time() - start_time
 

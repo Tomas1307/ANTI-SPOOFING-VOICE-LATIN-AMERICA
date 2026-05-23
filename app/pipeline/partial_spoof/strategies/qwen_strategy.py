@@ -73,7 +73,7 @@ class QwenStrategy(AttackStrategy):
             self._speaker_prompts[ref_key] = self.model.create_voice_clone_prompt(
                 ref_audio=str(reference_audio_path),
                 ref_text=reference_text,
-                x_vector_only_mode=True,
+                x_vector_only_mode=qwen_settings.X_VECTOR_ONLY_MODE,
             )
 
         wavs, sr = self.model.generate_voice_clone(
