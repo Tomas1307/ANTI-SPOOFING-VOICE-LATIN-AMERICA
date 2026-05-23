@@ -266,15 +266,24 @@ class WordSelector:
     def _load_audio(self, audio_path: str) -> np.ndarray | None:
         """Load audio file, handling path resolution.
 
+        The alignment metadata stores ``cloned_audio_path`` as a string
+        produced by ``str(Path)`` in Step 3, which is already either
+        absolute or relative to the current working directory. Step 5
+        uses the same convention. Earlier versions of this method
+        joined ``self.output_dir.parent.parent / audio_path`` to handle
+        a legacy 1-level output layout (``data/<attack>_partial_spoof``),
+        but that produced doubled-prefix paths once the manifest layout
+        nested outputs as ``data/partial_spoof_output/<attack>/<partition>``.
+        We now treat the stored path as authoritative.
+
         Args:
-            audio_path: Relative path from the pipeline output.
+            audio_path: Path string from alignment metadata, either
+                absolute or relative to the current working directory.
 
         Returns:
             Audio array at SAMPLE_RATE, or None if file not found.
         """
         full_path = Path(audio_path)
-        if not full_path.is_absolute():
-            full_path = self.output_dir.parent.parent / audio_path
 
         if not full_path.exists():
             logger.warning(f"Audio file not found: {full_path}")
