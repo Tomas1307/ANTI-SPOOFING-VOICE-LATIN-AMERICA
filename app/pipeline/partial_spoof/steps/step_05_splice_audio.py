@@ -87,7 +87,27 @@ class AudioSplicer:
         with open(alignment_path, "r", encoding="utf-8") as f:
             alignment_data = json.load(f)
 
-        splice_metadata = {}
+        # Accumulate splice_metadata across regeneration rounds: load prior
+        # round's successes from disk so they are not overwritten when this
+        # round only processes a regen subset. Without this, the final-round
+        # write trashes earlier-round splices and Step 6 sees zero samples
+        # even though spliced WAVs sit on disk.
+        metadata_path = self.output_dir / "splice_metadata.json"
+        if metadata_path.exists():
+            try:
+                with open(metadata_path, "r", encoding="utf-8") as f:
+                    splice_metadata = json.load(f)
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning(
+                    f"splice_metadata.json unreadable ({exc}); starting fresh"
+                )
+                splice_metadata = {}
+        else:
+            splice_metadata = {}
+
+        # rejected_metadata stays fresh per round: the facade reads
+        # splice_rejected.json to decide which samples need the next regen,
+        # so accumulating would falsely re-flag already-resolved samples.
         rejected_metadata = {}
         failed_splices = []
         tier_counts = {}
