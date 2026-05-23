@@ -2,52 +2,38 @@
 Step 3: Generate Synthetic Speech with OuteTTS
 
 Generates synthetic Spanish voice cloning attacks using OuteTTS 1.0 0.6B
-(Qwen3-based LLM backbone with DAC codec for audio tokenization).
+(Qwen3-based LLM backbone with DAC codec for audio tokenization). The
+per-sample cloning is delegated to the shared Cloner class in
+``outetts_attack/utils/cloner.py`` so the standalone attack pipeline and
+``partial_spoof/steps/step_02_generate_cloned_speech.py`` exercise the
+same code.
 
-Key implementation details:
-  - OuteTTS uses a fundamentally different approach from other TTS systems:
-    it treats speech synthesis as a language modeling task, encoding audio
-    as discrete tokens via the Descript Audio Codec (DAC).
-  - v1.0 0.6B supports 14 languages including Spanish natively (trained
-    on Multilingual LibriSpeech + Common Voice). v0.3 had codec version
-    mismatch with outetts 0.4.4 library causing CUDA assertion failures.
-  - Speaker cloning works by creating a speaker profile (JSON) from a
-    reference audio file. This profile captures tempo, energy, pitch,
-    and spectral centroid characteristics.
-  - Generation is autoregressive and SLOW (~2-3 min per 10s audio on A40).
-    The 8,192 token context window limits effective output to ~32s when
-    the speaker profile is included.
-  - Output is saved by the outetts library at its native sample rate,
-    then resampled to 16 kHz for consistency with all other pipeline stages.
-  - The model is loaded once via Interface with auto_config (Backend.HF),
-    speaker profiles are cached per speaker, and GPU memory is released
-    after all generation completes.
+NOTE: OuteTTS is slow (~2-3 min per 10s audio on A40) due to its
+autoregressive LLM backbone. Output is resampled to 16 kHz inside the
+Cloner.
 """
 import json
-import time
-import torch
-import torchaudio
-import outetts
 from pathlib import Path
+
 from loguru import logger
 from tqdm import tqdm
 
 from app.pipeline.outetts_attack.settings import settings
 from app.pipeline.outetts_attack.schemas.generation_result import GenerationResult
+from app.pipeline.outetts_attack.utils.cloner import Cloner
 
 
 class SpeechGenerator:
-    """Generates synthetic speech using OuteTTS 0.6B.
+    """Generates synthetic speech via the shared OuteTTS Cloner.
 
-    Loads the OuteTTS model via InterfaceHF once, creates speaker profiles
-    from reference audio per speaker, then generates all samples autoregressively.
-    Speaker profiles are cached to avoid redundant extraction.
-
-    OuteTTS is notably slower than other TTS systems in the attack suite due
-    to its autoregressive LLM backbone (~2-3 min per 10s on A40).
+    Owns the outer loop (per-speaker, per-text iteration, resume from
+    on-disk generation_metadata.json, metadata recording, RTF stats).
+    Delegates per-speaker profile creation and per-sample generation to
+    the Cloner.
 
     Attributes:
         output_dir: Directory where generated audio files are saved.
+        cloner: OuteTTS Cloner instance, initialised during execute().
     """
 
     def __init__(self, output_dir: Path | None = None):
@@ -57,6 +43,7 @@ class SpeechGenerator:
             output_dir: Output directory (default: from settings).
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
+        self.cloner = Cloner()
 
     def execute(self) -> GenerationResult:
         """Generate synthetic speech for all speaker-text pairs.
@@ -68,14 +55,6 @@ class SpeechGenerator:
             RuntimeError: If model loading fails.
         """
         logger.info("Step 3: Generating synthetic speech with OuteTTS...")
-        logger.info(f"  Device          : {settings.DEVICE}")
-        logger.info(f"  Model version   : {settings.OUTETTS_MODEL_VERSION}")
-        logger.info(f"  Model ID        : {settings.OUTETTS_MODEL_ID}")
-        logger.info(f"  Temperature     : {settings.TEMPERATURE}")
-        logger.info(f"  Top-K           : {settings.TOP_K}")
-        logger.info(f"  Top-P           : {settings.TOP_P}")
-        logger.info(f"  Rep. penalty    : {settings.REPETITION_PENALTY}")
-        logger.info(f"  Max length      : {settings.MAX_LENGTH}")
 
         gen_dir = self.output_dir / "generated"
         gen_dir.mkdir(parents=True, exist_ok=True)
@@ -89,14 +68,7 @@ class SpeechGenerator:
         with open(prompts_path, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-        logger.info("Loading OuteTTS model via Interface...")
-        interface = outetts.Interface(
-            outetts.ModelConfig.auto_config(
-                model=outetts.Models.VERSION_1_0_SIZE_0_6B,
-                backend=outetts.Backend.HF,
-            )
-        )
-        logger.info("OuteTTS model loaded successfully")
+        self.cloner.load(device=settings.DEVICE)
 
         gen_metadata_path = self.output_dir / "generation_metadata.json"
         if gen_metadata_path.exists():
@@ -108,13 +80,11 @@ class SpeechGenerator:
 
         failed = []
         rtf_values = []
-        speaker_profiles = {}
 
         total_pairs = sum(len(texts) for texts in prompts.values())
         logger.info(f"Generating {total_pairs} synthetic samples ({len(generated)} cached)...")
         logger.info(
-            "NOTE: OuteTTS is slow (~2-3 min per 10s audio). "
-            "This will take a while."
+            "NOTE: OuteTTS is slow (~2-3 min per 10s audio). This will take a while."
         )
 
         with tqdm(total=total_pairs, desc="Generating") as pbar:
@@ -132,44 +102,39 @@ class SpeechGenerator:
                 speaker_prompts = prompts.get(speaker_id, [])
                 all_cached = all(
                     f"{speaker_id}_{p['text_id']}" in generated
-                    and (gen_dir / f"OUTETTS_{speaker_id}_{p['text_id']}.wav").exists()
+                    and (gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{p['text_id']}.wav").exists()
                     for p in speaker_prompts
                 )
                 if all_cached:
                     pbar.update(len(speaker_prompts))
                     continue
 
-                if speaker_id not in speaker_profiles:
-                    try:
-                        speaker_profiles[speaker_id] = interface.create_speaker(
-                            str(ref_path)
-                        )
-                        logger.debug(f"Created speaker profile for {speaker_id}")
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to create speaker profile for {speaker_id}: {e}"
-                        )
-                        failed.extend([p["text_id"] for p in speaker_prompts])
-                        pbar.update(len(speaker_prompts))
-                        continue
-
-                speaker = speaker_profiles[speaker_id]
+                try:
+                    self.cloner.prepare_speaker(speaker_id, ref_path)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to create speaker profile for {speaker_id}: {e}"
+                    )
+                    failed.extend([p["text_id"] for p in speaker_prompts])
+                    pbar.update(len(speaker_prompts))
+                    continue
 
                 for prompt_data in speaker_prompts:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
-                    output_path = gen_dir / f"OUTETTS_{speaker_id}_{text_id}.wav"
+                    output_path = (
+                        gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{text_id}.wav"
+                    )
 
                     if sample_id in generated and output_path.exists():
                         pbar.update(1)
                         continue
 
                     try:
-                        generation_time, audio_duration = self._generate_single(
+                        generation_time, audio_duration = self.cloner.clone_single(
                             text=text,
-                            interface=interface,
-                            speaker=speaker,
+                            reference_audio_path=ref_path,
                             output_path=output_path,
                         )
 
@@ -208,11 +173,7 @@ class SpeechGenerator:
         logger.info(f"  Average RTF: {avg_rtf:.2f}")
         logger.info(f"  Metadata saved to: {gen_metadata_path}")
 
-        del interface
-        del speaker_profiles
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            logger.info("GPU memory released")
+        self.cloner.cleanup()
 
         return GenerationResult(
             generated_samples_path=gen_metadata_path,
@@ -220,61 +181,3 @@ class SpeechGenerator:
             failed_generations=failed,
             avg_rtf=avg_rtf,
         )
-
-    def _generate_single(
-        self,
-        text: str,
-        interface: outetts.Interface,
-        speaker: object,
-        output_path: Path,
-    ) -> tuple:
-        """Generate a single synthetic sample using OuteTTS.
-
-        The outetts library saves audio at its native sample rate (determined
-        by the DAC codec). After saving, the audio is resampled to 16 kHz
-        for consistency with the rest of the pipeline.
-
-        Args:
-            text: Spanish text to synthesise.
-            interface: Loaded OuteTTS InterfaceHF instance.
-            speaker: Speaker profile object created via interface.create_speaker().
-            output_path: Path where the final 16 kHz WAV file will be saved.
-
-        Returns:
-            Tuple of (generation_time_seconds, audio_duration_seconds).
-
-        Raises:
-            RuntimeError: If generation or saving fails.
-        """
-        start_time = time.time()
-
-        output = interface.generate(
-            config=outetts.GenerationConfig(
-                text=text,
-                speaker=speaker,
-                sampler_config=outetts.SamplerConfig(
-                    top_k=settings.TOP_K,
-                    top_p=settings.TOP_P,
-                    temperature=settings.TEMPERATURE,
-                    repetition_penalty=settings.REPETITION_PENALTY,
-                ),
-                max_length=settings.MAX_LENGTH,
-            )
-        )
-
-        temp_path = output_path.with_suffix(".tmp.wav")
-        output.save(str(temp_path))
-
-        wav, native_sr = torchaudio.load(str(temp_path))
-
-        if native_sr != settings.SAMPLE_RATE:
-            wav = torchaudio.functional.resample(wav, native_sr, settings.SAMPLE_RATE)
-
-        torchaudio.save(str(output_path), wav, settings.SAMPLE_RATE)
-
-        temp_path.unlink(missing_ok=True)
-
-        generation_time = time.time() - start_time
-        audio_duration = wav.shape[-1] / settings.SAMPLE_RATE
-
-        return generation_time, audio_duration

@@ -2,41 +2,39 @@
 Step 3: Generate Synthetic Speech
 
 Generates synthetic Spanish speech using OmniVoice (k2-fsa) local model
-inference. Loads the OmniVoice model directly into GPU memory and generates
-audio in-process. Native output is at 24 kHz; downstream steps resample
-to settings.SAMPLE_RATE on load via librosa.
+inference. Iterates over (speaker, text) pairs from the prior steps,
+delegating the per-sample cloning to the shared Cloner class in
+``omnivoice_attack/utils/cloner.py`` so the exact same generation logic
+is reused by ``partial_spoof/steps/step_02_generate_cloned_speech.py``.
 
-OmniVoice is imported from the omnivoice package, which is installed only
-inside envs/omnivoice_env. The import lives at file top per CLAUDE.md;
-running this step from another venv will fail at import time, which is
-the intended isolation behavior.
+Native output is at 24 kHz; downstream steps resample to
+settings.SAMPLE_RATE on load via librosa.
 """
 import json
 import time
 from pathlib import Path
 
-import torch
 import soundfile as sf
 from loguru import logger
 from tqdm import tqdm
-from omnivoice import OmniVoice
 
 from app.pipeline.omnivoice_attack.settings import settings
 from app.pipeline.omnivoice_attack.schemas.generation_result import GenerationResult
+from app.pipeline.omnivoice_attack.utils.cloner import Cloner
 
 
 class SpeechGenerator:
-    """Generates synthetic speech using OmniVoice local model.
+    """Generates synthetic speech using OmniVoice via the shared Cloner.
 
-    Loads the OmniVoice diffusion language model once and iterates over
-    speaker-text pairs, calling model.generate(text, ref_audio, ref_text)
-    per utterance. Audio is returned as a list of numpy arrays at the
-    OmniVoice native sample rate (24 kHz) and written to disk as WAV.
+    Owns the outer loop (per-speaker, per-text iteration, resume,
+    metadata recording, RTF stats). Delegates the per-sample cloning
+    work to ``Cloner.clone_single`` so the standalone attack pipeline
+    and partial_spoof use identical generation code.
 
     Attributes:
         output_dir: Directory where generated audio files are saved.
         skip_existing: When True, skip WAVs that already exist (resume mode).
-        model: OmniVoice instance, loaded during execute().
+        cloner: OmniVoice Cloner instance, loaded during execute().
     """
 
     def __init__(self, output_dir: Path | None = None, skip_existing: bool = False):
@@ -48,88 +46,14 @@ class SpeechGenerator:
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
         self.skip_existing = skip_existing
-        self.model = None
-
-    def _load_model(self) -> OmniVoice:
-        """Load OmniVoice model to GPU.
-
-        Loads the k2-fsa/OmniVoice checkpoint via OmniVoice.from_pretrained
-        with the configured dtype and device.
-
-        Returns:
-            Initialized OmniVoice model ready for inference.
-
-        Raises:
-            RuntimeError: If model loading fails (VRAM, CUDA, or download issues).
-        """
-        logger.info(f"Loading OmniVoice model: {settings.OMNIVOICE_MODEL_ID}")
-        logger.info(f"  Device: {settings.DEVICE}")
-        logger.info(f"  Dtype: {settings.DTYPE}")
-
-        start_time = time.time()
-
-        dtype = getattr(torch, settings.DTYPE)
-        model = OmniVoice.from_pretrained(
-            settings.OMNIVOICE_MODEL_ID,
-            device_map=settings.DEVICE,
-            dtype=dtype,
-        )
-
-        load_time = time.time() - start_time
-        logger.info(f"Model loaded in {load_time:.1f}s")
-
-        return model
-
-    def _generate_single(
-        self,
-        text: str,
-        ref_audio_path: Path,
-        ref_text: str,
-        output_path: Path,
-    ) -> tuple:
-        """Generate a single synthetic audio sample.
-
-        Args:
-            text: The Spanish text to synthesize.
-            ref_audio_path: Path to the speaker reference audio file.
-            ref_text: Transcript of the reference audio (Parakeet output).
-            output_path: Path where the generated WAV file will be saved.
-
-        Returns:
-            Tuple of (generation_time_seconds, audio_duration_seconds).
-
-        Raises:
-            RuntimeError: If generation fails.
-        """
-        start_time = time.time()
-
-        audios = self.model.generate(
-            text=text,
-            ref_audio=str(ref_audio_path),
-            ref_text=ref_text,
-            num_step=settings.OMNIVOICE_NUM_STEP,
-            speed=settings.OMNIVOICE_SPEED,
-            language=settings.OMNIVOICE_LANGUAGE,
-        )
-
-        generation_time = time.time() - start_time
-
-        audio = audios[0]
-        sf.write(
-            str(output_path),
-            audio,
-            settings.OMNIVOICE_NATIVE_SAMPLE_RATE,
-        )
-
-        audio_duration = len(audio) / settings.OMNIVOICE_NATIVE_SAMPLE_RATE
-        return generation_time, audio_duration
+        self.cloner = Cloner()
 
     def execute(self) -> GenerationResult:
         """Generate synthetic speech for all speaker-text pairs.
 
-        Loads the OmniVoice model, then iterates over speakers and their
-        assigned text prompts, generating one WAV file per pair. Saves
-        a generation_metadata.json with timing, RTF, and file paths.
+        Loads the OmniVoice Cloner, then iterates over speakers and their
+        assigned text prompts, calling ``cloner.clone_single`` per pair.
+        Saves a generation_metadata.json with timing, RTF, and file paths.
 
         Returns:
             GenerationResult with metadata path, counts, and statistics.
@@ -142,7 +66,7 @@ class SpeechGenerator:
         if self.skip_existing:
             logger.info("  Resume mode: skip_existing=True (will skip already-generated WAVs)")
 
-        self.model = self._load_model()
+        self.cloner.load(device=settings.DEVICE)
 
         gen_dir = self.output_dir / "generated"
         gen_dir.mkdir(parents=True, exist_ok=True)
@@ -178,11 +102,15 @@ class SpeechGenerator:
                     pbar.update(len(prompts.get(speaker_id, [])))
                     continue
 
+                self.cloner.prepare_speaker(speaker_id, ref_path)
+
                 for prompt_data in prompts.get(speaker_id, []):
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
-                    output_path = gen_dir / f"OMNIVOICE_{speaker_id}_{text_id}.wav"
+                    output_path = (
+                        gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{text_id}.wav"
+                    )
 
                     if self.skip_existing and output_path.exists():
                         try:
@@ -206,11 +134,11 @@ class SpeechGenerator:
                         continue
 
                     try:
-                        generation_time, audio_duration = self._generate_single(
+                        generation_time, audio_duration = self.cloner.clone_single(
                             text=text,
-                            ref_audio_path=ref_path,
-                            ref_text=ref_text,
+                            reference_audio_path=ref_path,
                             output_path=output_path,
+                            reference_text=ref_text,
                         )
 
                         rtf = generation_time / audio_duration if audio_duration > 0 else 0.0
@@ -249,10 +177,7 @@ class SpeechGenerator:
         logger.info(f"  Average RTF: {avg_rtf:.3f}")
         logger.info(f"  Metadata saved to: {gen_metadata_path}")
 
-        self.model = None
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            logger.info("GPU memory released")
+        self.cloner.cleanup()
 
         return GenerationResult(
             generated_samples_path=gen_metadata_path,

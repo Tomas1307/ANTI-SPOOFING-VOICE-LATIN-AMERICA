@@ -30,7 +30,7 @@ from app.pipeline.partial_spoof.steps.step_06_validate_splice import SpliceQuali
 from app.pipeline.partial_spoof.steps.step_07_format_output import OutputFormatter
 from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
 from app.pipeline.partial_spoof.utils.manifest_loader import ManifestLoader
-from app.pipeline.partial_spoof.utils.strategy_factory import create_attack_strategy
+from app.pipeline.partial_spoof.utils.cloner_dispatcher import get_cloner_class
 
 MAX_REGENERATIONS = 3
 
@@ -180,7 +180,11 @@ class PartialSpoofPipeline:
         logger.info("=" * 80)
 
         try:
-            strategy = create_attack_strategy(self.config.attack_system)
+            # Resolve the Cloner class via the dispatcher. The class is
+            # used here only to read its SYSTEM_ID for output naming;
+            # the actual instance is created inside Step 2.
+            cloner_cls = get_cloner_class(self.config.attack_system)
+            system_id_prefix = cloner_cls.SYSTEM_ID
 
             # === STEP 1: Transcribe bonafide audio (runs once) ===
             if self.config.run_step_1:
@@ -203,7 +207,7 @@ class PartialSpoofPipeline:
             # === STEPS 2-5: Generate -> Align -> Select -> Splice ===
             # Runs in a regeneration loop for failed samples
             if self.config.run_step_2:
-                self._run_generation_loop(strategy)
+                self._run_generation_loop(system_id_prefix)
 
             # === STEP 5b: Apply boundary jitter (optional) ===
             if (
@@ -237,7 +241,7 @@ class PartialSpoofPipeline:
             if self.config.run_step_7:
                 logger.info("-" * 40)
                 step_7 = OutputFormatter(
-                    system_id_prefix=strategy.name(),
+                    system_id_prefix=system_id_prefix,
                 )
                 result_7 = step_7.execute()
                 logger.info(
@@ -255,7 +259,7 @@ class PartialSpoofPipeline:
             logger.exception(f"Partial spoof pipeline failed: {exc}")
             raise
 
-    def _run_generation_loop(self, strategy) -> None:
+    def _run_generation_loop(self, system_id_prefix: str) -> None:
         """Run Steps 2-5 with regeneration for failed samples.
 
         Level 1 retry (smart selection) happens inside Step 5.
@@ -263,7 +267,10 @@ class PartialSpoofPipeline:
         for samples that exhausted all word selection candidates.
 
         Args:
-            strategy: The loaded attack strategy for TTS generation.
+            system_id_prefix: Uppercase attack identifier (e.g.
+                'OMNIVOICE') used in Step 5 spliced WAV filenames. Read
+                from the resolved Cloner class's SYSTEM_ID at the start
+                of run().
         """
         all_regeneration_history = {}
 
@@ -277,7 +284,7 @@ class PartialSpoofPipeline:
 
             seed_offset = regen_round * 1000
             step_2 = ClonedSpeechGenerator(
-                strategy=strategy,
+                attack_system=self.config.attack_system,
                 skip_existing=not is_retry,
                 seed_offset=seed_offset,
                 regenerate_keys=self._get_regen_keys(regen_round) if is_retry else None,
@@ -329,7 +336,7 @@ class PartialSpoofPipeline:
                 logger.info("-" * 40)
                 logger.info(f"{round_label}STEP 5: Splice Audio")
                 step_5 = AudioSplicer(
-                    attack_system_name=strategy.name(),
+                    attack_system_name=system_id_prefix,
                     checkpoint=self.checkpoint,
                 )
                 result_5 = step_5.execute()
@@ -450,9 +457,23 @@ class PartialSpoofPipeline:
             if not Path(cloned_path).exists():
                 continue
 
-            sim = ecapa.compute_similarity_from_embedding(
-                ref_embeddings[speaker_id], Path(cloned_path)
-            )
+            try:
+                sim = ecapa.compute_similarity_from_embedding(
+                    ref_embeddings[speaker_id], Path(cloned_path)
+                )
+            except (RuntimeError, ValueError) as exc:
+                # Degenerate clone (zero-length, NaN, unreadable) crashes
+                # ECAPA's resampler / embedding extractor. Treat as a hard
+                # failure of the clone gate so the sample is rejected and
+                # cleanly removed from downstream metadata. Step 2's
+                # length-validation retry handles regeneration in future
+                # rounds; here we just survive the bad clone.
+                logger.warning(
+                    f"Clone gate ECAPA failed for {sample_key} ({exc.__class__.__name__}: {exc}); "
+                    "treating as rejected."
+                )
+                sim = 0.0
+
             similarities.append(sim)
 
             passed = sim >= settings.MIN_CLONE_SIMILARITY

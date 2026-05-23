@@ -180,8 +180,12 @@ class OutputFormatter:
                 continue
 
             split = entry["split"]
+            # HABLA uses train/val/test; ASVspoof2019 uses train/dev/eval.
+            # Map HABLA -> ASVspoof so the LA protocol files line up.
             if split == "val":
                 split = "dev"
+            elif split == "test":
+                split = "eval"
 
             tier = entry["tier"]
             speaker_id = entry["speaker_id"]

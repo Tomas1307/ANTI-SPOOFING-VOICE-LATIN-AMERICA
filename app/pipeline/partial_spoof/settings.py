@@ -310,6 +310,16 @@ class PartialSpoofSettings(BaseModel):
                     "zero-byte output). Quality failures are NEVER retried at this "
                     "layer under the keep-bad-stuff principle.",
     )
+    MIN_CLONE_DURATION_S: float = Field(
+        default=0.5,
+        description="Minimum acceptable cloned audio duration in seconds. Clones "
+                    "shorter than this are treated as Step 2 generation failures "
+                    "(empty/truncated output from diffusion TTS such as OmniVoice) "
+                    "and trigger the recoverable-retry loop with a bumped seed. "
+                    "0.5 s is a conservative floor -- even a single-syllable "
+                    "Spanish word lasts ~150-300 ms, so anything under 500 ms is "
+                    "almost certainly degenerate.",
+    )
     ENABLE_STEP_6_REJECTION: bool = Field(
         default=False,
         description="When False (default), Step 6 computes WER/CER/NISQA/ECAPA/boundary "

@@ -118,11 +118,17 @@ class ValleyScorer:
 
         scores.sort(key=lambda s: s.combined_score)
 
-        logger.debug(
-            f"Valley scores: {len([s for s in scores if s.eligible])}/{n_words} eligible | "
-            f"best={scores[0].combined_score:.3f} ({scores[0].word}) | "
-            f"worst={scores[-1].combined_score:.3f} ({scores[-1].word})"
-        )
+        if scores:
+            logger.debug(
+                f"Valley scores: {len([s for s in scores if s.eligible])}/{n_words} eligible | "
+                f"best={scores[0].combined_score:.3f} ({scores[0].word}) | "
+                f"worst={scores[-1].combined_score:.3f} ({scores[-1].word})"
+            )
+        else:
+            logger.debug(
+                "Valley scores: 0/0 eligible (no word alignments between "
+                "bonafide and clone -- likely an empty or hallucinated clone)"
+            )
 
         return scores
 

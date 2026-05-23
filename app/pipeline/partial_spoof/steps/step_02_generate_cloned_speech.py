@@ -2,9 +2,11 @@
 Step 2: Generate Cloned Speech
 
 For each transcribed bonafide utterance, generates the same sentence
-using the configured voice cloning attack strategy with the speaker's
-reference audio. The cloned audio will be used in Step 3 for forced
-alignment and in Step 5 for word-level extraction and splicing.
+using the configured voice cloning attack via the shared per-attack
+Cloner class (the same class consumed by ``<attack>_attack/steps/
+step_03_generate_speech.py``). The cloned audio will be used in Step 3
+for forced alignment and in Step 5 for word-level extraction and
+splicing.
 
 Resumable via the optional CheckpointManager: every successful clone
 commit calls checkpoint.mark_cloned(sample_key) before moving on, so a
@@ -23,23 +25,26 @@ from tqdm import tqdm
 
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.schemas.cloned_generation_result import ClonedGenerationResult
-from app.pipeline.partial_spoof.strategies.base_strategy import AttackStrategy
 from app.pipeline.partial_spoof.utils.audio_concatenation import (
     concatenate_with_padding,
 )
 from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
+from app.pipeline.partial_spoof.utils.cloner_dispatcher import get_cloner_class
 
 
 class ClonedSpeechGenerator:
     """Generates voice-cloned speech for bonafide utterances.
 
-    Delegates generation to an AttackStrategy instance and manages
-    reference audio preparation, output directory creation, metadata
-    recording, and per-sample checkpointing.
+    Resolves the per-attack Cloner class via the dispatcher (one source
+    of truth shared with the standalone attack pipeline), prepares
+    per-speaker reference audio, then loops over bonafide transcripts
+    invoking ``cloner.prepare_speaker`` and ``cloner.clone_single`` per
+    the documented contract.
 
     Attributes:
+        attack_system: Attack identifier (e.g. 'omnivoice', 'chatterbox').
         output_dir: Base output directory for pipeline artifacts.
-        strategy: The voice cloning attack strategy to use.
+        cloner: Cloner instance resolved at construction time.
         reference_duration: Target duration for speaker reference clips.
         skip_existing: Skip generation for samples with existing output files.
         checkpoint: Optional CheckpointManager for per-clone resume.
@@ -47,7 +52,7 @@ class ClonedSpeechGenerator:
 
     def __init__(
         self,
-        strategy: AttackStrategy,
+        attack_system: str,
         output_dir: Path | None = None,
         reference_duration: float | None = None,
         skip_existing: bool = False,
@@ -58,7 +63,9 @@ class ClonedSpeechGenerator:
         """Initialize cloned speech generator.
 
         Args:
-            strategy: Voice cloning attack strategy instance.
+            attack_system: Attack identifier ('chatterbox', 'qwen',
+                'fishgram', 'openvoice', 'outetts', 'omnivoice'). The
+                matching Cloner class is resolved via the dispatcher.
             output_dir: Output directory (default: from settings).
             reference_duration: Target reference clip duration (default: from settings).
             skip_existing: Skip samples with existing output files.
@@ -68,8 +75,13 @@ class ClonedSpeechGenerator:
             checkpoint: Optional CheckpointManager. When provided, Step 2
                 marks every successful clone for resume and records
                 recoverable failures with retry counters.
+
+        Raises:
+            ValueError: If attack_system is not recognised by the dispatcher.
         """
-        self.strategy = strategy
+        self.attack_system = attack_system
+        cloner_cls = get_cloner_class(attack_system)
+        self.cloner = cloner_cls()
         self.output_dir = output_dir or settings.OUTPUT_DIR
         self.reference_duration = reference_duration or settings.REFERENCE_DURATION_TARGET
         self.skip_existing = skip_existing
@@ -80,13 +92,15 @@ class ClonedSpeechGenerator:
     def execute(self) -> ClonedGenerationResult:
         """Generate cloned speech for all transcribed bonafide utterances.
 
-        Loads the voice cloning model via the strategy, iterates over
+        Loads the voice cloning model via the Cloner, iterates over
         bonafide transcripts, generates cloned audio, and saves metadata.
 
         Returns:
             ClonedGenerationResult with generation statistics.
         """
-        logger.info(f"Step 2: Generating cloned speech via {self.strategy.name()}...")
+        logger.info(
+            f"Step 2: Generating cloned speech via {self.cloner.SYSTEM_ID}..."
+        )
 
         cloned_dir = self.output_dir / "cloned"
         cloned_dir.mkdir(parents=True, exist_ok=True)
@@ -97,7 +111,7 @@ class ClonedSpeechGenerator:
         with open(transcripts_path, "r", encoding="utf-8") as f:
             transcripts = json.load(f)
 
-        self.strategy.load_model(device=settings.DEVICE)
+        self.cloner.load(device=settings.DEVICE)
 
         generation_metadata = {}
         failed_generations = []
@@ -106,6 +120,7 @@ class ClonedSpeechGenerator:
 
         speakers = set(entry["speaker_id"] for entry in transcripts.values())
         reference_cache = {}
+        prepared_speakers: set = set()
 
         for speaker_id in tqdm(sorted(speakers), desc="Preparing references"):
             ref_path = self._prepare_reference(speaker_id, refs_dir)
@@ -137,7 +152,10 @@ class ClonedSpeechGenerator:
                 failed_generations.append(sample_key)
                 continue
 
-            output_path = cloned_dir / f"{self.strategy.name()}_{sample_key}.wav"
+            ref_path = reference_cache[speaker_id]
+            output_path = (
+                cloned_dir / f"{self.cloner.SYSTEM_ID}_{sample_key}.wav"
+            )
 
             if self.regenerate_keys is not None and output_path.exists():
                 output_path.unlink()
@@ -166,21 +184,48 @@ class ClonedSpeechGenerator:
                 total_generated += 1
                 continue
 
+            if speaker_id not in prepared_speakers:
+                try:
+                    self._prepare_speaker(speaker_id, ref_path)
+                    prepared_speakers.add(speaker_id)
+                except Exception as exc:
+                    logger.error(
+                        f"Failed to prepare speaker {speaker_id}: {exc}"
+                    )
+                    failed_generations.append(sample_key)
+                    continue
+
             try:
                 ref_text = ""
-                if self.strategy.needs_reference_transcript():
+                if self.cloner.NEEDS_REFERENCE_TRANSCRIPT:
                     ref_text = self._get_reference_transcript(speaker_id)
 
-                gen_time = self.strategy.generate(
+                gen_time, gen_duration = self.cloner.clone_single(
                     text=text,
-                    reference_audio_path=reference_cache[speaker_id],
+                    reference_audio_path=ref_path,
                     output_path=output_path,
                     reference_text=ref_text,
                     seed=self.seed_offset + hash(sample_key) % (2**31) if self.seed_offset > 0 else None,
                 )
 
-                info = sf.info(str(output_path))
-                rtf = gen_time / info.duration if info.duration > 0 else 0.0
+                if gen_duration < settings.MIN_CLONE_DURATION_S:
+                    # Diffusion-based TTS (e.g., OmniVoice) occasionally
+                    # terminates generation at zero or near-zero length.
+                    # Empty / sub-half-second clones break downstream
+                    # ECAPA and alignment. Delete the WAV and raise so the
+                    # outer except branch routes this through the
+                    # recoverable-retry path with a bumped seed.
+                    try:
+                        output_path.unlink()
+                    except OSError:
+                        pass
+                    raise RuntimeError(
+                        f"Clone duration {gen_duration:.3f}s below "
+                        f"MIN_CLONE_DURATION_S={settings.MIN_CLONE_DURATION_S}s "
+                        "-- degenerate generation"
+                    )
+
+                rtf = gen_time / gen_duration if gen_duration > 0 else 0.0
                 total_rtf += rtf
                 total_generated += 1
 
@@ -189,7 +234,7 @@ class ClonedSpeechGenerator:
                     "split": entry["split"],
                     "text": text,
                     "audio_path": str(output_path),
-                    "duration_seconds": info.duration,
+                    "duration_seconds": gen_duration,
                     "generation_time_seconds": gen_time,
                     "rtf": rtf,
                     "skipped_existing": False,
@@ -213,7 +258,7 @@ class ClonedSpeechGenerator:
                             "marked abandoned."
                         )
 
-        self.strategy.cleanup()
+        self.cloner.cleanup()
 
         metadata_path = self.output_dir / "cloned_generation_metadata.json"
         with open(metadata_path, "w", encoding="utf-8") as f:
@@ -233,11 +278,36 @@ class ClonedSpeechGenerator:
             avg_rtf=avg_rtf,
         )
 
+    def _prepare_speaker(self, speaker_id: str, ref_path: Path) -> None:
+        """Invoke Cloner.prepare_speaker with the right arguments per attack.
+
+        Qwen's Cloner.prepare_speaker needs the reference transcript;
+        the others either don't accept it or ignore it. Centralised here
+        to keep the dispatch decision out of the main loop.
+
+        Args:
+            speaker_id: HABLA speaker identifier.
+            ref_path: Per-speaker reference audio path (from
+                _prepare_reference above).
+        """
+        if self.attack_system == "qwen":
+            ref_text = self._get_reference_transcript(speaker_id)
+            self.cloner.prepare_speaker(
+                speaker_id=speaker_id,
+                reference_audio_path=ref_path,
+                reference_text=ref_text,
+            )
+        else:
+            self.cloner.prepare_speaker(
+                speaker_id=speaker_id,
+                reference_audio_path=ref_path,
+            )
+
     def _prepare_reference(self, speaker_id: str, refs_dir: Path) -> Path | None:
         """Prepare a reference audio clip for a speaker.
 
         Concatenates training samples to target duration using the shared
-        audio concatenation utility from existing pipelines.
+        audio concatenation utility (now sourced from app/utils/).
 
         Args:
             speaker_id: HABLA speaker identifier.
@@ -277,7 +347,7 @@ class ClonedSpeechGenerator:
 
         Reads the first available transcript from the bonafide transcripts
         for the given speaker to serve as the reference text for voice
-        cloning systems like Qwen and CosyVoice.
+        cloning systems like Qwen and OmniVoice.
 
         Args:
             speaker_id: HABLA speaker identifier.

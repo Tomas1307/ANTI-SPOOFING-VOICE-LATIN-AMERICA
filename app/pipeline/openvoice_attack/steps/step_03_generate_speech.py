@@ -1,47 +1,36 @@
 """
 Step 3: Generate Synthetic Speech with OpenVoice
 
-Generates synthetic Spanish voice cloning attacks using OpenVoice:
-  1. MeloTTS (language='ES') synthesises text into a base Spanish voice.
-  2. ToneColorConverter transfers the target speaker's tone colour onto the
-     base voice using the speaker's reference audio embedding.
+Generates synthetic Spanish voice cloning attacks using OpenVoice
+(MeloTTS + ToneColorConverter). The per-sample cloning is delegated to
+the shared Cloner class in ``openvoice_attack/utils/cloner.py`` so the
+exact same logic is reused by ``partial_spoof/steps/step_02_generate_cloned_speech.py``.
 
-Both models are loaded once and reused across all samples. The ToneColorConverter
-processes each speaker's reference audio once to extract target_se, then this
-embedding is reused for all texts assigned to that speaker.
-
-Output audio is resampled to SAMPLE_RATE (16 kHz) for consistency with other
-pipeline stages.
+Output audio is resampled to SAMPLE_RATE (16 kHz) for consistency with
+other pipeline stages.
 """
 import json
-import os
-import tempfile
-import time
-import librosa
-import soundfile as sf
-import torch
 from pathlib import Path
+
 from loguru import logger
 from tqdm import tqdm
 
-from openvoice import se_extractor
-from openvoice.api import ToneColorConverter
-from melo.api import TTS
-
 from app.pipeline.openvoice_attack.settings import settings
 from app.pipeline.openvoice_attack.schemas.generation_result import GenerationResult
+from app.pipeline.openvoice_attack.utils.cloner import Cloner
 
 
 class SpeechGenerator:
-    """Generates synthetic speech using OpenVoice (MeloTTS + ToneColorConverter).
+    """Generates synthetic speech via the shared OpenVoice Cloner.
 
-    Loads both models once at the beginning of execute() and releases GPU
-    memory on completion. Per speaker, extracts the tone color embedding once
-    from the reference audio. Per text, synthesises with MeloTTS and then
-    applies tone color conversion.
+    Owns the outer loop (per-speaker, per-text iteration, resume from
+    on-disk generation_metadata.json, metadata recording, RTF stats).
+    Delegates per-speaker target_se extraction and per-sample two-stage
+    generation to the Cloner.
 
     Attributes:
         output_dir: Directory where generated audio files are saved.
+        cloner: OpenVoice Cloner instance, initialised during execute().
     """
 
     def __init__(self, output_dir: Path | None = None):
@@ -51,6 +40,7 @@ class SpeechGenerator:
             output_dir: Output directory (default: from settings).
         """
         self.output_dir = output_dir or settings.OUTPUT_DIR
+        self.cloner = Cloner()
 
     def execute(self) -> GenerationResult:
         """Generate synthetic speech for all speaker-text pairs.
@@ -76,27 +66,7 @@ class SpeechGenerator:
         with open(prompts_path, "r", encoding="utf-8") as f:
             prompts = json.load(f)
 
-        converter_config = str(
-            settings.OPENVOICE_CHECKPOINT_DIR / "converter" / "config.json"
-        )
-        converter_ckpt = str(
-            settings.OPENVOICE_CHECKPOINT_DIR / "converter" / "checkpoint.pth"
-        )
-        source_se_path = str(
-            settings.OPENVOICE_CHECKPOINT_DIR / "base_speakers" / "ses" / "es.pth"
-        )
-
-        logger.info("Loading ToneColorConverter...")
-        tone_color_converter = ToneColorConverter(converter_config, device=settings.DEVICE)
-        tone_color_converter.load_ckpt(converter_ckpt)
-        logger.info("Loading MeloTTS (ES)...")
-        tts_model = TTS(language=settings.MELO_LANGUAGE, device=settings.DEVICE)
-        speaker_ids = tts_model.hps.data.spk2id
-        melo_speaker_id = speaker_ids[settings.MELO_LANGUAGE]
-
-        source_se = torch.load(source_se_path, map_location=settings.DEVICE)
-
-        logger.info("Models loaded successfully")
+        self.cloner.load(device=settings.DEVICE)
 
         gen_metadata_path = self.output_dir / "generation_metadata.json"
         if gen_metadata_path.exists():
@@ -127,7 +97,7 @@ class SpeechGenerator:
                 speaker_prompts = prompts.get(speaker_id, [])
                 all_cached = all(
                     f"{speaker_id}_{p['text_id']}" in generated
-                    and (gen_dir / f"OPENVOICE_{speaker_id}_{p['text_id']}.wav").exists()
+                    and (gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{p['text_id']}.wav").exists()
                     for p in speaker_prompts
                 )
                 if all_cached:
@@ -135,12 +105,7 @@ class SpeechGenerator:
                     continue
 
                 try:
-                    target_se, _ = se_extractor.get_se(
-                        str(ref_path),
-                        tone_color_converter,
-                        vad=True,
-                    )
-                    logger.debug(f"Extracted tone color embedding for {speaker_id}")
+                    self.cloner.prepare_speaker(speaker_id, ref_path)
                 except Exception as e:
                     logger.error(f"Failed to extract tone color for {speaker_id}: {e}")
                     failed.extend([p["text_id"] for p in speaker_prompts])
@@ -151,20 +116,18 @@ class SpeechGenerator:
                     text = prompt_data["text"]
                     text_id = prompt_data["text_id"]
                     sample_id = f"{speaker_id}_{text_id}"
-                    output_path = gen_dir / f"OPENVOICE_{speaker_id}_{text_id}.wav"
+                    output_path = (
+                        gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{text_id}.wav"
+                    )
 
                     if sample_id in generated and output_path.exists():
                         pbar.update(1)
                         continue
 
                     try:
-                        generation_time, audio_duration = self._generate_single(
+                        generation_time, audio_duration = self.cloner.clone_single(
                             text=text,
-                            tts_model=tts_model,
-                            melo_speaker_id=melo_speaker_id,
-                            tone_color_converter=tone_color_converter,
-                            source_se=source_se,
-                            target_se=target_se,
+                            reference_audio_path=ref_path,
                             output_path=output_path,
                         )
 
@@ -203,11 +166,7 @@ class SpeechGenerator:
         logger.info(f"  Average RTF: {avg_rtf:.2f}")
         logger.info(f"  Metadata saved to: {gen_metadata_path}")
 
-        del tts_model
-        del tone_color_converter
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            logger.info("GPU memory released")
+        self.cloner.cleanup()
 
         return GenerationResult(
             generated_samples_path=gen_metadata_path,
@@ -215,69 +174,3 @@ class SpeechGenerator:
             failed_generations=failed,
             avg_rtf=avg_rtf,
         )
-
-    def _generate_single(
-        self,
-        text: str,
-        tts_model: "TTS",
-        melo_speaker_id: int,
-        tone_color_converter: "ToneColorConverter",
-        source_se: torch.Tensor,
-        target_se: torch.Tensor,
-        output_path: Path,
-    ) -> tuple:
-        """Generate a single synthetic sample via MeloTTS + ToneColorConverter.
-
-        Args:
-            text: Spanish text to synthesise.
-            tts_model: Loaded MeloTTS model instance.
-            melo_speaker_id: Integer speaker ID for MeloTTS ES voice.
-            tone_color_converter: Loaded ToneColorConverter instance.
-            source_se: Base ES speaker tone color embedding (from checkpoint).
-            target_se: Target speaker tone color embedding (from reference audio).
-            output_path: Path where the final 16 kHz WAV file will be saved.
-
-        Returns:
-            Tuple of (generation_time_seconds, audio_duration_seconds).
-
-        Raises:
-            RuntimeError: If TTS or conversion fails.
-        """
-        start_time = time.time()
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_base:
-            tmp_base_path = tmp_base.name
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_converted:
-            tmp_converted_path = tmp_converted.name
-
-        try:
-            tts_model.tts_to_file(
-                text,
-                melo_speaker_id,
-                tmp_base_path,
-                speed=settings.MELO_SPEED,
-            )
-
-            tone_color_converter.convert(
-                audio_src_path=tmp_base_path,
-                src_se=source_se,
-                tgt_se=target_se,
-                output_path=tmp_converted_path,
-                tau=settings.CONVERSION_TAU,
-                message="@MyShell",
-            )
-
-            audio, _ = librosa.load(tmp_converted_path, sr=settings.SAMPLE_RATE)
-            sf.write(str(output_path), audio, settings.SAMPLE_RATE)
-
-        finally:
-            if os.path.exists(tmp_base_path):
-                os.unlink(tmp_base_path)
-            if os.path.exists(tmp_converted_path):
-                os.unlink(tmp_converted_path)
-
-        generation_time = time.time() - start_time
-        audio_duration = len(audio) / settings.SAMPLE_RATE
-
-        return generation_time, audio_duration
