@@ -43,7 +43,7 @@ def refine_word_boundary_by_energy(
     search_radius_s: float = 0.300,
     silence_threshold_rms: float = 0.015,
     min_segment_dur_ratio: float = 0.40,
-    merge_gap_ms: float = 30.0,
+    merge_gap_ms: float = 60.0,
     window_ms: float = 10.0,
     hop_ms: float = 5.0,
 ) -> Tuple[float, float]:
@@ -89,9 +89,13 @@ def refine_word_boundary_by_energy(
             240 ms (ratio 0.625) while rejecting 50 ms artefacts
             (ratio 0.21).
         merge_gap_ms: Inter-segment silence gap (in ms) below which
-            two segments are merged. Plosives and unvoiced fricatives
-            create 10-30 ms internal silences; without merging they
-            split the word into pieces too small to qualify.
+            two segments are merged. Plosives, unvoiced fricatives,
+            and inter-phoneme TTS pauses commonly create 30-60 ms
+            internal silences; without merging they split a word into
+            pieces too small to qualify or fragment the segment so
+            only half the word is selected. 60 ms catches typical
+            stop closures (k, t, p) while still excluding inter-word
+            pauses (typically > 100 ms).
         window_ms: RMS analysis window length in milliseconds.
         hop_ms: Step between successive analysis windows.
 
@@ -175,8 +179,21 @@ def refine_word_boundary_by_energy(
     if not segments:
         return parakeet_start_s, parakeet_end_s
 
-    best_seg = min(
+    # Pick the LONGEST qualifying segment, breaking ties by closeness
+    # to Parakeet's centre. Rationale: when the search window catches
+    # multiple speech regions, the longest one is by far the most
+    # likely to be the actual word -- adjacent breath, lip smacks, or
+    # TTS padding artefacts produce shorter blips. The previous
+    # "closest to centre" heuristic preferred a 50 ms artefact next
+    # to Parakeet's drifted centre over the real 150 ms word offset
+    # by ~200 ms, blowing the stretch envelope and rejecting the
+    # splice. The duration filter already excluded tiny segments;
+    # this picks the dominant one from what survived.
+    best_seg = max(
         segments,
-        key=lambda s: abs((s[0] + s[1]) / 2.0 - parakeet_centre_s),
+        key=lambda s: (
+            s[1] - s[0],
+            -abs((s[0] + s[1]) / 2.0 - parakeet_centre_s),
+        ),
     )
     return best_seg[0], best_seg[1]

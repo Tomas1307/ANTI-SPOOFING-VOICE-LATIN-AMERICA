@@ -1,15 +1,28 @@
 """
-Core word-level audio splicing engine (duration-preserving).
+Core word-level audio splicing engine (natural-duration).
 
-Replaces selected word segments in bonafide audio with corresponding segments
-from cloned audio. The cloned word is time-stretched to fit the exact bonafide
-word duration, then overwritten in place. Total audio length never changes —
-speech rhythm and inter-word gaps are perfectly preserved.
+Replaces selected word segments in bonafide audio with corresponding
+segments from cloned audio. The cloned word is inserted at its native
+duration with no time-stretch -- the splice loop concatenates
+bonafide_prefix + cloned + bonafide_suffix and lets the result audio's
+total length adjust by the duration difference. Pitch is therefore
+preserved: spliced clones sound exactly like the standalone TTS
+output, without the chipmunk / thickening artefacts that a
+duration-preserving linear-interpolation stretch would introduce.
 
-Each splice boundary independently draws a random technique and overlap
-duration from a seeded generator, producing a heterogeneous dataset of splice
-artifacts.
+Each splice boundary independently draws a random technique and
+overlap duration from a seeded generator, producing a heterogeneous
+dataset of splice artefacts. Crossfade happens at the SEAMS where
+bonafide meets cloned (not inside a fixed slot); with valley snap and
+energy refinement the seams land in inter-word silence so the
+crossfade removes the bonafide signal cleanly.
+
+W2/W3 splices accumulate a per-call offset: when splice 1 makes the
+audio longer or shorter, splice 2's original-bonafide coordinates are
+translated to the current result via that offset before extraction
+and replacement.
 """
+import librosa
 import numpy as np
 from loguru import logger
 from typing import Dict, List, Tuple
@@ -72,25 +85,54 @@ def _build_cloned_word_map(cloned_words: List[Dict]) -> Dict[str, List[Tuple[int
 def _time_stretch(segment: np.ndarray, target_length: int) -> np.ndarray:
     """Time-stretch audio segment to exactly target_length samples.
 
-    Uses linear interpolation for resampling. Suitable for moderate
-    stretch ratios (0.75x-1.25x). For extreme ratios, a phase vocoder
-    would preserve quality better, but those cases are filtered out
-    at selection time.
+    Uses two strategies depending on how aggressive the stretch is:
+
+    * **Linear interpolation** for tiny stretches (< 5% deviation
+      from 1.0x). These produce imperceptible pitch shifts and the
+      simpler method is ~50x faster than the phase vocoder.
+    * **librosa.effects.time_stretch** (phase vocoder) for anything
+      bigger. The phase vocoder preserves pitch: a cloned 'casa'
+      compressed from 240 ms to 200 ms keeps the same fundamental
+      frequency and formant positions. The previous linear-interp
+      implementation behaved like changing a tape speed -- compressing
+      raised the pitch, expanding lowered it -- making the spliced
+      word sound "chipmunk" or "thick / cartoony" relative to its
+      surrounding bonafide. That artefact was perceptually severe
+      from ~10% stretch upward (e.g. ratio 0.80 = +20% pitch).
+
+    The phase vocoder may return a slightly off-by-one length, so the
+    output is padded with zeros or truncated to land exactly on
+    ``target_length``.
 
     Args:
         segment: Audio segment (1-D float32).
         target_length: Desired number of output samples.
 
     Returns:
-        Resampled segment of exactly target_length samples.
+        Time-stretched segment of exactly ``target_length`` samples.
     """
     if target_length <= 0 or len(segment) == 0:
         return segment
     if len(segment) == target_length:
         return segment.copy()
 
-    indices = np.linspace(0, len(segment) - 1, target_length)
-    return np.interp(indices, np.arange(len(segment)), segment).astype(np.float32)
+    src_length = len(segment)
+    rate = src_length / target_length
+
+    if abs(rate - 1.0) < 0.05:
+        indices = np.linspace(0, src_length - 1, target_length)
+        return np.interp(indices, np.arange(src_length), segment).astype(np.float32)
+
+    stretched = librosa.effects.time_stretch(
+        segment.astype(np.float32), rate=rate
+    )
+
+    if len(stretched) >= target_length:
+        return stretched[:target_length].astype(np.float32)
+
+    padded = np.zeros(target_length, dtype=np.float32)
+    padded[: len(stretched)] = stretched
+    return padded
 
 
 def splice_words(
@@ -111,13 +153,25 @@ def splice_words(
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
 
-    Duration-preserving approach: the cloned word is time-stretched to fit
-    the exact bonafide word slot, then overwritten in place. The total audio
-    length never changes — speech rhythm and gaps are preserved.
+    Natural-duration splice: the cloned word is inserted at its native
+    duration with no time-stretch. The total audio length of the result
+    therefore differs from the bonafide whenever cloned and bonafide
+    word durations diverge -- this is intentional. The previous
+    "duration-preserving" design used linear-interpolation time-stretch
+    to force the cloned into the bonafide slot length, which raised or
+    lowered the cloned word's pitch ("chipmunk" / "thick" voice
+    artefacts perceptible from ~10% stretch upward). Since the
+    downstream partial-spoof pipeline never compares spliced against
+    bonafide and labels spoof regions by their position in the spliced
+    audio, preserving the cloned's natural pitch is strictly preferable
+    to preserving total duration.
 
-    The crossfade happens INSIDE the slot boundaries: the first cf samples
-    blend from bonafide into cloned, and the last cf samples blend from
-    cloned back into bonafide.
+    The crossfade happens at the SEAMS where bonafide meets cloned --
+    the last cf samples of bonafide blend into the first cf samples of
+    cloned at the start seam, and symmetrically at the end seam. With
+    valley snap and energy refinement, the seams land in inter-word
+    silence so the crossfade mixes cloned against silence rather than
+    against speech, removing the bonafide ghost.
 
     For each selected word, independently draws:
     - A splice technique (SpliceMethod) sampled from SPLICE_METHOD_WEIGHTS
@@ -126,6 +180,12 @@ def splice_words(
     Per-word RNG is seeded from (splice_seed, word_index) for reproducibility.
 
     Word dicts must have keys: 'word' (str), 'start' (float s), 'end' (float s).
+
+    Multi-word splices (W2, W3): each splice in the loop may change the
+    result's total duration. Subsequent splices map their original
+    bonafide positions onto current-result positions via a cumulative
+    offset, so all splices land where Step 4 selected them despite
+    intermediate length changes.
 
     Args:
         bonafide_audio: Full bonafide waveform (1-D float32 array).
@@ -137,8 +197,12 @@ def splice_words(
         crossfade_min_ms: Minimum crossfade overlap drawn per splice (ms).
         crossfade_max_ms: Maximum crossfade overlap drawn per splice (ms).
         max_silence_steal_ms: Unused (kept for API compatibility).
-        max_stretch_ratio: Maximum acceptable stretch ratio. Words requiring
-            stretch outside [1/ratio, ratio] are skipped.
+        max_stretch_ratio: Retained for API compatibility but no longer
+            enforced inside this function -- Step 4 already filters
+            words whose cloned/bonafide duration ratio is extreme, so
+            re-checking here just rejects samples Step 4 already
+            accepted. Without time-stretch the cloned is inserted at
+            its natural duration regardless of ratio.
         splice_seed: Base seed for per-word RNG. Seeded as (splice_seed, idx).
         valley_search_ms: Half-width (ms) of the search window used to
             snap each bonafide slot boundary to the nearest energy
@@ -170,8 +234,15 @@ def splice_words(
     """
     cloned_map = _build_cloned_word_map(cloned_words)
 
-    result = bonafide_audio.copy()
+    result = bonafide_audio.copy().astype(np.float32)
     splice_details = []
+    # For W2/W3: each splice can change the result's total duration
+    # (cloned word duration != bonafide slot duration). Subsequent
+    # splices need to map their original-bonafide coordinates onto the
+    # current state of ``result``. This running offset tracks the net
+    # number of samples added (positive) or removed (negative) by all
+    # preceding splices in this call.
+    cumulative_offset_samples = 0
 
     for idx in sorted(selected_indices):
         if idx >= len(bonafide_words):
@@ -229,126 +300,157 @@ def splice_words(
             refined_cloned_start_s = parakeet_cloned_start_s
             refined_cloned_end_s = parakeet_cloned_end_s
 
-        b_start_raw = _clamp(int(refined_start_s * sample_rate), 0, len(result))
-        b_end_raw = _clamp(int(refined_end_s * sample_rate), b_start_raw, len(result))
+        b_start_raw = _clamp(int(refined_start_s * sample_rate), 0, len(bonafide_audio))
+        b_end_raw = _clamp(int(refined_end_s * sample_rate), b_start_raw, len(bonafide_audio))
         c_start = _clamp(int(refined_cloned_start_s * sample_rate), 0, len(cloned_audio))
         c_end = _clamp(int(refined_cloned_end_s * sample_rate), c_start, len(cloned_audio))
 
-        cl_raw_len = c_end - c_start
+        cl_natural_len = c_end - c_start
 
-        b_start = b_start_raw
-        b_end = b_end_raw
-        if valley_search_ms > 0.0 and cl_raw_len > 0:
-            # Asymmetric snap: the start boundary may only move EARLIER
-            # (further into the inter-word silence preceding the word),
-            # the end boundary only LATER. A symmetric search would
-            # frequently move a boundary inward and shrink the slot,
-            # leaving part of the bonafide word outside the replaced
-            # region -- exactly the failure mode we saw on FishGram
-            # 'casa' (snap +50 ms inward left the bonafide onset
-            # audible). Outward-only guarantees the slot covers the
-            # full acoustic word; the crossfade then falls inside
-            # silence on both sides and the bonafide signal is gone.
-            candidate_start = find_nearest_valley(
+        # Valley snap (asymmetric outward) on ORIGINAL bonafide coords.
+        # The snap extends the bonafide slot into the silence flanking
+        # the word so the crossfade falls in silence and the bonafide
+        # word is fully removed. With duration-preserving stretch
+        # removed, the snap no longer needs the stretch_ratio gate --
+        # the cloned is inserted at its natural length regardless of
+        # slot size, so any slot is acceptable.
+        b_start_snapped = b_start_raw
+        b_end_snapped = b_end_raw
+        if valley_search_ms > 0.0 and cl_natural_len > 0:
+            cand_start = find_nearest_valley(
                 bonafide_audio,
                 b_start_raw,
                 sample_rate,
                 search_ms=valley_search_ms,
                 direction="earlier",
             )
-            candidate_end = find_nearest_valley(
+            cand_end = find_nearest_valley(
                 bonafide_audio,
                 b_end_raw,
                 sample_rate,
                 search_ms=valley_search_ms,
                 direction="later",
             )
-            candidate_start = _clamp(candidate_start, 0, len(result))
-            candidate_end = _clamp(candidate_end, candidate_start, len(result))
+            b_start_snapped = _clamp(cand_start, 0, len(bonafide_audio))
+            b_end_snapped = _clamp(cand_end, b_start_snapped, len(bonafide_audio))
 
-            # Only adopt the snapped boundaries if they keep the
-            # required stretch ratio inside the configured envelope.
-            # Outward-only expansion enlarges the slot, which can
-            # push the required stretch below 1/max_stretch_ratio
-            # (cloned must be aggressively stretched to fill). When
-            # that happens, falling back to the raw Parakeet
-            # boundaries is the lesser evil: the ghost is back but
-            # the splice itself succeeds rather than getting rejected.
-            candidate_slot_len = candidate_end - candidate_start
-            if candidate_slot_len > 0:
-                candidate_stretch = cl_raw_len / candidate_slot_len
-                if (
-                    1.0 / max_stretch_ratio
-                    <= candidate_stretch
-                    <= max_stretch_ratio
-                ):
-                    b_start = candidate_start
-                    b_end = candidate_end
+        slot_len_orig = b_end_snapped - b_start_snapped
 
-        slot_len = b_end - b_start
-
-        if slot_len == 0 or cl_raw_len == 0:
+        if slot_len_orig == 0 or cl_natural_len == 0:
             logger.warning(f"Zero-length segment for word index {idx}, skipping.")
             continue
 
-        stretch_ratio = cl_raw_len / slot_len
-        if stretch_ratio > max_stretch_ratio or stretch_ratio < (1.0 / max_stretch_ratio):
-            logger.warning(
-                f"Word '{bw['word']}' (idx={idx}): stretch ratio {stretch_ratio:.2f} "
-                f"outside [{1/max_stretch_ratio:.2f}, {max_stretch_ratio:.2f}]. Skipping."
-            )
-            continue
+        # Map ORIGINAL-bonafide positions onto CURRENT result coordinates.
+        # Earlier splices in this loop may have grown or shrunk result,
+        # so the position where this word's slot lives in result is
+        # original_bonafide_position + cumulative_offset.
+        b_start = _clamp(b_start_snapped + cumulative_offset_samples, 0, len(result))
+        b_end = _clamp(b_end_snapped + cumulative_offset_samples, b_start, len(result))
 
-        cloned_word = cloned_audio[c_start:c_end].copy()
-        fitted = _time_stretch(cloned_word, slot_len)
+        cloned_segment = cloned_audio[c_start:c_end].astype(np.float32).copy()
 
+        # Energy-normalize the cloned word to the loudness of the
+        # bonafide region it replaces. Keeps the spliced word from
+        # punching out of the utterance dynamics.
         bonafide_slot = result[b_start:b_end].copy()
-        fitted = normalize_energy(fitted, bonafide_slot)
+        cloned_segment = normalize_energy(cloned_segment, bonafide_slot)
 
-        # NumPy's SeedSequence rejects negative integers ("expected
-        # non-negative integer"). Python's built-in hash() can return
-        # any signed 64-bit int, so call sites that derive the seed
-        # from hash(splice_key) routinely produce negative values --
-        # this used to crash entire splice attempts and surface as
-        # ``splice_rejected.json`` entries with that exact message.
-        # Mask the sign bit to get a stable non-negative seed without
-        # losing any of the per-key entropy.
+        # NumPy's SeedSequence rejects negative integers. Python's
+        # hash() can return any signed 64-bit int, so mask the sign
+        # bit. XOR-ing idx perturbs the per-word stream so word index
+        # variations produce visibly different draws (otherwise the
+        # second element of the seed array masks the first when small).
         seed_safe = (splice_seed & ((1 << 63) - 1)) ^ (idx & 0xFFFF)
         word_rng = np.random.default_rng([seed_safe, idx])
         method = draw_splice_method(word_rng)
         overlap_ms = float(word_rng.uniform(crossfade_min_ms, crossfade_max_ms))
 
         if method is SpliceMethod.CUT_PASTE:
-            result[b_start:b_end] = fitted
+            result = np.concatenate([
+                result[:b_start],
+                cloned_segment,
+                result[b_end:],
+            ]).astype(np.float32)
             effective_cf = 0
         else:
-            cf = int(overlap_ms * sample_rate / 1000)
-            effective_cf = min(cf, slot_len // 4)
+            # Crossfade at the SEAMS, not inside a fixed slot. Length
+            # is bounded by:
+            #   - the drawn overlap (cf_target)
+            #   - the bonafide context available before/after the cut
+            #   - half the cloned (we need cloned samples for both seams)
+            cf_target = int(overlap_ms * sample_rate / 1000)
+            effective_cf = max(
+                0,
+                min(
+                    cf_target,
+                    b_start,
+                    len(result) - b_end,
+                    cl_natural_len // 2,
+                ),
+            )
 
             if effective_cf > 0:
                 t = np.linspace(0.0, 1.0, effective_cf, dtype=np.float32)
                 fade_in, fade_out = _compute_fade_curves(t, method)
 
-                fitted[:effective_cf] = (
-                    bonafide_slot[:effective_cf] * fade_out
-                    + fitted[:effective_cf] * fade_in
+                bonafide_tail = result[b_start - effective_cf:b_start].astype(np.float32)
+                start_cf_region = (
+                    bonafide_tail * fade_out
+                    + cloned_segment[:effective_cf] * fade_in
                 )
 
-                fade_in_end, fade_out_end = _compute_fade_curves(t, method)
-                fitted[-effective_cf:] = (
-                    fitted[-effective_cf:] * fade_out_end
-                    + bonafide_slot[-effective_cf:] * fade_in_end
+                bonafide_head = result[b_end:b_end + effective_cf].astype(np.float32)
+                end_cf_region = (
+                    cloned_segment[-effective_cf:] * fade_out
+                    + bonafide_head * fade_in
                 )
 
-            result[b_start:b_end] = fitted
+                if cl_natural_len > 2 * effective_cf:
+                    middle_cloned = cloned_segment[effective_cf:cl_natural_len - effective_cf]
+                else:
+                    middle_cloned = np.zeros(0, dtype=np.float32)
+
+                result = np.concatenate([
+                    result[:b_start - effective_cf],
+                    start_cf_region.astype(np.float32),
+                    middle_cloned,
+                    end_cf_region.astype(np.float32),
+                    result[b_end + effective_cf:],
+                ]).astype(np.float32)
+            else:
+                result = np.concatenate([
+                    result[:b_start],
+                    cloned_segment,
+                    result[b_end:],
+                ]).astype(np.float32)
+
+        # The cloned region in the FINAL result starts at b_start and
+        # spans cl_natural_len samples. (Crossfade reshapes the seams
+        # but the cloned content still occupies that interval.)
+        spliced_start_samples = b_start
+        spliced_end_samples = b_start + cl_natural_len
+
+        # Net change in total result length for this splice. Subsequent
+        # splices in the same call shift by this much.
+        size_diff = cl_natural_len - slot_len_orig
+        cumulative_offset_samples += size_diff
+
+        duration_ratio = cl_natural_len / max(1, slot_len_orig)
 
         splice_details.append({
             "word_index": idx,
             "word": bw["word"],
-            "bonafide_start_s": b_start / sample_rate,
-            "bonafide_end_s": b_end / sample_rate,
-            "bonafide_start_raw_s": b_start_raw / sample_rate,
-            "bonafide_end_raw_s": b_end_raw / sample_rate,
+            # Position of the spoofed region in the SPLICED audio
+            # (what Step 6 / Step 7 use to find spoof boundaries).
+            "bonafide_start_s": spliced_start_samples / sample_rate,
+            "bonafide_end_s": spliced_end_samples / sample_rate,
+            # Position of the bonafide region that was removed, in
+            # the original bonafide coordinates -- for traceability
+            # and debugging only; downstream steps should ignore.
+            "bonafide_orig_start_s": b_start_snapped / sample_rate,
+            "bonafide_orig_end_s": b_end_snapped / sample_rate,
+            "bonafide_orig_start_raw_s": b_start_raw / sample_rate,
+            "bonafide_orig_end_raw_s": b_end_raw / sample_rate,
             "parakeet_start_s": parakeet_start_s,
             "parakeet_end_s": parakeet_end_s,
             "energy_refine_shift_start_ms": round(
@@ -357,8 +459,12 @@ def splice_words(
             "energy_refine_shift_end_ms": round(
                 (refined_end_s - parakeet_end_s) * 1000, 2
             ),
-            "valley_snap_start_ms": round((b_start - b_start_raw) * 1000 / sample_rate, 2),
-            "valley_snap_end_ms": round((b_end - b_end_raw) * 1000 / sample_rate, 2),
+            "valley_snap_start_ms": round(
+                (b_start_snapped - b_start_raw) * 1000 / sample_rate, 2
+            ),
+            "valley_snap_end_ms": round(
+                (b_end_snapped - b_end_raw) * 1000 / sample_rate, 2
+            ),
             "cloned_start_s": c_start / sample_rate,
             "cloned_end_s": c_end / sample_rate,
             "cloned_parakeet_start_s": parakeet_cloned_start_s,
@@ -369,18 +475,28 @@ def splice_words(
             "cloned_refine_shift_end_ms": round(
                 (refined_cloned_end_s - parakeet_cloned_end_s) * 1000, 2
             ),
-            "duration_ratio": round(stretch_ratio, 4),
-            "stretch_ratio": round(stretch_ratio, 4),
+            "cloned_natural_duration_s": cl_natural_len / sample_rate,
+            "slot_duration_s": slot_len_orig / sample_rate,
+            "duration_diff_ms": round(size_diff * 1000 / sample_rate, 2),
+            "duration_ratio": round(duration_ratio, 4),
+            "stretch_ratio": round(duration_ratio, 4),
             "crossfade_ms": round(overlap_ms, 2),
             "effective_crossfade_ms": round(effective_cf * 1000 / sample_rate, 2),
             "splice_method": method.value,
-            "slot_preserved": True,
+            # FALSE under the new architecture: the spliced audio's
+            # total duration shifts by ``size_diff`` per splice. The
+            # field is kept for schema compatibility with downstream
+            # consumers; readers that care about duration should
+            # check ``duration_diff_ms`` instead.
+            "slot_preserved": False,
         })
 
         logger.debug(
             f"Spliced word '{bw['word']}' (idx={idx}) | method={method.value} "
-            f"| stretch={stretch_ratio:.2f}x | cf={effective_cf}smp "
-            f"({round(effective_cf*1000/sample_rate,1)}ms) | slot={slot_len}smp"
+            f"| cloned={cl_natural_len}smp ({round(cl_natural_len*1000/sample_rate,1)}ms) "
+            f"| slot_orig={slot_len_orig}smp ({round(slot_len_orig*1000/sample_rate,1)}ms) "
+            f"| ratio={duration_ratio:.2f}x | diff={size_diff:+d}smp "
+            f"| cf={effective_cf}smp | cum_offset={cumulative_offset_samples:+d}smp"
         )
 
     splice_details.sort(key=lambda d: d["word_index"])
