@@ -61,7 +61,23 @@ class ForcedAligner:
         transcriber = ParakeetTranscriber()
         transcriber.load(model_id=settings.PARAKEET_MODEL_ID, device=settings.DEVICE)
 
-        alignment_data = {}
+        alignment_path = self.output_dir / "alignment_metadata.json"
+        if alignment_path.exists():
+            try:
+                with open(alignment_path, "r", encoding="utf-8") as f:
+                    alignment_data = json.load(f)
+                logger.info(
+                    f"Loaded {len(alignment_data)} existing alignments; new "
+                    "samples will be appended and any re-aligned samples overwritten."
+                )
+            except (json.JSONDecodeError, OSError) as exc:
+                logger.warning(
+                    f"alignment_metadata.json unreadable ({exc}); starting fresh"
+                )
+                alignment_data = {}
+        else:
+            alignment_data = {}
+
         total_aligned = 0
         failed_alignments = []
         total_words = 0
@@ -115,7 +131,6 @@ class ForcedAligner:
                 logger.error(f"Alignment failed for {sample_key}: {exc}")
                 failed_alignments.append(sample_key)
 
-        alignment_path = self.output_dir / "alignment_metadata.json"
         with open(alignment_path, "w", encoding="utf-8") as f:
             json.dump(alignment_data, f, ensure_ascii=False, indent=2)
 
