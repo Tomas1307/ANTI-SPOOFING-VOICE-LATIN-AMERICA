@@ -178,30 +178,46 @@ def find_nearest_valley(
     sample_rate: int,
     search_ms: float = 50.0,
     window_ms: float = 10.0,
+    direction: str = "both",
 ) -> int:
-    """Find the nearest low-energy valley to a sample position.
+    """Find the lowest-RMS frame near a sample position.
 
-    Slides a short RMS window around ``position`` (within +/- search_ms)
-    and returns the centre of the lowest-RMS frame. Used by the splice
-    engine to snap word slot boundaries onto silent regions before
-    crossfade. When the boundary falls inside speech, the bonafide
-    component of the crossfade bleeds through and the listener hears
-    the original word AND the cloned word simultaneously ("ghost").
-    Snapping to a valley makes the bonafide component near-silent in
-    the fade region, so only the cloned signal is audible.
+    Slides a short RMS window around ``position`` and returns the
+    centre of the lowest-RMS frame within the configured search range.
+    Used by the splice engine to snap word slot boundaries onto silent
+    regions before crossfade. When the boundary falls inside speech,
+    the bonafide component of the crossfade bleeds through and the
+    listener hears the original word AND the cloned word simultaneously
+    ("ghost"). Snapping to a valley makes the bonafide component
+    near-silent in the fade region, so only the cloned signal is
+    audible.
 
     Independent from ``find_nearest_zero_crossing``: that function
     targets cut-paste click avoidance over a millisecond window; this
     function targets ghost avoidance over a tens-of-milliseconds window.
+
+    The ``direction`` argument controls which side of ``position`` is
+    searched. The splice engine uses ``"earlier"`` for slot-start
+    boundaries and ``"later"`` for slot-end boundaries, so the slot
+    can only expand outward. A symmetric search ("both") can move a
+    boundary *inward* and shrink the slot, leaving the bonafide
+    onset/offset uncovered and audible -- exactly the failure mode
+    that motivated this function.
 
     Args:
         audio: Full audio waveform (1-D float array).
         position: Target sample position (e.g. Parakeet word boundary
             in samples).
         sample_rate: Audio sample rate in Hz.
-        search_ms: Half-width of the search window in milliseconds.
-            ``0.0`` disables snapping (returns ``position`` unchanged).
+        search_ms: Half-width (one-sided width when ``direction`` is
+            ``"earlier"`` / ``"later"``) of the search window in
+            milliseconds. ``0.0`` disables snapping.
         window_ms: RMS analysis window in milliseconds.
+        direction: ``"earlier"`` searches only positions <= ``position``,
+            ``"later"`` only positions >= ``position``, ``"both"``
+            searches symmetrically. Default ``"both"`` matches the
+            legacy interface but the splice engine should pass the
+            asymmetric values to avoid slot shrink.
 
     Returns:
         Sample index of the lowest-RMS frame within the search window,
@@ -215,8 +231,15 @@ def find_nearest_valley(
     window_samples = max(1, int(window_ms * sample_rate / 1000))
     hop = max(1, window_samples // 4)
 
-    start = max(0, position - search_samples)
-    end = min(len(audio) - window_samples, position + search_samples)
+    if direction == "earlier":
+        start = max(0, position - search_samples)
+        end = min(len(audio) - window_samples, position)
+    elif direction == "later":
+        start = max(0, position - window_samples // 2)
+        end = min(len(audio) - window_samples, position + search_samples)
+    else:
+        start = max(0, position - search_samples)
+        end = min(len(audio) - window_samples, position + search_samples)
 
     if start >= end:
         return position

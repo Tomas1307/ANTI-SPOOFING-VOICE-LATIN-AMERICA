@@ -185,23 +185,41 @@ def splice_words(
         b_start = b_start_raw
         b_end = b_end_raw
         if valley_search_ms > 0.0 and cl_raw_len > 0:
+            # Asymmetric snap: the start boundary may only move EARLIER
+            # (further into the inter-word silence preceding the word),
+            # the end boundary only LATER. A symmetric search would
+            # frequently move a boundary inward and shrink the slot,
+            # leaving part of the bonafide word outside the replaced
+            # region -- exactly the failure mode we saw on FishGram
+            # 'casa' (snap +50 ms inward left the bonafide onset
+            # audible). Outward-only guarantees the slot covers the
+            # full acoustic word; the crossfade then falls inside
+            # silence on both sides and the bonafide signal is gone.
             candidate_start = find_nearest_valley(
-                bonafide_audio, b_start_raw, sample_rate, search_ms=valley_search_ms
+                bonafide_audio,
+                b_start_raw,
+                sample_rate,
+                search_ms=valley_search_ms,
+                direction="earlier",
             )
             candidate_end = find_nearest_valley(
-                bonafide_audio, b_end_raw, sample_rate, search_ms=valley_search_ms
+                bonafide_audio,
+                b_end_raw,
+                sample_rate,
+                search_ms=valley_search_ms,
+                direction="later",
             )
             candidate_start = _clamp(candidate_start, 0, len(result))
             candidate_end = _clamp(candidate_end, candidate_start, len(result))
 
             # Only adopt the snapped boundaries if they keep the
             # required stretch ratio inside the configured envelope.
-            # Otherwise the snap creates a slot the cloned word cannot
-            # fill without aggressive resampling, and the whole splice
-            # would be skipped at the stretch_ratio gate below. Falling
-            # back to the raw Parakeet boundaries preserves the splice
-            # at the cost of a tighter (possibly ghost-prone) cut --
-            # the lesser of the two evils.
+            # Outward-only expansion enlarges the slot, which can
+            # push the required stretch below 1/max_stretch_ratio
+            # (cloned must be aggressively stretched to fill). When
+            # that happens, falling back to the raw Parakeet
+            # boundaries is the lesser evil: the ghost is back but
+            # the splice itself succeeds rather than getting rejected.
             candidate_slot_len = candidate_end - candidate_start
             if candidate_slot_len > 0:
                 candidate_stretch = cl_raw_len / candidate_slot_len
