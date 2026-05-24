@@ -28,6 +28,10 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 import librosa
 import numpy as np
 import soundfile as sf
@@ -37,7 +41,6 @@ from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.utils.splice_engine import splice_words
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = REPO_ROOT / "data" / "ab_valley_snap"
 
 
