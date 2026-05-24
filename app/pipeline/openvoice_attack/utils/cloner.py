@@ -134,11 +134,34 @@ class Cloner(BaseCloner):
         if ref_key in self._target_se_cache:
             return
 
-        target_se, _ = se_extractor.get_se(
-            ref_key,
-            self.tone_color_converter,
-            vad=True,
-        )
+        # se_extractor's internal VAD aggressively trims silence. On short
+        # or silence-padded reference clips it can reduce the speech
+        # interval below the 4-second minimum and assert "input audio is
+        # too short". Our concatenated references are already
+        # speech-dominant (built by concatenate_with_padding from clean
+        # bonafide training files), so falling back to vad=False on that
+        # AssertionError is safe and preserves the standalone production
+        # behaviour (which used vad=True successfully for 29k+ samples
+        # built from longer references).
+        try:
+            target_se, _ = se_extractor.get_se(
+                ref_key,
+                self.tone_color_converter,
+                vad=True,
+            )
+        except AssertionError as exc:
+            if "too short" in str(exc).lower():
+                logger.warning(
+                    f"OpenVoice Cloner: VAD trimmed reference for {speaker_id} "
+                    f"below the 4 s minimum; retrying without VAD."
+                )
+                target_se, _ = se_extractor.get_se(
+                    ref_key,
+                    self.tone_color_converter,
+                    vad=False,
+                )
+            else:
+                raise
         self._target_se_cache[ref_key] = target_se
         logger.debug(f"OpenVoice Cloner: extracted target_se for {speaker_id}")
 

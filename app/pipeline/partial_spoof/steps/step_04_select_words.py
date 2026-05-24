@@ -119,10 +119,16 @@ class WordSelector:
 
             if not eligible:
                 skipped_no_eligible += 1
-                logger.debug(
-                    f"No eligible words for {sample_key} "
-                    f"(best score: {valley_scores[0].combined_score:.3f})"
-                )
+                if valley_scores:
+                    logger.debug(
+                        f"No eligible words for {sample_key} "
+                        f"(best score: {valley_scores[0].combined_score:.3f})"
+                    )
+                else:
+                    logger.debug(
+                        f"No eligible words for {sample_key} "
+                        "(no word alignments -- likely empty or hallucinated clone)"
+                    )
                 continue
 
             sample_selections = []
