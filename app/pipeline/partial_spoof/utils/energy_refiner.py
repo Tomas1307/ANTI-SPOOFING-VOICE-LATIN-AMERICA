@@ -115,6 +115,27 @@ def refine_word_boundary_by_energy(
     parakeet_duration_s = max(0.001, parakeet_end_s - parakeet_start_s)
     min_segment_dur_s = parakeet_duration_s * min_segment_dur_ratio
 
+    # Conservative gate: refine ONLY when Parakeet's centre is in
+    # silence. The drift cases we want to fix (e.g. "casa" marked
+    # 200 ms past the real word) ALWAYS land the centre in inter-word
+    # silence, so this check is sufficient evidence Parakeet is wrong.
+    # When Parakeet's centre IS in speech, trust Parakeet -- words
+    # with internal stop closures ('algunas' has a 60-70 ms gap
+    # between the 'l' and the 'g' release) would otherwise be split
+    # into two segments and the refiner would pick only one half,
+    # losing the word's onset or offset ("algunas" -> "unas").
+    centre_window_samples = max(1, int(window_ms * sample_rate / 1000))
+    centre_sample = int(parakeet_centre_s * sample_rate)
+    cs = max(0, centre_sample - centre_window_samples // 2)
+    ce = min(len(audio), cs + centre_window_samples)
+    if ce > cs:
+        centre_segment = audio[cs:ce]
+        centre_rms = float(
+            np.sqrt(np.mean(centre_segment.astype(np.float32) ** 2) + 1e-12)
+        )
+        if centre_rms > silence_threshold_rms:
+            return parakeet_start_s, parakeet_end_s
+
     search_start_s = max(0.0, parakeet_centre_s - search_radius_s)
     search_end_s = min(audio_dur_s, parakeet_centre_s + search_radius_s)
 
