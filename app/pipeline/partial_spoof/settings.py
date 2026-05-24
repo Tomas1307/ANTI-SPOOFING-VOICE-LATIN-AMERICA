@@ -196,6 +196,33 @@ class PartialSpoofSettings(BaseModel):
                     "cloned signal is audible. 30-60 ms is the practical sweet "
                     "spot. Set to 0.0 to disable snapping (legacy behaviour).",
     )
+    ENERGY_REFINE_RADIUS_S: float = Field(
+        default=0.300,
+        description="Search radius (seconds) for refining Parakeet word "
+                    "boundaries via acoustic energy BEFORE the valley snap "
+                    "runs. Parakeet TDT occasionally drifts 100-300 ms on "
+                    "phrase-merged words ('la casa', 'tu cosa') and marks "
+                    "the word inside the trailing silence rather than the "
+                    "actual speech segment. When the drift exceeds the "
+                    "valley-snap window, the splice slot lands outside the "
+                    "real word entirely -- the bonafide word survives at "
+                    "the correct acoustic position and the listener hears "
+                    "both the original and the cloned word sequentially. "
+                    "Energy refinement locates the real word by detecting "
+                    "the speech segment closest to Parakeet's centre within "
+                    "+/- this radius. Set to 0.0 to disable.",
+    )
+    ENERGY_REFINE_SILENCE_RMS: float = Field(
+        default=0.015,
+        description="RMS threshold below which audio is classified as "
+                    "silence during energy-based boundary refinement. "
+                    "Calibrate per dataset: HABLA at 16 kHz mono sits "
+                    "around 0.005-0.020 for room noise vs. 0.05+ for "
+                    "clear speech. Too low: silence and speech merge "
+                    "into one segment, refinement skipped. Too high: "
+                    "quiet phonemes (fricatives, vowel tails) clipped, "
+                    "the segment is too short and gets rejected.",
+    )
 
     # === Splice Quality Validation (Step 6) ===
     ENABLE_SPLICE_RETRY: bool = Field(

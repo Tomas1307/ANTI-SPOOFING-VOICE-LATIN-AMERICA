@@ -210,6 +210,8 @@ class AudioSplicer:
                             max_stretch_ratio=settings.MAX_STRETCH_RATIO,
                             splice_seed=safe_seed,
                             valley_search_ms=settings.VALLEY_SEARCH_MS,
+                            energy_refine_radius_s=settings.ENERGY_REFINE_RADIUS_S,
+                            energy_refine_silence_rms=settings.ENERGY_REFINE_SILENCE_RMS,
                         )
                     except Exception as exc:
                         retry_history.append({

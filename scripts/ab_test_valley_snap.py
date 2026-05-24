@@ -134,11 +134,16 @@ def _run_one(attack: str, partition: str, splice_key: str, output_dir: Path, val
         max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
         max_stretch_ratio=settings.MAX_STRETCH_RATIO,
         splice_seed=splice_seed,
+        energy_refine_silence_rms=settings.ENERGY_REFINE_SILENCE_RMS,
     )
 
-    spliced_old, details_old = splice_words(**common_kwargs, valley_search_ms=0.0)
+    spliced_old, details_old = splice_words(
+        **common_kwargs, valley_search_ms=0.0, energy_refine_radius_s=0.0,
+    )
     spliced_new, details_new = splice_words(
-        **common_kwargs, valley_search_ms=valley_search_ms
+        **common_kwargs,
+        valley_search_ms=valley_search_ms,
+        energy_refine_radius_s=settings.ENERGY_REFINE_RADIUS_S,
     )
 
     out_subdir = output_dir / f"{attack}_{partition}_{splice_key}"
@@ -174,14 +179,21 @@ def _run_one(attack: str, partition: str, splice_key: str, output_dir: Path, val
         snap_start = new.get("valley_snap_start_ms", 0.0)
         snap_end = new.get("valley_snap_end_ms", 0.0)
 
+        refine_start_ms = new.get("energy_refine_shift_start_ms", 0.0)
+        refine_end_ms = new.get("energy_refine_shift_end_ms", 0.0)
+        parakeet_start = new.get("parakeet_start_s", old["bonafide_start_s"])
+        parakeet_end = new.get("parakeet_end_s", old["bonafide_end_s"])
+
         logger.info(
             f"  word='{new['word']}' (idx={idx}) "
-            f"| OLD slot=[{old['bonafide_start_s']:.3f}-{old['bonafide_end_s']:.3f}] "
+            f"| Parakeet=[{parakeet_start:.3f}-{parakeet_end:.3f}] "
+            f"OLD slot=[{old['bonafide_start_s']:.3f}-{old['bonafide_end_s']:.3f}] "
             f"RMS_inside={old_rms:.4f}"
         )
         logger.info(
             f"    NEW slot=[{new_start:.3f}-{new_end:.3f}] "
             f"RMS_inside={new_rms:.4f}  "
+            f"refine_start={refine_start_ms:+.1f}ms refine_end={refine_end_ms:+.1f}ms  "
             f"snap_start={snap_start:+.1f}ms snap_end={snap_end:+.1f}ms  "
             f"method={new['splice_method']} cf_eff={new['effective_crossfade_ms']}ms"
         )

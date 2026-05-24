@@ -21,6 +21,9 @@ from app.pipeline.partial_spoof.utils.crossfade import (
     find_nearest_zero_crossing,
     normalize_energy,
 )
+from app.pipeline.partial_spoof.utils.energy_refiner import (
+    refine_word_boundary_by_energy,
+)
 from app.pipeline.partial_spoof.utils.splice_method import SpliceMethod
 
 
@@ -103,6 +106,8 @@ def splice_words(
     max_stretch_ratio: float,
     splice_seed: int = 42,
     valley_search_ms: float = 0.0,
+    energy_refine_radius_s: float = 0.0,
+    energy_refine_silence_rms: float = 0.015,
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
 
@@ -146,6 +151,18 @@ def splice_words(
             crossfade then mixes cloned speech against bonafide
             silence and only the cloned signal is audible. Set to 0.0
             to disable snapping and preserve the legacy behaviour.
+        energy_refine_radius_s: Search radius (seconds) for refining
+            each Parakeet word boundary by acoustic energy BEFORE the
+            valley snap runs. Parakeet TDT routinely drifts 100-300 ms
+            on phrase-merged words ("la casa"); when the drift exceeds
+            the valley-snap window, the splice slot lands in the wrong
+            region entirely and the bonafide word survives outside it.
+            Energy refinement locates the actual word by detecting the
+            speech segment closest to Parakeet's centre within +/-
+            radius seconds. Set to 0.0 to disable.
+        energy_refine_silence_rms: RMS threshold below which audio is
+            considered silence in the energy refinement. Tune per
+            dataset; ~0.015 works for HABLA at 16 kHz mono.
 
     Returns:
         Tuple of (spliced_audio, splice_details) where splice_details is a
@@ -175,8 +192,32 @@ def splice_words(
 
         cw_idx, cw = cloned_map[target_key].pop(0)
 
-        b_start_raw = _clamp(int(bw["start"] * sample_rate), 0, len(result))
-        b_end_raw = _clamp(int(bw["end"] * sample_rate), b_start_raw, len(result))
+        parakeet_start_s = float(bw["start"])
+        parakeet_end_s = float(bw["end"])
+
+        # Energy refinement: Parakeet often drifts the word boundary
+        # into the silence following the real acoustic word (e.g.
+        # 'casa' marked at [3.84, 4.08] when the actual word is at
+        # [3.65, 3.80]). Without this step the splice slot lands in
+        # the wrong region and the bonafide word survives outside the
+        # replaced range. The refiner relocates the boundary to the
+        # speech segment closest to Parakeet's centre within +/-
+        # energy_refine_radius_s seconds.
+        if energy_refine_radius_s > 0.0:
+            refined_start_s, refined_end_s = refine_word_boundary_by_energy(
+                bonafide_audio,
+                parakeet_start_s,
+                parakeet_end_s,
+                sample_rate,
+                search_radius_s=energy_refine_radius_s,
+                silence_threshold_rms=energy_refine_silence_rms,
+            )
+        else:
+            refined_start_s = parakeet_start_s
+            refined_end_s = parakeet_end_s
+
+        b_start_raw = _clamp(int(refined_start_s * sample_rate), 0, len(result))
+        b_end_raw = _clamp(int(refined_end_s * sample_rate), b_start_raw, len(result))
         c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
         c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
 
@@ -295,6 +336,14 @@ def splice_words(
             "bonafide_end_s": b_end / sample_rate,
             "bonafide_start_raw_s": b_start_raw / sample_rate,
             "bonafide_end_raw_s": b_end_raw / sample_rate,
+            "parakeet_start_s": parakeet_start_s,
+            "parakeet_end_s": parakeet_end_s,
+            "energy_refine_shift_start_ms": round(
+                (refined_start_s - parakeet_start_s) * 1000, 2
+            ),
+            "energy_refine_shift_end_ms": round(
+                (refined_end_s - parakeet_end_s) * 1000, 2
+            ),
             "valley_snap_start_ms": round((b_start - b_start_raw) * 1000 / sample_rate, 2),
             "valley_snap_end_ms": round((b_end - b_end_raw) * 1000 / sample_rate, 2),
             "cloned_start_s": cw["start"],
