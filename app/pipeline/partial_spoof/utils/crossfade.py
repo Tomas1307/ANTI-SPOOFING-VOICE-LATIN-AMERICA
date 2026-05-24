@@ -172,6 +172,69 @@ def find_nearest_zero_crossing(
     return int(crossings[np.argmin(distances)])
 
 
+def find_nearest_valley(
+    audio: np.ndarray,
+    position: int,
+    sample_rate: int,
+    search_ms: float = 50.0,
+    window_ms: float = 10.0,
+) -> int:
+    """Find the nearest low-energy valley to a sample position.
+
+    Slides a short RMS window around ``position`` (within +/- search_ms)
+    and returns the centre of the lowest-RMS frame. Used by the splice
+    engine to snap word slot boundaries onto silent regions before
+    crossfade. When the boundary falls inside speech, the bonafide
+    component of the crossfade bleeds through and the listener hears
+    the original word AND the cloned word simultaneously ("ghost").
+    Snapping to a valley makes the bonafide component near-silent in
+    the fade region, so only the cloned signal is audible.
+
+    Independent from ``find_nearest_zero_crossing``: that function
+    targets cut-paste click avoidance over a millisecond window; this
+    function targets ghost avoidance over a tens-of-milliseconds window.
+
+    Args:
+        audio: Full audio waveform (1-D float array).
+        position: Target sample position (e.g. Parakeet word boundary
+            in samples).
+        sample_rate: Audio sample rate in Hz.
+        search_ms: Half-width of the search window in milliseconds.
+            ``0.0`` disables snapping (returns ``position`` unchanged).
+        window_ms: RMS analysis window in milliseconds.
+
+    Returns:
+        Sample index of the lowest-RMS frame within the search window,
+        or the original ``position`` if the search range is empty or
+        ``search_ms == 0``.
+    """
+    if search_ms <= 0.0 or position < 0 or position >= len(audio):
+        return position
+
+    search_samples = max(1, int(search_ms * sample_rate / 1000))
+    window_samples = max(1, int(window_ms * sample_rate / 1000))
+    hop = max(1, window_samples // 4)
+
+    start = max(0, position - search_samples)
+    end = min(len(audio) - window_samples, position + search_samples)
+
+    if start >= end:
+        return position
+
+    best_rms = float("inf")
+    best_pos = position
+    for p in range(start, end + 1, hop):
+        segment = audio[p : p + window_samples]
+        if len(segment) == 0:
+            continue
+        rms = float(np.sqrt(np.mean(segment.astype(np.float32) ** 2) + 1e-12))
+        if rms < best_rms:
+            best_rms = rms
+            best_pos = p + window_samples // 2
+
+    return int(best_pos)
+
+
 def normalize_energy(
     cloned_segment: np.ndarray,
     bonafide_region: np.ndarray,

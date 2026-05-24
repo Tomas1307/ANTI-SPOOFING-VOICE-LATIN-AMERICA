@@ -182,6 +182,20 @@ class PartialSpoofSettings(BaseModel):
         default=50.0,
         description="Maximum milliseconds to steal from adjacent silence for duration mismatch",
     )
+    VALLEY_SEARCH_MS: float = Field(
+        default=50.0,
+        description="Half-width (ms) of the search window used by the splice "
+                    "engine to snap each bonafide slot boundary to the nearest "
+                    "energy valley before applying the crossfade. Parakeet's word "
+                    "boundaries frequently clip a few tens of milliseconds inside "
+                    "the acoustic word, so the bonafide word's onset/offset "
+                    "survives outside the splice slot and bleeds through the "
+                    "fade (listener hears the original word and the cloned word "
+                    "overlapping). Snapping the cut onto a low-RMS frame makes "
+                    "the bonafide side of the crossfade silent, so only the "
+                    "cloned signal is audible. 30-60 ms is the practical sweet "
+                    "spot. Set to 0.0 to disable snapping (legacy behaviour).",
+    )
 
     # === Splice Quality Validation (Step 6) ===
     ENABLE_SPLICE_RETRY: bool = Field(

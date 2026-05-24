@@ -17,6 +17,7 @@ from typing import Dict, List, Tuple
 from app.pipeline.partial_spoof.utils.crossfade import (
     _compute_fade_curves,
     draw_splice_method,
+    find_nearest_valley,
     find_nearest_zero_crossing,
     normalize_energy,
 )
@@ -101,6 +102,7 @@ def splice_words(
     max_silence_steal_ms: float,
     max_stretch_ratio: float,
     splice_seed: int = 42,
+    valley_search_ms: float = 0.0,
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
 
@@ -133,6 +135,17 @@ def splice_words(
         max_stretch_ratio: Maximum acceptable stretch ratio. Words requiring
             stretch outside [1/ratio, ratio] are skipped.
         splice_seed: Base seed for per-word RNG. Seeded as (splice_seed, idx).
+        valley_search_ms: Half-width (ms) of the search window used to
+            snap each bonafide slot boundary to the nearest energy
+            valley. Without this, Parakeet's word boundaries often clip
+            inside the acoustic word, so parts of the bonafide word
+            survive outside the splice slot and bleed through the
+            crossfade -- the listener hears both the cloned word and
+            the original word. Setting this to 30-60 ms reliably
+            relocates each cut onto a silent inter-word gap; the
+            crossfade then mixes cloned speech against bonafide
+            silence and only the cloned signal is audible. Set to 0.0
+            to disable snapping and preserve the legacy behaviour.
 
     Returns:
         Tuple of (spliced_audio, splice_details) where splice_details is a
@@ -166,6 +179,17 @@ def splice_words(
         b_end = _clamp(int(bw["end"] * sample_rate), b_start, len(result))
         c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
         c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
+
+        b_start_raw, b_end_raw = b_start, b_end
+        if valley_search_ms > 0.0:
+            b_start = find_nearest_valley(
+                bonafide_audio, b_start, sample_rate, search_ms=valley_search_ms
+            )
+            b_end = find_nearest_valley(
+                bonafide_audio, b_end, sample_rate, search_ms=valley_search_ms
+            )
+            b_start = _clamp(b_start, 0, len(result))
+            b_end = _clamp(b_end, b_start, len(result))
 
         slot_len = b_end - b_start
         cl_raw_len = c_end - c_start
@@ -219,8 +243,12 @@ def splice_words(
         splice_details.append({
             "word_index": idx,
             "word": bw["word"],
-            "bonafide_start_s": bw["start"],
-            "bonafide_end_s": bw["end"],
+            "bonafide_start_s": b_start / sample_rate,
+            "bonafide_end_s": b_end / sample_rate,
+            "bonafide_start_raw_s": b_start_raw / sample_rate,
+            "bonafide_end_raw_s": b_end_raw / sample_rate,
+            "valley_snap_start_ms": round((b_start - b_start_raw) * 1000 / sample_rate, 2),
+            "valley_snap_end_ms": round((b_end - b_end_raw) * 1000 / sample_rate, 2),
             "cloned_start_s": cw["start"],
             "cloned_end_s": cw["end"],
             "duration_ratio": round(stretch_ratio, 4),
