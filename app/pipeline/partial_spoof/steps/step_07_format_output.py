@@ -222,7 +222,7 @@ class OutputFormatter:
                 split=split,
                 partition=partition_label,
                 attack=attack_label,
-                clone_sim=clone_sim_map.get(splice_key),
+                clone_sim=clone_sim_map.get(splice_key.rsplit("_", 1)[0]),
                 jitter_info=jitter_info,
             ))
             spoofed_words_rows.extend(self._build_spoofed_words_rows(

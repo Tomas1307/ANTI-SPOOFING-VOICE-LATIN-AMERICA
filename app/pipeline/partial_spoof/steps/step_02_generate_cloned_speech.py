@@ -119,6 +119,13 @@ class ClonedSpeechGenerator:
         speakers = set(entry["speaker_id"] for entry in transcripts.values())
         reference_cache = {}
         prepared_speakers: set = set()
+        # Speakers whose prepare_speaker raised (e.g. OpenVoice se_extractor
+        # rejects a reference with too little detectable speech). Sticky:
+        # once a speaker is in here, every subsequent sample for that
+        # speaker is failed fast without re-attempting prepare_speaker.
+        # Avoids spamming the log with the same error per-sample and
+        # wastes no compute on a permanently broken reference.
+        failed_speakers: set = set()
 
         for speaker_id in tqdm(sorted(speakers), desc="Preparing references"):
             ref_path = self._prepare_reference(speaker_id, refs_dir)
@@ -147,6 +154,10 @@ class ClonedSpeechGenerator:
                 continue
 
             if speaker_id not in reference_cache:
+                failed_generations.append(sample_key)
+                continue
+
+            if speaker_id in failed_speakers:
                 failed_generations.append(sample_key)
                 continue
 
@@ -195,8 +206,10 @@ class ClonedSpeechGenerator:
                     prepared_speakers.add(speaker_id)
                 except Exception as exc:
                     logger.error(
-                        f"Failed to prepare speaker {speaker_id}: {exc}"
+                        f"Failed to prepare speaker {speaker_id}: {exc} "
+                        "(marked failed; remaining samples for this speaker skipped)"
                     )
+                    failed_speakers.add(speaker_id)
                     failed_generations.append(sample_key)
                     continue
 
