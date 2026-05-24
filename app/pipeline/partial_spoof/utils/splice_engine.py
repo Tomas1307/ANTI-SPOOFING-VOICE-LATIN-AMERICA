@@ -347,82 +347,112 @@ def splice_words(
         b_start = _clamp(b_start_snapped + cumulative_offset_samples, 0, len(result))
         b_end = _clamp(b_end_snapped + cumulative_offset_samples, b_start, len(result))
 
-        cloned_segment = cloned_audio[c_start:c_end].astype(np.float32).copy()
-
-        # Energy-normalize the cloned word to the loudness of the
-        # bonafide region it replaces. Keeps the spliced word from
-        # punching out of the utterance dynamics.
-        bonafide_slot = result[b_start:b_end].copy()
-        cloned_segment = normalize_energy(cloned_segment, bonafide_slot)
-
         # NumPy's SeedSequence rejects negative integers. Python's
         # hash() can return any signed 64-bit int, so mask the sign
         # bit. XOR-ing idx perturbs the per-word stream so word index
-        # variations produce visibly different draws (otherwise the
-        # second element of the seed array masks the first when small).
+        # variations produce visibly different draws.
         seed_safe = (splice_seed & ((1 << 63) - 1)) ^ (idx & 0xFFFF)
         word_rng = np.random.default_rng([seed_safe, idx])
         method = draw_splice_method(word_rng)
         overlap_ms = float(word_rng.uniform(crossfade_min_ms, crossfade_max_ms))
+        cf_target = int(overlap_ms * sample_rate / 1000)
 
-        if method is SpliceMethod.CUT_PASTE:
+        # KEY DESIGN POINT: extend the cloned source by cf samples on
+        # each side so the crossfade falls on the TTS silence padding
+        # AROUND the word, not on the word's first/last phonemes.
+        # Without this, the fade-in attenuates the word's onset (e.g.
+        # the 'l' of 'lugar') and the fade-out attenuates the offset
+        # (e.g. the 'r' of 'lugar') -- the listener hears 'Luga-'
+        # because the trailing fricative dies under the fade.
+        #
+        # The amount we can extend is bounded by:
+        #   - cf_target (drawn overlap)
+        #   - bonafide context length (need cf samples before/after the cut)
+        #   - cloned audio extent on each side (need cf samples of TTS
+        #     audio around the refined word boundary)
+        # When the cloned word sits at the absolute start or end of
+        # the cloned WAV, ``left_extension`` / ``right_extension`` is
+        # zero and the crossfade falls back to eating into the word
+        # (lesser of two evils vs. an abrupt click). With valley snap
+        # placing the bonafide seam in silence, the bonafide side of
+        # the crossfade is silent regardless, so even the fallback
+        # path is clean on one side.
+        max_left_ext = min(c_start, cf_target)
+        max_right_ext = min(len(cloned_audio) - c_end, cf_target)
+        effective_cf = max(
+            0,
+            min(
+                cf_target,
+                b_start,
+                len(result) - b_end,
+                max_left_ext,
+                max_right_ext,
+            ),
+        )
+
+        if method is SpliceMethod.CUT_PASTE or effective_cf == 0:
+            cloned_segment = cloned_audio[c_start:c_end].astype(np.float32).copy()
+            bonafide_slot = result[b_start:b_end].copy()
+            cloned_segment = normalize_energy(cloned_segment, bonafide_slot)
             result = np.concatenate([
                 result[:b_start],
                 cloned_segment,
                 result[b_end:],
             ]).astype(np.float32)
-            effective_cf = 0
+            if method is SpliceMethod.CUT_PASTE:
+                effective_cf = 0
         else:
-            # Crossfade at the SEAMS, not inside a fixed slot. Length
-            # is bounded by:
-            #   - the drawn overlap (cf_target)
-            #   - the bonafide context available before/after the cut
-            #   - half the cloned (we need cloned samples for both seams)
-            cf_target = int(overlap_ms * sample_rate / 1000)
-            effective_cf = max(
-                0,
-                min(
-                    cf_target,
-                    b_start,
-                    len(result) - b_end,
-                    cl_natural_len // 2,
-                ),
+            # Extract cloned WITH silence padding on each side.
+            c_start_ext = c_start - effective_cf
+            c_end_ext = c_end + effective_cf
+            cloned_ext = cloned_audio[c_start_ext:c_end_ext].astype(np.float32).copy()
+
+            # Energy-normalize using ONLY the word portion (not the
+            # silence pads, which would skew the RMS towards zero and
+            # blow up the scale).
+            cloned_word_only = cloned_ext[effective_cf:effective_cf + cl_natural_len]
+            bonafide_slot = result[b_start:b_end].copy()
+            scaled_word = normalize_energy(cloned_word_only, bonafide_slot)
+            # Apply the same gain to the padding regions for continuity
+            # so the silence remains silent (multiplied by the same scale)
+            # and the seams between word and pads stay smooth.
+            if np.sqrt(np.mean(cloned_word_only ** 2) + 1e-12) > 1e-8:
+                scale = float(
+                    np.sqrt(np.mean(bonafide_slot ** 2) + 1e-12)
+                    / np.sqrt(np.mean(cloned_word_only ** 2) + 1e-12)
+                )
+                cloned_ext = cloned_ext * scale
+
+            t = np.linspace(0.0, 1.0, effective_cf, dtype=np.float32)
+            fade_in, fade_out = _compute_fade_curves(t, method)
+
+            # Start seam: bonafide tail (silence after valley snap)
+            # blends with cloned PADDING (TTS silence before the word).
+            bonafide_tail = result[b_start - effective_cf:b_start].astype(np.float32)
+            start_cf_region = (
+                bonafide_tail * fade_out
+                + cloned_ext[:effective_cf] * fade_in
             )
 
-            if effective_cf > 0:
-                t = np.linspace(0.0, 1.0, effective_cf, dtype=np.float32)
-                fade_in, fade_out = _compute_fade_curves(t, method)
+            # End seam: cloned PADDING (TTS silence after the word)
+            # blends with bonafide head (silence after valley snap).
+            bonafide_head = result[b_end:b_end + effective_cf].astype(np.float32)
+            end_cf_region = (
+                cloned_ext[-effective_cf:] * fade_out
+                + bonafide_head * fade_in
+            )
 
-                bonafide_tail = result[b_start - effective_cf:b_start].astype(np.float32)
-                start_cf_region = (
-                    bonafide_tail * fade_out
-                    + cloned_segment[:effective_cf] * fade_in
-                )
+            # The actual word content sits in the middle of cloned_ext
+            # at full amplitude -- no fade touches it.
+            word_middle = cloned_ext[effective_cf:effective_cf + cl_natural_len]
 
-                bonafide_head = result[b_end:b_end + effective_cf].astype(np.float32)
-                end_cf_region = (
-                    cloned_segment[-effective_cf:] * fade_out
-                    + bonafide_head * fade_in
-                )
-
-                if cl_natural_len > 2 * effective_cf:
-                    middle_cloned = cloned_segment[effective_cf:cl_natural_len - effective_cf]
-                else:
-                    middle_cloned = np.zeros(0, dtype=np.float32)
-
-                result = np.concatenate([
-                    result[:b_start - effective_cf],
-                    start_cf_region.astype(np.float32),
-                    middle_cloned,
-                    end_cf_region.astype(np.float32),
-                    result[b_end + effective_cf:],
-                ]).astype(np.float32)
-            else:
-                result = np.concatenate([
-                    result[:b_start],
-                    cloned_segment,
-                    result[b_end:],
-                ]).astype(np.float32)
+            result = np.concatenate([
+                result[:b_start - effective_cf],
+                start_cf_region.astype(np.float32),
+                word_middle,
+                end_cf_region.astype(np.float32),
+                result[b_end + effective_cf:],
+            ]).astype(np.float32)
 
         # The cloned region in the FINAL result starts at b_start and
         # spans cl_natural_len samples. (Crossfade reshapes the seams
