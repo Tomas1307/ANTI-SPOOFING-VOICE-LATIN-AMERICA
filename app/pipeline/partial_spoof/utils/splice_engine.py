@@ -37,6 +37,77 @@ from app.pipeline.partial_spoof.utils.crossfade import (
 from app.pipeline.partial_spoof.utils.energy_refiner import (
     refine_word_boundary_by_energy,
 )
+
+
+def _silent_run_backward(
+    audio: np.ndarray,
+    position: int,
+    sample_rate: int,
+    max_ms: float,
+    silence_threshold: float = 0.015,
+    window_ms: float = 5.0,
+) -> int:
+    """Return how many samples before ``position`` are continuous silence.
+
+    Scans short RMS windows walking backward from ``position`` until
+    one exceeds ``silence_threshold`` or the maximum search distance
+    is reached. Used by the splice engine to size the crossfade so
+    the extension never bleeds into the previous cloned word ("leak").
+
+    Args:
+        audio: 1-D float waveform.
+        position: Sample index from which to walk backward.
+        sample_rate: Audio sample rate in Hz.
+        max_ms: Maximum distance to consider in milliseconds.
+        silence_threshold: RMS at or below which a window counts as silence.
+        window_ms: RMS analysis window length in milliseconds.
+
+    Returns:
+        Number of consecutive silent samples immediately preceding
+        ``position``. Capped at ``max_ms`` and at ``position`` itself.
+    """
+    max_samples = max(0, int(max_ms * sample_rate / 1000))
+    win = max(1, int(window_ms * sample_rate / 1000))
+    silent = 0
+    while silent + win <= max_samples and (position - silent - win) >= 0:
+        start = position - silent - win
+        end = position - silent
+        segment = audio[start:end]
+        if len(segment) == 0:
+            break
+        rms = float(np.sqrt(np.mean(segment.astype(np.float32) ** 2) + 1e-12))
+        if rms > silence_threshold:
+            break
+        silent += win
+    return silent
+
+
+def _silent_run_forward(
+    audio: np.ndarray,
+    position: int,
+    sample_rate: int,
+    max_ms: float,
+    silence_threshold: float = 0.015,
+    window_ms: float = 5.0,
+) -> int:
+    """Return how many samples after ``position`` are continuous silence.
+
+    Mirror of :func:`_silent_run_backward` walking forward.
+    """
+    max_samples = max(0, int(max_ms * sample_rate / 1000))
+    win = max(1, int(window_ms * sample_rate / 1000))
+    silent = 0
+    while silent + win <= max_samples and (position + silent + win) <= len(audio):
+        start = position + silent
+        end = start + win
+        segment = audio[start:end]
+        if len(segment) == 0:
+            break
+        rms = float(np.sqrt(np.mean(segment.astype(np.float32) ** 2) + 1e-12))
+        if rms > silence_threshold:
+            break
+        silent += win
+    return silent
 from app.pipeline.partial_spoof.utils.splice_method import SpliceMethod
 
 
@@ -365,20 +436,38 @@ def splice_words(
         # (e.g. the 'r' of 'lugar') -- the listener hears 'Luga-'
         # because the trailing fricative dies under the fade.
         #
-        # The amount we can extend is bounded by:
-        #   - cf_target (drawn overlap)
-        #   - bonafide context length (need cf samples before/after the cut)
-        #   - cloned audio extent on each side (need cf samples of TTS
-        #     audio around the refined word boundary)
-        # When the cloned word sits at the absolute start or end of
-        # the cloned WAV, ``left_extension`` / ``right_extension`` is
-        # zero and the crossfade falls back to eating into the word
-        # (lesser of two evils vs. an abrupt click). With valley snap
-        # placing the bonafide seam in silence, the bonafide side of
-        # the crossfade is silent regardless, so even the fallback
-        # path is clean on one side.
-        max_left_ext = min(c_start, cf_target)
-        max_right_ext = min(len(cloned_audio) - c_end, cf_target)
+        # BUT: the extension must NOT cross into adjacent cloned words.
+        # Some TTS clones pack consecutive words tightly with little or
+        # no silence between them; blindly extending by cf samples then
+        # captures the previous or next word's onset, which the
+        # crossfade mixes into the seam ("leak" of the neighbouring
+        # word into the spliced region).
+        #
+        # The extension is therefore bounded by the actual silent run
+        # on each side of the cloned word -- we walk outward sample by
+        # sample and stop when we hit speech. When the silent run is
+        # zero on one side (word starts/ends right at the next word),
+        # the crossfade collapses to a hard cut on that side, which is
+        # acceptable: with valley snap placing the bonafide seam in
+        # silence, a clean cut on the cloned side still avoids clicks.
+        cloned_silence_left = _silent_run_backward(
+            cloned_audio,
+            c_start,
+            sample_rate,
+            max_ms=float(crossfade_max_ms),
+            silence_threshold=energy_refine_silence_rms,
+        )
+        cloned_silence_right = _silent_run_forward(
+            cloned_audio,
+            c_end,
+            sample_rate,
+            max_ms=float(crossfade_max_ms),
+            silence_threshold=energy_refine_silence_rms,
+        )
+        max_left_ext = min(c_start, cf_target, cloned_silence_left)
+        max_right_ext = min(
+            len(cloned_audio) - c_end, cf_target, cloned_silence_right
+        )
         effective_cf = max(
             0,
             min(
