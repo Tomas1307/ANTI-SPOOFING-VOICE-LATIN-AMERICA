@@ -188,6 +188,14 @@ class AudioSplicer:
 
                     tried_indices.update(candidate_indices)
 
+                    # Mask the sign bit so NumPy's SeedSequence never
+                    # sees a negative integer. Python's hash() returns
+                    # signed 64-bit ints, so adding it to RANDOM_SEED
+                    # routinely produced negative seeds that crashed
+                    # default_rng with "expected non-negative integer".
+                    raw_seed = settings.RANDOM_SEED + hash(splice_key)
+                    safe_seed = raw_seed & ((1 << 63) - 1)
+
                     try:
                         spliced_audio, splice_details = splice_words(
                             bonafide_audio=bonafide_audio,
@@ -200,7 +208,7 @@ class AudioSplicer:
                             crossfade_max_ms=settings.CROSSFADE_MAX_MS,
                             max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
                             max_stretch_ratio=settings.MAX_STRETCH_RATIO,
-                            splice_seed=settings.RANDOM_SEED + hash(splice_key),
+                            splice_seed=safe_seed,
                             valley_search_ms=settings.VALLEY_SEARCH_MS,
                         )
                     except Exception as exc:

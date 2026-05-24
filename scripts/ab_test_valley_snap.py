@@ -23,6 +23,7 @@ librosa, soundfile, numpy, loguru). Listen to the WAV pairs in
 ``data/ab_valley_snap`` and decide whether to enable VALLEY_SEARCH_MS for
 the production sweep.
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -41,7 +42,7 @@ from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.utils.splice_engine import splice_words
 
 
-OUTPUT_DIR = REPO_ROOT / "data" / "ab_valley_snap"
+OUTPUT_DIR_BASE = REPO_ROOT / "data" / "ab_valley_snap"
 
 
 PROBE_SAMPLES: List[Tuple[str, str, str]] = [
@@ -71,7 +72,7 @@ def _resolve_cell_dir(attack: str, partition: str) -> Path:
     return REPO_ROOT / "data" / "partial_spoof_output" / attack / partition
 
 
-def _run_one(attack: str, partition: str, splice_key: str) -> None:
+def _run_one(attack: str, partition: str, splice_key: str, output_dir: Path, valley_search_ms: float) -> None:
     cell = _resolve_cell_dir(attack, partition)
     if not cell.exists():
         logger.warning(f"Cell missing: {cell}")
@@ -117,7 +118,9 @@ def _run_one(attack: str, partition: str, splice_key: str) -> None:
     )
 
     selected_indices = _resolve_selected_indices(entry_splice)
-    splice_seed = settings.RANDOM_SEED + hash(splice_key)
+    # Match step_05's masking so the A/B run uses the exact same RNG
+    # path as production (and never crashes on a negative hash).
+    splice_seed = (settings.RANDOM_SEED + hash(splice_key)) & ((1 << 63) - 1)
 
     common_kwargs = dict(
         bonafide_audio=bonafide_audio,
@@ -135,10 +138,10 @@ def _run_one(attack: str, partition: str, splice_key: str) -> None:
 
     spliced_old, details_old = splice_words(**common_kwargs, valley_search_ms=0.0)
     spliced_new, details_new = splice_words(
-        **common_kwargs, valley_search_ms=settings.VALLEY_SEARCH_MS
+        **common_kwargs, valley_search_ms=valley_search_ms
     )
 
-    out_subdir = OUTPUT_DIR / f"{attack}_{partition}_{splice_key}"
+    out_subdir = output_dir / f"{attack}_{partition}_{splice_key}"
     out_subdir.mkdir(parents=True, exist_ok=True)
 
     sf.write(str(out_subdir / "OLD_no_snap.wav"), spliced_old, settings.SAMPLE_RATE)
@@ -149,7 +152,7 @@ def _run_one(attack: str, partition: str, splice_key: str) -> None:
     logger.info("=" * 78)
     logger.info(
         f"{attack:10s}/{partition:12s}  {splice_key}  "
-        f"(valley_search={settings.VALLEY_SEARCH_MS} ms)"
+        f"(valley_search={valley_search_ms} ms)"
     )
     logger.info(
         f"  Outputs at: {out_subdir.relative_to(REPO_ROOT)}/{{OLD_no_snap,NEW_valley_snap,REF_*}}.wav"
@@ -196,15 +199,42 @@ def _run_one(attack: str, partition: str, splice_key: str) -> None:
 
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(
+        description=(
+            "A/B test the valley-snap splice fix. Generates OLD (current "
+            "production) and NEW (snap-enabled) spliced WAVs side by side."
+        )
+    )
+    parser.add_argument(
+        "--valley-search-ms",
+        type=float,
+        default=None,
+        help=(
+            "Override settings.VALLEY_SEARCH_MS for the NEW splice. "
+            "Default reads from settings (currently "
+            f"{settings.VALLEY_SEARCH_MS} ms). Try 80-120 if the default "
+            "doesn't move the cut into a clear valley."
+        ),
+    )
+    args = parser.parse_args()
+
+    valley_search_ms = (
+        args.valley_search_ms
+        if args.valley_search_ms is not None
+        else settings.VALLEY_SEARCH_MS
+    )
+
+    output_dir = OUTPUT_DIR_BASE / f"search_{int(valley_search_ms)}ms"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     logger.info(
         f"Running A/B valley-snap test on {len(PROBE_SAMPLES)} samples. "
-        f"VALLEY_SEARCH_MS={settings.VALLEY_SEARCH_MS}. "
-        f"Outputs under {OUTPUT_DIR.relative_to(REPO_ROOT)}/."
+        f"valley_search_ms={valley_search_ms}. "
+        f"Outputs under {output_dir.relative_to(REPO_ROOT)}/."
     )
     for attack, partition, splice_key in PROBE_SAMPLES:
         try:
-            _run_one(attack, partition, splice_key)
+            _run_one(attack, partition, splice_key, output_dir, valley_search_ms)
         except Exception as exc:
             logger.exception(f"Failed on {attack}/{partition}/{splice_key}: {exc}")
 

@@ -175,24 +175,45 @@ def splice_words(
 
         cw_idx, cw = cloned_map[target_key].pop(0)
 
-        b_start = _clamp(int(bw["start"] * sample_rate), 0, len(result))
-        b_end = _clamp(int(bw["end"] * sample_rate), b_start, len(result))
+        b_start_raw = _clamp(int(bw["start"] * sample_rate), 0, len(result))
+        b_end_raw = _clamp(int(bw["end"] * sample_rate), b_start_raw, len(result))
         c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
         c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
 
-        b_start_raw, b_end_raw = b_start, b_end
-        if valley_search_ms > 0.0:
-            b_start = find_nearest_valley(
-                bonafide_audio, b_start, sample_rate, search_ms=valley_search_ms
+        cl_raw_len = c_end - c_start
+
+        b_start = b_start_raw
+        b_end = b_end_raw
+        if valley_search_ms > 0.0 and cl_raw_len > 0:
+            candidate_start = find_nearest_valley(
+                bonafide_audio, b_start_raw, sample_rate, search_ms=valley_search_ms
             )
-            b_end = find_nearest_valley(
-                bonafide_audio, b_end, sample_rate, search_ms=valley_search_ms
+            candidate_end = find_nearest_valley(
+                bonafide_audio, b_end_raw, sample_rate, search_ms=valley_search_ms
             )
-            b_start = _clamp(b_start, 0, len(result))
-            b_end = _clamp(b_end, b_start, len(result))
+            candidate_start = _clamp(candidate_start, 0, len(result))
+            candidate_end = _clamp(candidate_end, candidate_start, len(result))
+
+            # Only adopt the snapped boundaries if they keep the
+            # required stretch ratio inside the configured envelope.
+            # Otherwise the snap creates a slot the cloned word cannot
+            # fill without aggressive resampling, and the whole splice
+            # would be skipped at the stretch_ratio gate below. Falling
+            # back to the raw Parakeet boundaries preserves the splice
+            # at the cost of a tighter (possibly ghost-prone) cut --
+            # the lesser of the two evils.
+            candidate_slot_len = candidate_end - candidate_start
+            if candidate_slot_len > 0:
+                candidate_stretch = cl_raw_len / candidate_slot_len
+                if (
+                    1.0 / max_stretch_ratio
+                    <= candidate_stretch
+                    <= max_stretch_ratio
+                ):
+                    b_start = candidate_start
+                    b_end = candidate_end
 
         slot_len = b_end - b_start
-        cl_raw_len = c_end - c_start
 
         if slot_len == 0 or cl_raw_len == 0:
             logger.warning(f"Zero-length segment for word index {idx}, skipping.")
@@ -212,7 +233,16 @@ def splice_words(
         bonafide_slot = result[b_start:b_end].copy()
         fitted = normalize_energy(fitted, bonafide_slot)
 
-        word_rng = np.random.default_rng([splice_seed, idx])
+        # NumPy's SeedSequence rejects negative integers ("expected
+        # non-negative integer"). Python's built-in hash() can return
+        # any signed 64-bit int, so call sites that derive the seed
+        # from hash(splice_key) routinely produce negative values --
+        # this used to crash entire splice attempts and surface as
+        # ``splice_rejected.json`` entries with that exact message.
+        # Mask the sign bit to get a stable non-negative seed without
+        # losing any of the per-key entropy.
+        seed_safe = (splice_seed & ((1 << 63) - 1)) ^ (idx & 0xFFFF)
+        word_rng = np.random.default_rng([seed_safe, idx])
         method = draw_splice_method(word_rng)
         overlap_ms = float(word_rng.uniform(crossfade_min_ms, crossfade_max_ms))
 
