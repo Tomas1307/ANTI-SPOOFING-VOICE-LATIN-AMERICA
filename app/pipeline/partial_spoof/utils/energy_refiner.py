@@ -42,48 +42,63 @@ def refine_word_boundary_by_energy(
     sample_rate: int,
     search_radius_s: float = 0.300,
     silence_threshold_rms: float = 0.015,
-    min_speech_segment_ms: float = 40.0,
+    min_segment_dur_ratio: float = 0.40,
+    merge_gap_ms: float = 30.0,
     window_ms: float = 10.0,
     hop_ms: float = 5.0,
 ) -> Tuple[float, float]:
     """Refine a forced-alignment word boundary using acoustic energy.
 
-    Searches a fixed radius around Parakeet's word centre, detects
-    contiguous speech segments above ``silence_threshold_rms``, and
-    returns the segment whose centre is closest to Parakeet's centre.
+    Two stages:
 
-    The refinement is robust to alignment drift up to roughly
-    ``search_radius_s``. If no speech segment is found inside the
-    search window (e.g. very quiet word, threshold too high), the
-    original Parakeet boundaries are returned unchanged so callers
-    fail open instead of producing nonsense.
+    1. **Detect speech segments** in a window around Parakeet's centre
+       (RMS > ``silence_threshold_rms``). Adjacent segments separated
+       by short gaps (< ``merge_gap_ms``) are merged: speech often
+       contains brief intra-word silences between phonemes (stops,
+       voiceless fricatives) that would otherwise fragment one word
+       into multiple short segments.
+
+    2. **Filter and pick**:
+       - Reject segments shorter than
+         ``min_segment_dur_ratio * parakeet_duration``. Filters out
+         room noise, breath, and lip smacks that happen to fall
+         close to Parakeet's centre.
+       - Among qualified segments, pick the one whose centre is
+         closest to Parakeet's centre. That's the segment most
+         likely to be the word Parakeet was pointing at, just at a
+         shifted position.
+
+    If no segment qualifies, fall back to Parakeet's boundaries so
+    the splice still proceeds (possibly with a residual ghost) rather
+    than getting skipped at the stretch-ratio gate downstream.
 
     Args:
-        audio: Bonafide waveform (1-D float32, mono) sampled at
-            ``sample_rate``.
-        parakeet_start_s: Parakeet's word start in seconds. Used as
-            a coarse hint for where to search; the refined start may
-            differ by up to ``search_radius_s``.
-        parakeet_end_s: Parakeet's word end in seconds. Used together
-            with ``parakeet_start_s`` to compute the search centre.
+        audio: Bonafide waveform (1-D float32, mono).
+        parakeet_start_s: Parakeet's word start in seconds.
+        parakeet_end_s: Parakeet's word end in seconds.
         sample_rate: Audio sample rate in Hz.
         search_radius_s: Half-width of the search window around
-            Parakeet's centre. ``0.0`` disables refinement (returns
-            the Parakeet boundaries unchanged).
-        silence_threshold_rms: RMS value below which a frame is
-            classified as silence. Calibrate per dataset: HABLA at
-            16 kHz mono sits around 0.005-0.020 for room noise vs.
-            0.05+ for clear speech.
-        min_speech_segment_ms: Minimum duration for a detected
-            segment to qualify as "a word". Filters out clicks,
-            breath noise, and lip smacks.
+            Parakeet's centre. ``0.0`` disables refinement.
+        silence_threshold_rms: RMS classified as silence.
+        min_segment_dur_ratio: Minimum segment duration as a fraction
+            of Parakeet's claimed word duration. A short artefact
+            (e.g. 50 ms breath) near Parakeet's centre would
+            otherwise be picked over the real 150 ms word segment,
+            shrinking the splice slot below the stretch envelope and
+            getting rejected. 0.40 keeps "casa" 150 ms vs. Parakeet
+            240 ms (ratio 0.625) while rejecting 50 ms artefacts
+            (ratio 0.21).
+        merge_gap_ms: Inter-segment silence gap (in ms) below which
+            two segments are merged. Plosives and unvoiced fricatives
+            create 10-30 ms internal silences; without merging they
+            split the word into pieces too small to qualify.
         window_ms: RMS analysis window length in milliseconds.
         hop_ms: Step between successive analysis windows.
 
     Returns:
-        Tuple ``(refined_start_s, refined_end_s)``. Equal to the input
-        when ``search_radius_s == 0.0``, when the search window is
-        degenerate, or when no qualifying speech segment is found.
+        Tuple ``(refined_start_s, refined_end_s)``. Returns the input
+        unchanged when ``search_radius_s == 0.0`` or no qualifying
+        segment is found.
     """
     if search_radius_s <= 0.0:
         return parakeet_start_s, parakeet_end_s
@@ -93,6 +108,9 @@ def refine_word_boundary_by_energy(
         return parakeet_start_s, parakeet_end_s
 
     parakeet_centre_s = (parakeet_start_s + parakeet_end_s) / 2.0
+    parakeet_duration_s = max(0.001, parakeet_end_s - parakeet_start_s)
+    min_segment_dur_s = parakeet_duration_s * min_segment_dur_ratio
+
     search_start_s = max(0.0, parakeet_centre_s - search_radius_s)
     search_end_s = min(audio_dur_s, parakeet_centre_s + search_radius_s)
 
@@ -101,7 +119,7 @@ def refine_word_boundary_by_energy(
 
     window_samples = max(1, int(window_ms * sample_rate / 1000))
     hop_samples = max(1, int(hop_ms * sample_rate / 1000))
-    min_segment_frames = max(1, int(min_speech_segment_ms / hop_ms))
+    merge_gap_frames = max(1, int(merge_gap_ms / hop_ms))
 
     start_sample = int(search_start_s * sample_rate)
     end_sample = min(len(audio), int(search_end_s * sample_rate))
@@ -123,19 +141,36 @@ def refine_word_boundary_by_energy(
     centres_arr = np.array(centres_s, dtype=np.float32)
     is_speech = rms_arr > silence_threshold_rms
 
+    # Detect contiguous speech segments, merging gaps shorter than
+    # merge_gap_frames so intra-word stops/fricatives do not split
+    # the word into multiple sub-segments.
     segments = []
-    i = 0
     n = len(is_speech)
+    i = 0
     while i < n:
-        if is_speech[i]:
-            j = i
-            while j < n and is_speech[j]:
-                j += 1
-            if (j - i) >= min_segment_frames:
-                segments.append((float(centres_arr[i]), float(centres_arr[j - 1])))
-            i = j
-        else:
+        if not is_speech[i]:
             i += 1
+            continue
+        seg_start_idx = i
+        seg_end_idx = i
+        j = i + 1
+        while j < n:
+            if is_speech[j]:
+                seg_end_idx = j
+                j += 1
+                continue
+            k = j
+            while k < n and not is_speech[k] and (k - j) < merge_gap_frames:
+                k += 1
+            if k < n and is_speech[k]:
+                j = k
+                continue
+            break
+        seg_start_s = float(centres_arr[seg_start_idx])
+        seg_end_s = float(centres_arr[seg_end_idx])
+        if (seg_end_s - seg_start_s) >= min_segment_dur_s:
+            segments.append((seg_start_s, seg_end_s))
+        i = j
 
     if not segments:
         return parakeet_start_s, parakeet_end_s

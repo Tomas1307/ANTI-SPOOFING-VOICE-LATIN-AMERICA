@@ -194,15 +194,18 @@ def splice_words(
 
         parakeet_start_s = float(bw["start"])
         parakeet_end_s = float(bw["end"])
+        parakeet_cloned_start_s = float(cw["start"])
+        parakeet_cloned_end_s = float(cw["end"])
 
-        # Energy refinement: Parakeet often drifts the word boundary
-        # into the silence following the real acoustic word (e.g.
-        # 'casa' marked at [3.84, 4.08] when the actual word is at
-        # [3.65, 3.80]). Without this step the splice slot lands in
-        # the wrong region and the bonafide word survives outside the
-        # replaced range. The refiner relocates the boundary to the
-        # speech segment closest to Parakeet's centre within +/-
-        # energy_refine_radius_s seconds.
+        # Energy refinement runs on BOTH sides. Parakeet drifts on
+        # natural fast speech (bonafide) and occasionally on TTS
+        # output (cloned). Refining only one side leaves a duration
+        # mismatch -- the refined bonafide slot can be 150 ms while
+        # the cloned source is still 240 ms per Parakeet, blowing
+        # past the stretch envelope. Applying the same refinement to
+        # the cloned word keeps source and destination acoustically
+        # comparable so the resulting splice respects the stretch
+        # ratio constraint.
         if energy_refine_radius_s > 0.0:
             refined_start_s, refined_end_s = refine_word_boundary_by_energy(
                 bonafide_audio,
@@ -212,14 +215,24 @@ def splice_words(
                 search_radius_s=energy_refine_radius_s,
                 silence_threshold_rms=energy_refine_silence_rms,
             )
+            refined_cloned_start_s, refined_cloned_end_s = refine_word_boundary_by_energy(
+                cloned_audio,
+                parakeet_cloned_start_s,
+                parakeet_cloned_end_s,
+                sample_rate,
+                search_radius_s=energy_refine_radius_s,
+                silence_threshold_rms=energy_refine_silence_rms,
+            )
         else:
             refined_start_s = parakeet_start_s
             refined_end_s = parakeet_end_s
+            refined_cloned_start_s = parakeet_cloned_start_s
+            refined_cloned_end_s = parakeet_cloned_end_s
 
         b_start_raw = _clamp(int(refined_start_s * sample_rate), 0, len(result))
         b_end_raw = _clamp(int(refined_end_s * sample_rate), b_start_raw, len(result))
-        c_start = _clamp(int(cw["start"] * sample_rate), 0, len(cloned_audio))
-        c_end = _clamp(int(cw["end"] * sample_rate), c_start, len(cloned_audio))
+        c_start = _clamp(int(refined_cloned_start_s * sample_rate), 0, len(cloned_audio))
+        c_end = _clamp(int(refined_cloned_end_s * sample_rate), c_start, len(cloned_audio))
 
         cl_raw_len = c_end - c_start
 
@@ -346,8 +359,16 @@ def splice_words(
             ),
             "valley_snap_start_ms": round((b_start - b_start_raw) * 1000 / sample_rate, 2),
             "valley_snap_end_ms": round((b_end - b_end_raw) * 1000 / sample_rate, 2),
-            "cloned_start_s": cw["start"],
-            "cloned_end_s": cw["end"],
+            "cloned_start_s": c_start / sample_rate,
+            "cloned_end_s": c_end / sample_rate,
+            "cloned_parakeet_start_s": parakeet_cloned_start_s,
+            "cloned_parakeet_end_s": parakeet_cloned_end_s,
+            "cloned_refine_shift_start_ms": round(
+                (refined_cloned_start_s - parakeet_cloned_start_s) * 1000, 2
+            ),
+            "cloned_refine_shift_end_ms": round(
+                (refined_cloned_end_s - parakeet_cloned_end_s) * 1000, 2
+            ),
             "duration_ratio": round(stretch_ratio, 4),
             "stretch_ratio": round(stretch_ratio, 4),
             "crossfade_ms": round(overlap_ms, 2),
