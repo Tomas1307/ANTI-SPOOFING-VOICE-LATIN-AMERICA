@@ -131,8 +131,6 @@ def _run_one(attack: str, partition: str, splice_key: str, output_dir: Path, val
         sample_rate=settings.SAMPLE_RATE,
         crossfade_min_ms=settings.CROSSFADE_MIN_MS,
         crossfade_max_ms=settings.CROSSFADE_MAX_MS,
-        max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
-        max_stretch_ratio=settings.MAX_STRETCH_RATIO,
         splice_seed=splice_seed,
         energy_refine_silence_rms=settings.ENERGY_REFINE_SILENCE_RMS,
     )

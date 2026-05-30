@@ -1,0 +1,50 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Objectives</div>
+    <h2>One goal, four pillars</h2>
+    <p style="max-width:840px; margin-bottom:26px;">Design and implement <span style="color:var(--white); font-weight:600;">HABLA 2.0</span>: a modernized, multi-condition voice anti-spoofing corpus and benchmark for Latin American Spanish, built on four pillars &mdash; modern full-synthesis attacks, a partial-spoof corpus with boundary jitter, multi-condition acoustic augmentation, and cross-corpus benchmarking.</p>
+
+    <div class="four">
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 1</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Full-synthesis attacks</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">6 neural TTS systems (Fish Speech, Qwen3, OmniVoice, Chatterbox, OpenVoice, OuteTTS) replace the legacy GAN attacks.</div>
+        <div style="margin-top:12px;"><span class="tag green">Mostly done</span></div>
+      </div>
+      <div class="card-sm" style="border-color:var(--border-bright);">
+        <div class="pipe-box-label">Pillar 2 <span class="tag amber">new</span></div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Partial spoof</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">Word-level splicing of 1&ndash;3 cloned words (W1/W2/W3) plus boundary-jitter adversarial augmentation. First in Spanish.</div>
+        <div style="margin-top:12px;"><span class="tag green">Validated</span></div>
+      </div>
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 3</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Acoustic augmentation</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">Multi-condition degradation: 60% RIR+Noise / 30% Codec / 10% RawBoost, for real-world robustness.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Pending</span></div>
+      </div>
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 4</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Cross-corpus benchmarking</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">SSL detectors (wav2vec 2.0 / WavLM) over full + partial spoof; evaluate vs ASVspoof, HISPASpoof, PartialSpoof.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Pending</span></div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:14px 48px;">
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; font-weight:300;">
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE1</span>&nbsp;&nbsp;Speaker-independent partitions (HABLA + Common Voice), no overlap across train/val/test.</div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE2</span>&nbsp;&nbsp;Acoustic augmentation pipeline (60/30/10 RIR-Noise / Codec / RawBoost). <span class="tag amber">pending</span></div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE3</span>&nbsp;&nbsp;Full-synthesis attacks with 6 modern neural TTS systems.</div>
+        <div><span style="color:var(--green); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE4</span>&nbsp;&nbsp;<span style="color:rgba(255,255,255,0.8);">Partial-spoof corpus: word-level splice (clone &rarr; align &rarr; valley-select &rarr; splice), ECAPA gate.</span> <span class="tag amber">new</span></div>
+      </div>
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; font-weight:300;">
+        <div style="margin-bottom:10px;"><span style="color:var(--green); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE5</span>&nbsp;&nbsp;<span style="color:rgba(255,255,255,0.8);">Boundary-jitter adversarial augmentation: homogenize artifacts across all boundaries to break the detector shortcut.</span> <span class="tag amber">new</span></div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE6</span>&nbsp;&nbsp;Train and evaluate detectors (SSL, AM-Softmax) on full + partial spoof vs LCNN+LFCC baseline. <span class="tag amber">pending</span></div>
+        <div><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE7</span>&nbsp;&nbsp;Cross-corpus benchmarking vs ASVspoof 2019 LA, HISPASpoof, PartialSpoof. <span class="tag amber">pending</span></div>
+      </div>
+    </div>
+  </div>
+</section>

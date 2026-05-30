@@ -206,8 +206,6 @@ class AudioSplicer:
                             sample_rate=settings.SAMPLE_RATE,
                             crossfade_min_ms=settings.CROSSFADE_MIN_MS,
                             crossfade_max_ms=settings.CROSSFADE_MAX_MS,
-                            max_silence_steal_ms=settings.MAX_SILENCE_STEAL_MS,
-                            max_stretch_ratio=settings.MAX_STRETCH_RATIO,
                             splice_seed=safe_seed,
                             valley_search_ms=settings.VALLEY_SEARCH_MS,
                             energy_refine_radius_s=settings.ENERGY_REFINE_RADIUS_S,

@@ -22,7 +22,7 @@
 |------|---------|
 | [Pipeline Architecture](methodology/pipeline-architecture.md) | 7-step pipeline: Transcribe, Clone, Align, Select, Splice, Validate, Format. Facade + Strategy patterns |
 | [Attack Systems](methodology/attack-systems.md) | Per-TTS configuration, venv setup, production run parameters |
-| [Partial Spoof Approach](methodology/partial-spoof-approach.md) | Valley-score selection, duration-preserving splice, clone similarity gate, edge cases |
+| [Partial Spoof Approach](methodology/partial-spoof-approach.md) | Valley-score selection, **natural-duration splice (2026-05-24)**, energy refinement, asymmetric valley snap, seam crossfade, clone similarity gate, edge cases |
 | [Dataset Design](methodology/dataset-design.md) | HABLA v2 (1,567 speakers, 7 accents), W1/W2/W3 tiers, bonafide ratio |
 | [Quality Metrics](methodology/quality-metrics.md) | WER/CER thresholds, NISQA MOS, ECAPA SIM, valley score formula |
 
@@ -31,7 +31,7 @@
 | Page | Summary |
 |------|---------|
 | [Production Runs](experiments/production-runs.md) | Per-pipeline status + **Operational Runbook** with exact ml-server03 commands, success criteria, and pending-work checklist (OmniVoice validation + boundary jitter pilot) — **read this first when continuing on a new machine** |
-| [Validation Results](experiments/validation-results.md) | Partial spoof validation: 5 speakers, metrics comparison |
+| [Validation Results](experiments/validation-results.md) | Partial spoof validation: v1 (Apr 22), OmniVoice standalone (May 6), **splice-rewrite validation 2026-05-24 (295 samples, 1.95x yield improvement)** |
 | [Ablation Studies](experiments/ablation-studies.md) | Crossfade technique comparison, valley score threshold tuning |
 
 ## Decisions

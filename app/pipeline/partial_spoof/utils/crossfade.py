@@ -35,63 +35,6 @@ def draw_splice_method(rng: np.random.Generator) -> SpliceMethod:
     return methods[idx]
 
 
-def apply_crossfade(
-    segment_before: np.ndarray,
-    segment_after: np.ndarray,
-    crossfade_samples: int,
-    method: SpliceMethod = SpliceMethod.OLA_HANNING,
-) -> np.ndarray:
-    """Blend two adjacent audio segments at their boundary using the chosen method.
-
-    For all methods except CUT_PASTE, the last crossfade_samples of segment_before
-    and the first crossfade_samples of segment_after are blended according to the
-    fade curve. The output length is len(segment_before) + len(segment_after)
-    minus crossfade_samples (the overlap region is merged, not doubled).
-
-    For CUT_PASTE (or crossfade_samples <= 0), the segments are concatenated
-    with no blending.
-
-    Args:
-        segment_before: Audio samples preceding the splice point (1-D float32).
-        segment_after: Audio samples following the splice point (1-D float32).
-        crossfade_samples: Number of samples in the overlap/blend region.
-        method: Fade-curve variant to apply.
-
-    Returns:
-        Blended audio array.
-
-    Raises:
-        ValueError: If crossfade_samples exceeds either segment length.
-    """
-    if method is SpliceMethod.CUT_PASTE or crossfade_samples <= 0:
-        return np.concatenate([segment_before, segment_after])
-
-    if crossfade_samples > len(segment_before):
-        raise ValueError(
-            f"crossfade_samples ({crossfade_samples}) exceeds "
-            f"segment_before length ({len(segment_before)})"
-        )
-    if crossfade_samples > len(segment_after):
-        raise ValueError(
-            f"crossfade_samples ({crossfade_samples}) exceeds "
-            f"segment_after length ({len(segment_after)})"
-        )
-
-    t = np.linspace(0.0, 1.0, crossfade_samples, dtype=np.float32)
-    fade_in, fade_out = _compute_fade_curves(t, method)
-
-    overlap = (
-        segment_before[-crossfade_samples:] * fade_out
-        + segment_after[:crossfade_samples] * fade_in
-    )
-
-    return np.concatenate([
-        segment_before[:-crossfade_samples],
-        overlap,
-        segment_after[crossfade_samples:],
-    ])
-
-
 def _compute_fade_curves(
     t: np.ndarray,
     method: SpliceMethod,
@@ -136,42 +79,6 @@ def _compute_fade_curves(
     return fade_in, fade_out
 
 
-def find_nearest_zero_crossing(
-    audio: np.ndarray,
-    position: int,
-    search_range: int = 80,
-) -> int:
-    """Find the nearest zero-crossing to a given sample position.
-
-    A zero-crossing is where the waveform crosses zero amplitude.
-    Cutting at a zero-crossing prevents the audible click that occurs
-    when splicing at a non-zero amplitude.
-
-    Args:
-        audio: Full audio waveform (1-D float array).
-        position: Target sample position.
-        search_range: Number of samples to search in each direction.
-
-    Returns:
-        Sample position of the nearest zero-crossing, or the original
-        position if no crossing is found within range.
-    """
-    if position <= 0 or position >= len(audio) - 1:
-        return position
-
-    start = max(1, position - search_range)
-    end = min(len(audio) - 1, position + search_range)
-
-    signs = np.sign(audio[start:end])
-    crossings = np.where(np.diff(signs) != 0)[0] + start
-
-    if len(crossings) == 0:
-        return position
-
-    distances = np.abs(crossings - position)
-    return int(crossings[np.argmin(distances)])
-
-
 def find_nearest_valley(
     audio: np.ndarray,
     position: int,
@@ -191,10 +98,6 @@ def find_nearest_valley(
     ("ghost"). Snapping to a valley makes the bonafide component
     near-silent in the fade region, so only the cloned signal is
     audible.
-
-    Independent from ``find_nearest_zero_crossing``: that function
-    targets cut-paste click avoidance over a millisecond window; this
-    function targets ghost avoidance over a tens-of-milliseconds window.
 
     The ``direction`` argument controls which side of ``position`` is
     searched. The splice engine uses ``"earlier"`` for slot-start

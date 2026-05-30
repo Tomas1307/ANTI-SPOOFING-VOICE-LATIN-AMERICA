@@ -1,0 +1,33 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Problem &amp; Motivation</div>
+    <h2>Two gaps, one corpus</h2>
+    <p style="margin-bottom:30px; max-width:780px;">Voice anti-spoofing decides whether a speech signal is genuine (<em>bonafide</em>) or machine-generated (<em>spoofed</em>). The reference resource for Latin American Spanish &mdash; HABLA (Interspeech 2023) &mdash; is three years stale, and the field still frames spoofing as all-or-nothing. HABLA 2.0 closes both gaps at once.</p>
+
+    <div class="two">
+      <div class="card-sm">
+        <div class="eyebrow" style="margin-bottom:14px;">Gap A &mdash; an outdated corpus</div>
+        <div style="font-size:18px; font-weight:600; margin-bottom:16px;">HABLA is 3+ years old</div>
+        <div style="font-size:13px; color:var(--muted); line-height:1.9; font-weight:300;">
+          <div style="margin-bottom:10px;"><span class="hi" style="color:var(--white); font-weight:500;">GAN-only attacks</span> (StarGAN-VC, CycleGAN-VC) &mdash; deprecated 2018&ndash;2020 technology.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No augmentation</span> &mdash; models trained on clean studio audio collapse under reverb, codec compression, and noise.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No neural codec / flow-matching TTS</span> &mdash; the dominant 2025&ndash;2026 synthesis paradigm is entirely absent.</div>
+          <div><span style="color:var(--white); font-weight:500;">English detectors hit EER &gt;45%</span> on Spanish &mdash; cross-lingual transfer fails.</div>
+        </div>
+      </div>
+
+      <div class="card-sm" style="border-color:var(--border-bright);">
+        <div class="eyebrow" style="margin-bottom:14px;">Gap B &mdash; the partial-spoof blind spot <span class="tag amber">new</span></div>
+        <div style="font-size:18px; font-weight:600; margin-bottom:16px;">Every corpus is all-or-nothing</div>
+        <div style="font-size:13px; color:var(--muted); line-height:1.9; font-weight:300;">
+          <div style="margin-bottom:10px;">All anti-spoofing datasets &mdash; HABLA included &mdash; contain <span style="color:var(--white); font-weight:500;">fully-synthetic OR fully-bonafide</span> audio only.</div>
+          <div style="margin-bottom:10px;">The real threat is <span style="color:var(--white); font-weight:500;">partial</span>: splice a few cloned words into genuine speech (<span class="cm" style="font-family:'JetBrains Mono',monospace; font-size:11px;">"transfer 100"&rarr;"transfer 9000"</span>). 90%+ of the signal is real, so global detectors miss it.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No Latin American Spanish partial-spoof corpus exists.</span></div>
+          <div>Detectors learn a <span style="color:var(--white); font-weight:500;">shortcut</span> &mdash; the noisy splice boundary, not real synthesis artifacts (Negroni 2024: 6.16% EER, zero training). It does not generalize.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:28px;">HABLA's regional accents remain valuable. Its attack set, its lack of augmentation, and its all-or-nothing framing do not. HABLA 2.0 modernizes the attacks, hardens robustness, and introduces the first Spanish partial-spoof corpus with adversarial boundary augmentation.</div>
+  </div>
+</section>

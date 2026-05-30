@@ -42,7 +42,6 @@ class PartialSpoofSettings(BaseModel):
 
         CROSSFADE_MIN_MS: Minimum crossfade overlap drawn per splice (ms).
         CROSSFADE_MAX_MS: Maximum crossfade overlap drawn per splice (ms).
-        MAX_SILENCE_STEAL_MS: Maximum silence to steal from adjacent pauses.
         ENABLE_SPLICE_RETRY: Enable retry with different seed on splice quality failure.
         MAX_SPLICE_RETRIES: Maximum retry attempts per splice.
 
@@ -177,10 +176,6 @@ class PartialSpoofSettings(BaseModel):
         default=80.0,
         description="Maximum crossfade overlap drawn per splice boundary (ms). "
                     "For CUT_PASTE method this value is ignored (overlap = 0).",
-    )
-    MAX_SILENCE_STEAL_MS: float = Field(
-        default=50.0,
-        description="Maximum milliseconds to steal from adjacent silence for duration mismatch",
     )
     VALLEY_SEARCH_MS: float = Field(
         default=50.0,

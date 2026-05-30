@@ -1,7 +1,7 @@
 # Partial Spoof Approach
 
 **Status:** Active
-**Last updated:** 2026-04-25
+**Last updated:** 2026-05-24
 **Source:** Session discoveries from listening tests + implementation
 
 ---
@@ -32,11 +32,29 @@ combined = max(left_score, right_score)
 
 **Selection algorithm:** Greedy best-first with non-adjacency constraint. Not random.
 
-### Duration-preserving splice (not variable-length insert)
+### Natural-duration splice (changed 2026-05-24)
 
-**Discovery (April 25):** Inserting a 480ms cloned word into a 640ms bonafide slot shifted all subsequent audio by 160ms, destroying speech rhythm.
+**Earlier design (April 25 - May 23):** Time-stretched the cloned word to fit the exact bonafide slot duration, overwriting in place so total audio length never changed. Stretch ratio constrained to `[1/MAX_STRETCH_RATIO, MAX_STRETCH_RATIO]` (`MAX_STRETCH_RATIO=1.25`).
 
-**Solution:** Time-stretch the cloned word to fit the exact bonafide slot duration. Overwrite in place. Total audio length never changes. Stretch ratio limited to [0.75, 1.25].
+**Problem found in May 24 audit:** Linear-interpolation time-stretch (`np.interp`) is mathematically equivalent to changing playback speed: stretching by 1.20x raises pitch ~20% ("chipmunk"); compressing by 0.80x lowers pitch ~20% ("thick/cartoony"). Master Tomas's listening tests on the validation run flagged this as audibly bad — spliced words obviously different in pitch from their surroundings, especially at stretch ratios near the 0.80x and 1.25x extremes.
+
+**Current design (May 24):** Remove time-stretch entirely. Insert the cloned word at its natural duration. Total audio length varies per sample. For W2/W3 splices, a `cumulative_offset_samples` counter maps original-bonafide positions onto current-result positions so later splices in the same call land at the right place despite earlier splices having grown or shrunk the audio. The cumulative_offset is reset per utterance.
+
+**Why we can drop duration preservation:** The corpus is consumed as `partial_spoof_audio + per-word boundary labels` (no pairing with the original bonafide for frame-level comparison). Word-level spoof labels work regardless of total duration. Position fields in `splice_metadata.json` (`bonafide_start_s`, `bonafide_end_s`) now refer to positions in the SPLICED audio (where the spoofed region lives in the final WAV), not in the original bonafide. Step 6 and Step 7 already use them this way for boundary metrics and label tables.
+
+**Crossfade at the seams (not inside the slot):** Without a fixed slot length, the crossfade can no longer happen "inside" the slot. Instead, the cloned source is extended by `cf` samples on each side (capturing TTS silence padding around the word). At each seam:
+
+```
+result = bonafide[:b_start - cf]
+       + crossfade(bonafide_tail, cloned_padding_left, cf)
+       + cloned_word_body
+       + crossfade(cloned_padding_right, bonafide_head, cf)
+       + bonafide[b_end + cf:]
+```
+
+The crossfade falls in silence on both sides (bonafide_tail = post-valley-snap silence, cloned_padding = TTS silence around the word), so the bonafide ghost disappears and the cloned word body is never attenuated. Cloned-side extension is bounded by `_silent_run_backward/_forward(cloned_audio, ...)` to prevent the extension from capturing a neighbouring cloned word, which would leak into the seam.
+
+`MAX_STRETCH_RATIO=1.25` is kept as a Step 4 word-selection filter (only select words where cloned/bonafide durations are within the envelope) but no longer enforced in Step 5; the natural-duration splice accepts whatever duration the TTS produced. `_time_stretch` remains in the module as dead code for API compatibility.
 
 ### Clone similarity gate
 
@@ -50,8 +68,67 @@ ECAPA-TDNN cosine similarity between bonafide and clone must be >= 0.60. Bad clo
 | Not enough good words for W2/W3 | Skip higher tiers |
 | Word < 200ms | Ineligible (too short to be meaningful) |
 | First/last word | Only internal boundary scored (external = silence, artificially good) |
-| Stretch ratio outside [0.75, 1.25] | Word ineligible |
+| Stretch ratio outside [0.75, 1.25] | Word ineligible at Step 4 selection time (no longer enforced in Step 5 splice) |
 | All clones for a speaker fail similarity | Speaker produces no partial spoofs |
+| Parakeet word boundary drifts >100ms from acoustic position | Energy refiner (Step 5) corrects it when Parakeet centre falls in silence; otherwise trusts Parakeet |
+| Cloned word adjacent to next/previous cloned word with no silence gap | Crossfade extension on that side collapses to 0 -> CUT_PASTE seam (no leak of neighbour into splice) |
+| Negative `hash(splice_key)` | Masked with `& ((1<<63)-1)` at both call site (Step 5) and inside `splice_engine` (defensive) so `np.random.default_rng` accepts the seed |
+
+## Splice Engine Architecture (post-2026-05-24)
+
+The Step 5 splice engine assembles each spliced WAV by concatenation, not in-place overwrite. The per-word loop:
+
+```
+1. Resolve bonafide and cloned word boundaries (Parakeet timestamps)
+2. ENERGY REFINEMENT (utils/energy_refiner.py)
+     - Conservative gate: only refine if Parakeet centre is in silence
+     - Detect speech segments in +- ENERGY_REFINE_RADIUS_S window
+     - Merge adjacent segments separated by < merge_gap_ms (catches phoneme stop closures)
+     - Filter segments by duration (>= min_segment_dur_ratio * parakeet_duration)
+     - Pick the longest qualifying segment, tiebreak by closeness to Parakeet centre
+     - Applied to BOTH bonafide and cloned word boundaries independently
+3. VALLEY SNAP (utils/crossfade.find_nearest_valley)
+     - Asymmetric outward: direction="earlier" for start, "later" for end
+     - Extends bonafide slot into adjacent silence so seams fall in low energy
+     - Never shrinks the slot inward
+4. SLOT EXTRACTION
+     - bonafide slot = [b_start_snapped, b_end_snapped] in original-bonafide coords
+     - cloned source = [c_start, c_end] in cloned coords
+     - Both ranges are AFTER refinement + (bonafide-only) valley snap
+5. CUMULATIVE OFFSET MAPPING (W2/W3 only)
+     - Map original-bonafide positions to current-result positions
+     - b_start_in_result = b_start_snapped + cumulative_offset_samples
+6. ENERGY NORMALIZATION
+     - Scale cloned amplitude so RMS matches bonafide slot RMS
+     - Prevents loudness discontinuity at seams
+7. CROSSFADE ASSEMBLY
+     - seed_safe = (splice_seed & ((1<<63)-1)) ^ (idx & 0xFFFF)  # mask sign bit
+     - method = draw_splice_method(seeded_rng)
+     - overlap_ms = uniform(CROSSFADE_MIN_MS, CROSSFADE_MAX_MS)
+     - cf_target = overlap_ms * sample_rate / 1000
+     - Bound cf by:
+        - cloned_silence_left = _silent_run_backward(cloned, c_start, max_ms=cf)
+        - cloned_silence_right = _silent_run_forward(cloned, c_end, max_ms=cf)
+        - bonafide context available before/after the cut
+     - Extract cloned_ext = cloned[c_start - cf : c_end + cf]  (word + silence padding)
+     - At start seam: bonafide_tail * fade_out + cloned_ext[:cf] * fade_in
+     - At end seam: cloned_ext[-cf:] * fade_out + bonafide_head * fade_in
+     - Middle: cloned_ext[cf:cl_len+cf] (word body, untouched by fades)
+     - Concat: result[:b_start-cf] + start_seam + middle + end_seam + result[b_end+cf:]
+8. UPDATE CUMULATIVE OFFSET
+     - size_diff = cl_natural_len - slot_len_orig
+     - cumulative_offset_samples += size_diff
+9. RECORD splice_details
+     - bonafide_start_s, bonafide_end_s in SPLICED audio coords (positional labels for Step 7)
+     - bonafide_orig_start_s, bonafide_orig_end_s in original-bonafide coords (traceability)
+     - parakeet_*, energy_refine_shift_*, valley_snap_*, cloned_refine_shift_* for diagnostics
+```
+
+Critical invariants of the design:
+- The full cloned word body always survives untouched (no fade across the word interior).
+- Seams always fall in silence on both sides (after refinement + snap + silent-run gate).
+- Per-utterance audio duration varies by `sum(cl_natural_len_i - slot_len_orig_i)` across the splices in that utterance.
+- For W2/W3, all splices in the same utterance share a single `cumulative_offset_samples` counter; the counter resets per utterance.
 
 ## Quality Metrics
 
@@ -61,7 +138,10 @@ From validation run (3 speakers, 7 samples, pre-v2 pipeline):
 - Speaker similarity: 0.789
 - Pass rate: 7/7 (100%)
 
-**Pending:** v2 validation with 5 speakers, 10+ audios each, including valley-score selection.
+From 2026-05-24 splice-rewrite validation (manifest mode, 12 cells, 295 spliced samples total across 6 attacks):
+- See `experiments/validation-results.md` for per-cell metrics.
+- omnivoice 169, qwen 25, fishgram 30, chatterbox 62, outetts 9, openvoice 0.
+- Pipeline runtime: 1h 8min (vs. 2-3h pre-rewrite from intermediate-crash overhead).
 
 ## 7 Crossfade Techniques
 

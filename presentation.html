@@ -405,7 +405,7 @@ audio {
 
 
 <!-- ==================================================
-     01 - 01_title
+     01 - 00_title
 ================================================== -->
 <section class="slide" id="s1" style="justify-content:flex-start; padding-top:140px;">
   <div class="glow" style="width:700px;height:700px;background:#fff;top:-300px;left:-200px;"></div>
@@ -431,9 +431,178 @@ audio {
 </section>
 
 <!-- ==================================================
-     02 - 01a_overview
+     02 - 00a_problem
 ================================================== -->
 <section class="slide tall" id="s2">
+  <div class="inner">
+    <div class="eyebrow">Problem &amp; Motivation</div>
+    <h2>Two gaps, one corpus</h2>
+    <p style="margin-bottom:30px; max-width:780px;">Voice anti-spoofing decides whether a speech signal is genuine (<em>bonafide</em>) or machine-generated (<em>spoofed</em>). The reference resource for Latin American Spanish &mdash; HABLA (Interspeech 2023) &mdash; is three years stale, and the field still frames spoofing as all-or-nothing. HABLA 2.0 closes both gaps at once.</p>
+
+    <div class="two">
+      <div class="card-sm">
+        <div class="eyebrow" style="margin-bottom:14px;">Gap A &mdash; an outdated corpus</div>
+        <div style="font-size:18px; font-weight:600; margin-bottom:16px;">HABLA is 3+ years old</div>
+        <div style="font-size:13px; color:var(--muted); line-height:1.9; font-weight:300;">
+          <div style="margin-bottom:10px;"><span class="hi" style="color:var(--white); font-weight:500;">GAN-only attacks</span> (StarGAN-VC, CycleGAN-VC) &mdash; deprecated 2018&ndash;2020 technology.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No augmentation</span> &mdash; models trained on clean studio audio collapse under reverb, codec compression, and noise.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No neural codec / flow-matching TTS</span> &mdash; the dominant 2025&ndash;2026 synthesis paradigm is entirely absent.</div>
+          <div><span style="color:var(--white); font-weight:500;">English detectors hit EER &gt;45%</span> on Spanish &mdash; cross-lingual transfer fails.</div>
+        </div>
+      </div>
+
+      <div class="card-sm" style="border-color:var(--border-bright);">
+        <div class="eyebrow" style="margin-bottom:14px;">Gap B &mdash; the partial-spoof blind spot <span class="tag amber">new</span></div>
+        <div style="font-size:18px; font-weight:600; margin-bottom:16px;">Every corpus is all-or-nothing</div>
+        <div style="font-size:13px; color:var(--muted); line-height:1.9; font-weight:300;">
+          <div style="margin-bottom:10px;">All anti-spoofing datasets &mdash; HABLA included &mdash; contain <span style="color:var(--white); font-weight:500;">fully-synthetic OR fully-bonafide</span> audio only.</div>
+          <div style="margin-bottom:10px;">The real threat is <span style="color:var(--white); font-weight:500;">partial</span>: splice a few cloned words into genuine speech (<span class="cm" style="font-family:'JetBrains Mono',monospace; font-size:11px;">"transfer 100"&rarr;"transfer 9000"</span>). 90%+ of the signal is real, so global detectors miss it.</div>
+          <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:500;">No Latin American Spanish partial-spoof corpus exists.</span></div>
+          <div>Detectors learn a <span style="color:var(--white); font-weight:500;">shortcut</span> &mdash; the noisy splice boundary, not real synthesis artifacts (Negroni 2024: 6.16% EER, zero training). It does not generalize.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:28px;">HABLA's regional accents remain valuable. Its attack set, its lack of augmentation, and its all-or-nothing framing do not. HABLA 2.0 modernizes the attacks, hardens robustness, and introduces the first Spanish partial-spoof corpus with adversarial boundary augmentation.</div>
+  </div>
+</section>
+
+<!-- ==================================================
+     03 - 00b_objectives
+================================================== -->
+<section class="slide tall" id="s3">
+  <div class="inner">
+    <div class="eyebrow">Objectives</div>
+    <h2>One goal, four pillars</h2>
+    <p style="max-width:840px; margin-bottom:26px;">Design and implement <span style="color:var(--white); font-weight:600;">HABLA 2.0</span>: a modernized, multi-condition voice anti-spoofing corpus and benchmark for Latin American Spanish, built on four pillars &mdash; modern full-synthesis attacks, a partial-spoof corpus with boundary jitter, multi-condition acoustic augmentation, and cross-corpus benchmarking.</p>
+
+    <div class="four">
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 1</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Full-synthesis attacks</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">6 neural TTS systems (Fish Speech, Qwen3, OmniVoice, Chatterbox, OpenVoice, OuteTTS) replace the legacy GAN attacks.</div>
+        <div style="margin-top:12px;"><span class="tag green">Mostly done</span></div>
+      </div>
+      <div class="card-sm" style="border-color:var(--border-bright);">
+        <div class="pipe-box-label">Pillar 2 <span class="tag amber">new</span></div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Partial spoof</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">Word-level splicing of 1&ndash;3 cloned words (W1/W2/W3) plus boundary-jitter adversarial augmentation. First in Spanish.</div>
+        <div style="margin-top:12px;"><span class="tag green">Validated</span></div>
+      </div>
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 3</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Acoustic augmentation</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">Multi-condition degradation: 60% RIR+Noise / 30% Codec / 10% RawBoost, for real-world robustness.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Pending</span></div>
+      </div>
+      <div class="card-sm">
+        <div class="pipe-box-label">Pillar 4</div>
+        <div style="font-size:15px; font-weight:600; margin:8px 0 10px;">Cross-corpus benchmarking</div>
+        <div style="font-size:12px; color:var(--muted); line-height:1.65; font-weight:300;">SSL detectors (wav2vec 2.0 / WavLM) over full + partial spoof; evaluate vs ASVspoof, HISPASpoof, PartialSpoof.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Pending</span></div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:14px 48px;">
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; font-weight:300;">
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE1</span>&nbsp;&nbsp;Speaker-independent partitions (HABLA + Common Voice), no overlap across train/val/test.</div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE2</span>&nbsp;&nbsp;Acoustic augmentation pipeline (60/30/10 RIR-Noise / Codec / RawBoost). <span class="tag amber">pending</span></div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE3</span>&nbsp;&nbsp;Full-synthesis attacks with 6 modern neural TTS systems.</div>
+        <div><span style="color:var(--green); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE4</span>&nbsp;&nbsp;<span style="color:rgba(255,255,255,0.8);">Partial-spoof corpus: word-level splice (clone &rarr; align &rarr; valley-select &rarr; splice), ECAPA gate.</span> <span class="tag amber">new</span></div>
+      </div>
+      <div style="font-size:12.5px; color:var(--muted); line-height:1.5; font-weight:300;">
+        <div style="margin-bottom:10px;"><span style="color:var(--green); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE5</span>&nbsp;&nbsp;<span style="color:rgba(255,255,255,0.8);">Boundary-jitter adversarial augmentation: homogenize artifacts across all boundaries to break the detector shortcut.</span> <span class="tag amber">new</span></div>
+        <div style="margin-bottom:10px;"><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE6</span>&nbsp;&nbsp;Train and evaluate detectors (SSL, AM-Softmax) on full + partial spoof vs LCNN+LFCC baseline. <span class="tag amber">pending</span></div>
+        <div><span style="color:var(--white); font-weight:600; font-family:'JetBrains Mono',monospace; font-size:11px;">OE7</span>&nbsp;&nbsp;Cross-corpus benchmarking vs ASVspoof 2019 LA, HISPASpoof, PartialSpoof. <span class="tag amber">pending</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     04 - 00c_progress
+================================================== -->
+<section class="slide tall" id="s4">
+  <div class="inner">
+    <div class="eyebrow">Progress to Date &middot; May 2026</div>
+    <h2>Where the four pillars stand</h2>
+    <p style="max-width:800px; margin-bottom:26px;">Pillars 1 and 2 are implemented and validated. Pillars 3 and 4 &mdash; acoustic augmentation and the detector/benchmark suite &mdash; are the remaining thesis work.</p>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 1 &mdash; full-synthesis attacks <span class="tag green">mostly done</span></div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>FishGram (Fish Speech 4B)</span><span class="tag green">Prod 95.2%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>Qwen3-TTS</span><span class="tag green">Prod 87.9%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>OpenVoice</span><span class="tag green">Prod 83.4%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>OmniVoice (diffusion LM)</span><span class="tag amber">Validated</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size:13px;">
+          <span>Chatterbox / OuteTTS</span><span class="tag amber">Running</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 2 &mdash; partial spoof <span class="tag green">validated</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">7-step pipeline complete</span> &mdash; transcribe &rarr; clone &rarr; align &rarr; valley-select &rarr; splice &rarr; validate &rarr; format, 6 attack backends.</div>
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">Splice engine validated</span> (2026-05-24): natural-duration splicing, energy-refined boundaries, asymmetric valley snap. Audit auditiva passed.</div>
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">Boundary jitter implemented</span> (truncate / overlap / bleed, p=0.5).</div>
+          <div><span style="color:var(--white); font-weight:500;">Manifest dispatch</span> + parallel orchestrator, 6 attacks &times; 2 partitions.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px; margin-top:24px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 3 &mdash; acoustic augmentation <span class="tag amber">pending</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          Multi-condition pipeline (60% RIR+Noise / 30% Codec / 10% RawBoost) designed and grounded in the ASVspoof 5 winners' distribution, but <span style="color:var(--white); font-weight:500;">not yet applied to the corpus</span>. Augmenters scaffolded; integration into the production sweep is the next step.
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 4 &mdash; cross-corpus benchmarking <span class="tag amber">pending</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          SSL detector training (wav2vec 2.0 / WavLM, AM-Softmax) over full + partial spoof, then evaluation vs ASVspoof 2019 LA, HISPASpoof, and PartialSpoof. <span style="color:var(--white); font-weight:500;">Depends on the full production sweep finishing first.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="four">
+      <div class="stat-card">
+        <div class="stat-num">6</div>
+        <div class="stat-label">Neural TTS attacks integrated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">1,567</div>
+        <div class="stat-label">Speakers, 7 LatAm accents</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">295</div>
+        <div class="stat-label">Partial-spoof validation samples</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">2 / 4</div>
+        <div class="stat-label">Pillars complete</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     05 - 01a_overview
+================================================== -->
+<section class="slide tall" id="s5">
   <div class="inner">
     <div class="eyebrow">Overview</div>
     <h2>Nine pipelines</h2>
@@ -541,9 +710,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     03 - 01b_fishgram_overview
+     06 - 01b_fishgram_overview
 ================================================== -->
-<section class="slide" id="s3">
+<section class="slide" id="s6">
   <div class="inner">
     <div class="eyebrow">Attack Pipeline — FishGram</div>
     <h2>Fish Speech 4B (OpenAudio S1-mini)</h2>
@@ -577,9 +746,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     04 - 01c_cosyvoice_overview
+     07 - 01c_cosyvoice_overview
 ================================================== -->
-<section class="slide" id="s4">
+<section class="slide" id="s7">
   <div class="inner">
     <div class="eyebrow">Attack Pipeline — CosyVoice 2 (Dropped)</div>
     <h2>CosyVoice 2: no Spanish support</h2>
@@ -627,9 +796,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     05 - 01d_outetts_overview
+     08 - 01d_outetts_overview
 ================================================== -->
-<section class="slide" id="s5">
+<section class="slide" id="s8">
   <div class="inner">
     <div class="eyebrow">Attack Pipeline — OuteTTS 1.0</div>
     <h2>OuteTTS 1.0 0.6B (Qwen3 + DAC)</h2>
@@ -671,9 +840,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     06 - 01e_omnivoice_overview
+     09 - 01e_omnivoice_overview
 ================================================== -->
-<section class="slide tall" id="s6">
+<section class="slide tall" id="s9">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Attack Pipeline &mdash; OmniVoice (k2-fsa)</div>
     <h2>OmniVoice: 646-language diffusion TTS with reference-bleed handling</h2>
@@ -799,9 +968,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     07 - 03_fishgram_production
+     10 - 03_fishgram_production
 ================================================== -->
-<section class="slide tall" id="s7">
+<section class="slide tall" id="s10">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Production Run</div>
     <h2>FishGram at scale</h2>
@@ -905,9 +1074,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     08 - 04_fishgram_distributions
+     11 - 04_fishgram_distributions
 ================================================== -->
-<section class="slide tall" id="s8">
+<section class="slide tall" id="s11">
   <div class="inner">
     <div class="eyebrow">Pipeline 02 — FishGram Distribution Analysis</div>
     <h2>Quality distributions</h2>
@@ -1035,9 +1204,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     09 - 05_qwen_production
+     12 - 05_qwen_production
 ================================================== -->
-<section class="slide tall" id="s9">
+<section class="slide tall" id="s12">
   <div class="inner">
     <div class="eyebrow">Pipeline 03 — Qwen3-TTS Production Run</div>
     <h2>Qwen3-TTS at scale</h2>
@@ -1146,9 +1315,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     10 - 06_openvoice_production
+     13 - 06_openvoice_production
 ================================================== -->
-<section class="slide tall" id="s10">
+<section class="slide tall" id="s13">
   <div class="inner">
     <div class="eyebrow">Pipeline 05 — OpenVoice Production Run</div>
     <h2>OpenVoice at scale</h2>
@@ -1257,9 +1426,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     11 - 06b_chatterbox_production
+     14 - 06b_chatterbox_production
 ================================================== -->
-<section class="slide" id="s11">
+<section class="slide" id="s14">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Pipeline 06 &mdash; Chatterbox Production Run</div>
     <h2>Chatterbox (Resemble.ai) <span class="tag amber" style="font-size:12px; vertical-align:middle;">IN PROGRESS</span></h2>
@@ -1331,9 +1500,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     12 - 06c_outetts_production
+     15 - 06c_outetts_production
 ================================================== -->
-<section class="slide tall" id="s12">
+<section class="slide tall" id="s15">
   <div class="inner">
     <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
     <h2>OuteTTS at scale</h2>
@@ -1442,9 +1611,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     13 - 06d_omnivoice_production
+     16 - 06d_omnivoice_production
 ================================================== -->
-<section class="slide tall" id="s13">
+<section class="slide tall" id="s16">
   <div class="inner">
     <div class="eyebrow">Pipeline 08 &mdash; OmniVoice Production Run</div>
     <h2>OmniVoice at scale</h2>
@@ -1560,9 +1729,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     14 - 06e_cross_pipeline
+     17 - 06e_cross_pipeline
 ================================================== -->
-<section class="slide" id="s14">
+<section class="slide" id="s17">
   <div class="inner">
     <div class="eyebrow">Production Scale &mdash; All 6 Attack Pipelines</div>
     <h2>Cross-pipeline comparison</h2>
@@ -1683,9 +1852,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     15 - 07_rejected_samples
+     18 - 07_rejected_samples
 ================================================== -->
-<section class="slide tall" id="s15">
+<section class="slide tall" id="s18">
   <div class="inner">
     <div class="eyebrow">Production — Rejection Analysis</div>
     <h2>Rejected samples across pipelines</h2>
@@ -1844,9 +2013,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     16 - 08_demo_outetts
+     19 - 08_demo_outetts
 ================================================== -->
-<section class="slide" id="s16">
+<section class="slide" id="s19">
   <div class="inner">
     <div class="eyebrow">Demo — Pipeline 06</div>
     <h2>Bonafide vs OuteTTS</h2>
@@ -1902,9 +2071,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     17 - 09_demo_cosyvoice
+     20 - 09_demo_cosyvoice
 ================================================== -->
-<section class="slide" id="s17">
+<section class="slide" id="s20">
   <div class="inner">
     <div class="eyebrow">Negative Finding — CosyVoice 2</div>
     <h2>CosyVoice: no Spanish support</h2>
@@ -1957,9 +2126,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     18 - 09a_demo_omnivoice
+     21 - 09a_demo_omnivoice
 ================================================== -->
-<section class="slide" id="s18">
+<section class="slide" id="s21">
   <div class="inner">
     <div class="eyebrow">Demo &mdash; OmniVoice</div>
     <h2>OmniVoice: Spanish voice cloning</h2>
@@ -2012,9 +2181,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     19 - 09b_datasets_intro
+     22 - 09b_datasets_intro
 ================================================== -->
-<section class="slide" id="s19">
+<section class="slide" id="s22">
   <div class="inner">
     <div class="eyebrow">Literature Review</div>
     <h2>Datasets investigation</h2>
@@ -2080,9 +2249,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     20 - 10_lrlspoof
+     23 - 10_lrlspoof
 ================================================== -->
-<section class="slide tall" id="s20">
+<section class="slide tall" id="s23">
   <div class="inner">
     <div class="eyebrow">Related Work — LRLSpoof</div>
     <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
@@ -2145,9 +2314,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     21 - 11_speechfake
+     24 - 11_speechfake
 ================================================== -->
-<section class="slide" id="s21">
+<section class="slide" id="s24">
   <div class="inner">
     <div class="eyebrow">Related Work — SpeechFake-MD</div>
     <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
@@ -2246,9 +2415,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     22 - 12_hispaspoof
+     25 - 12_hispaspoof
 ================================================== -->
-<section class="slide tall" id="s22">
+<section class="slide tall" id="s25">
   <div class="inner">
     <div class="eyebrow">Related Work — HISPASpoof</div>
     <h2>HISPASpoof: Spanish Speech Forensics</h2>
@@ -2355,9 +2524,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     23 - 12b_partial_spoof_intro
+     26 - 12b_partial_spoof_intro
 ================================================== -->
-<section class="slide" id="s23">
+<section class="slide" id="s26">
   <div class="glow" style="width:600px;height:600px;background:var(--amber);bottom:-250px;left:-150px;"></div>
   <div class="inner" style="max-width:800px;">
     <div class="eyebrow">Novel Contribution</div>
@@ -2402,9 +2571,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     24 - 13_partial_spoof
+     27 - 13_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s24">
+<section class="slide tall" id="s27">
   <div class="inner">
     <div class="eyebrow">Novel Contribution — Partial Spoof</div>
     <h2>Word-level partial spoof for Spanish</h2>
@@ -2521,9 +2690,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     25 - 13a_partial_spoof_visual
+     28 - 13a_partial_spoof_visual
 ================================================== -->
-<section class="slide" id="s25">
+<section class="slide" id="s28">
   <div class="glow" style="width:500px;height:500px;background:var(--amber);top:-200px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
@@ -2600,9 +2769,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     26 - 13b_splice_challenge
+     29 - 13b_splice_challenge
 ================================================== -->
-<section class="slide" id="s26">
+<section class="slide" id="s29">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof Pipeline</div>
     <h2>The splice boundary challenge</h2>
@@ -2675,9 +2844,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     27 - 13c_technique_cut_paste
+     30 - 13c_technique_cut_paste
 ================================================== -->
-<section class="slide" id="s27">
+<section class="slide" id="s30">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 1 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Direct cut-paste</h2>
@@ -2737,9 +2906,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     28 - 13d_technique_ola_hanning
+     31 - 13d_technique_ola_hanning
 ================================================== -->
-<section class="slide" id="s28">
+<section class="slide" id="s31">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 2 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">OLA Hanning</h2>
@@ -2793,9 +2962,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     29 - 13e_technique_linear
+     32 - 13e_technique_linear
 ================================================== -->
-<section class="slide" id="s29">
+<section class="slide" id="s32">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 3 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Linear crossfade</h2>
@@ -2848,9 +3017,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     30 - 13f_technique_cosine
+     33 - 13f_technique_cosine
 ================================================== -->
-<section class="slide" id="s30">
+<section class="slide" id="s33">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 4 / 7 &mdash; 20% of dataset</div>
     <h2 style="margin-bottom:4px;">Cosine (equal-power)</h2>
@@ -2903,9 +3072,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     31 - 13g_technique_half_sine
+     34 - 13g_technique_half_sine
 ================================================== -->
-<section class="slide" id="s31">
+<section class="slide" id="s34">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 5 / 7 &mdash; 15% of dataset</div>
     <h2 style="margin-bottom:4px;">Square-root (half-sine)</h2>
@@ -2958,9 +3127,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     32 - 13h_technique_logarithmic
+     35 - 13h_technique_logarithmic
 ================================================== -->
-<section class="slide" id="s32">
+<section class="slide" id="s35">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 6 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Logarithmic crossfade</h2>
@@ -3014,9 +3183,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     33 - 13i_technique_parabola
+     36 - 13i_technique_parabola
 ================================================== -->
-<section class="slide" id="s33">
+<section class="slide" id="s36">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Splice Technique 7 / 7 &mdash; 10% of dataset</div>
     <h2 style="margin-bottom:4px;">Inverted parabola</h2>
@@ -3069,9 +3238,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     34 - 13j_technique_summary
+     37 - 13j_technique_summary
 ================================================== -->
-<section class="slide tall" id="s34">
+<section class="slide tall" id="s37">
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Partial Spoof &mdash; Summary</div>
     <h2>Technique distribution &amp; literature gaps</h2>
@@ -3147,9 +3316,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     35 - 13k_splice_quality_problem
+     38 - 13k_splice_quality_problem
 ================================================== -->
-<section class="slide" id="s35">
+<section class="slide" id="s38">
   <div class="glow" style="width:500px;height:500px;background:var(--red);bottom:-250px;right:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Discovery &mdash; Listening Tests</div>
@@ -3209,9 +3378,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     36 - 13l_splice_quality_solution
+     39 - 13l_splice_quality_solution
 ================================================== -->
-<section class="slide tall" id="s36">
+<section class="slide tall" id="s39">
   <div class="glow" style="width:500px;height:500px;background:var(--green);top:-200px;left:-200px;"></div>
   <div class="inner" style="max-width:900px;">
     <div class="eyebrow">Solution &mdash; Smart Selection + Quality Gate</div>
@@ -3324,9 +3493,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     37 - 13m_prefilter_pipeline
+     40 - 13m_prefilter_pipeline
 ================================================== -->
-<section class="slide tall" id="s37">
+<section class="slide tall" id="s40">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Partial Spoof Pipeline &mdash; Quality Filters</div>
     <h2>Two-gate pre-filter before splicing</h2>
@@ -3461,9 +3630,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     38 - 13ma_boundary_jitter
+     41 - 13ma_boundary_jitter
 ================================================== -->
-<section class="slide tall" id="s38">
+<section class="slide tall" id="s41">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Partial Spoof &mdash; Boundary Jitter (Step 5b)</div>
     <h2>Homogenize boundary anomalies so the splice no longer stands out</h2>
@@ -3527,9 +3696,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     39 - 13mab_jitter_operations
+     42 - 13mab_jitter_operations
 ================================================== -->
-<section class="slide tall" id="s39">
+<section class="slide tall" id="s42">
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Boundary Jitter &mdash; Three Structural Operations</div>
     <h2>Truncate, overlap, bleed: chosen uniformly when the coin flips heads</h2>
@@ -3608,9 +3777,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     40 - 13mb_jitter_audio_1
+     43 - 13mb_jitter_audio_1
 ================================================== -->
-<section class="slide tall" id="s40">
+<section class="slide tall" id="s43">
   <div class="inner" style="max-width:980px;">
     <div class="eyebrow">Boundary Jitter &mdash; Audio 1 (W1 tier)</div>
     <h2>"Necesito que me des informacion sobre el mural..."</h2>
@@ -3674,9 +3843,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     41 - 13mc_jitter_audio_2
+     44 - 13mc_jitter_audio_2
 ================================================== -->
-<section class="slide tall" id="s41">
+<section class="slide tall" id="s44">
   <div class="inner" style="max-width:980px;">
     <div class="eyebrow">Boundary Jitter &mdash; Audio 2 (W1 tier)</div>
     <h2>"Segun la television y los medios, hubieron bastantes muertos por el terremoto."</h2>
@@ -3734,9 +3903,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     42 - 13md_jitter_audio_3
+     45 - 13md_jitter_audio_3
 ================================================== -->
-<section class="slide tall" id="s42">
+<section class="slide tall" id="s45">
   <div class="inner" style="max-width:980px;">
     <div class="eyebrow">Boundary Jitter &mdash; Audio 3 (W2 tier)</div>
     <h2>Same source as Audio 2, two cloned words ("hubieron" + "muertos")</h2>
@@ -3796,9 +3965,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     43 - 13n_demo_partial_spoof
+     46 - 13n_demo_partial_spoof
 ================================================== -->
-<section class="slide tall" id="s43">
+<section class="slide tall" id="s46">
   <div class="glow" style="width:400px;height:400px;background:var(--blue);top:-150px;right:-150px;"></div>
   <div class="inner" style="max-width:920px;">
     <div class="eyebrow">Demo &mdash; Partial Spoof Pipeline &middot; Qwen3-TTS</div>
@@ -3962,9 +4131,9 @@ audio {
 </section>
 
 <!-- ==================================================
-     44 - 14_next_steps
+     47 - 14_next_steps
 ================================================== -->
-<section class="slide" id="s44">
+<section class="slide" id="s47">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
@@ -4022,7 +4191,7 @@ audio {
 </section>
 
 <script>
-const N = 44;
+const N = 47;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');

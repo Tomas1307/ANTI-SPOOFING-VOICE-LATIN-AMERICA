@@ -22,7 +22,6 @@ audio longer or shorter, splice 2's original-bonafide coordinates are
 translated to the current result via that offset before extraction
 and replacement.
 """
-import librosa
 import numpy as np
 from loguru import logger
 from typing import Dict, List, Tuple
@@ -31,7 +30,6 @@ from app.pipeline.partial_spoof.utils.crossfade import (
     _compute_fade_curves,
     draw_splice_method,
     find_nearest_valley,
-    find_nearest_zero_crossing,
     normalize_energy,
 )
 from app.pipeline.partial_spoof.utils.energy_refiner import (
@@ -153,59 +151,6 @@ def _build_cloned_word_map(cloned_words: List[Dict]) -> Dict[str, List[Tuple[int
     return word_map
 
 
-def _time_stretch(segment: np.ndarray, target_length: int) -> np.ndarray:
-    """Time-stretch audio segment to exactly target_length samples.
-
-    Uses two strategies depending on how aggressive the stretch is:
-
-    * **Linear interpolation** for tiny stretches (< 5% deviation
-      from 1.0x). These produce imperceptible pitch shifts and the
-      simpler method is ~50x faster than the phase vocoder.
-    * **librosa.effects.time_stretch** (phase vocoder) for anything
-      bigger. The phase vocoder preserves pitch: a cloned 'casa'
-      compressed from 240 ms to 200 ms keeps the same fundamental
-      frequency and formant positions. The previous linear-interp
-      implementation behaved like changing a tape speed -- compressing
-      raised the pitch, expanding lowered it -- making the spliced
-      word sound "chipmunk" or "thick / cartoony" relative to its
-      surrounding bonafide. That artefact was perceptually severe
-      from ~10% stretch upward (e.g. ratio 0.80 = +20% pitch).
-
-    The phase vocoder may return a slightly off-by-one length, so the
-    output is padded with zeros or truncated to land exactly on
-    ``target_length``.
-
-    Args:
-        segment: Audio segment (1-D float32).
-        target_length: Desired number of output samples.
-
-    Returns:
-        Time-stretched segment of exactly ``target_length`` samples.
-    """
-    if target_length <= 0 or len(segment) == 0:
-        return segment
-    if len(segment) == target_length:
-        return segment.copy()
-
-    src_length = len(segment)
-    rate = src_length / target_length
-
-    if abs(rate - 1.0) < 0.05:
-        indices = np.linspace(0, src_length - 1, target_length)
-        return np.interp(indices, np.arange(src_length), segment).astype(np.float32)
-
-    stretched = librosa.effects.time_stretch(
-        segment.astype(np.float32), rate=rate
-    )
-
-    if len(stretched) >= target_length:
-        return stretched[:target_length].astype(np.float32)
-
-    padded = np.zeros(target_length, dtype=np.float32)
-    padded[: len(stretched)] = stretched
-    return padded
-
-
 def splice_words(
     bonafide_audio: np.ndarray,
     cloned_audio: np.ndarray,
@@ -215,8 +160,6 @@ def splice_words(
     sample_rate: int,
     crossfade_min_ms: float,
     crossfade_max_ms: float,
-    max_silence_steal_ms: float,
-    max_stretch_ratio: float,
     splice_seed: int = 42,
     valley_search_ms: float = 0.0,
     energy_refine_radius_s: float = 0.0,
@@ -267,13 +210,6 @@ def splice_words(
         sample_rate: Audio sample rate in Hz.
         crossfade_min_ms: Minimum crossfade overlap drawn per splice (ms).
         crossfade_max_ms: Maximum crossfade overlap drawn per splice (ms).
-        max_silence_steal_ms: Unused (kept for API compatibility).
-        max_stretch_ratio: Retained for API compatibility but no longer
-            enforced inside this function -- Step 4 already filters
-            words whose cloned/bonafide duration ratio is extreme, so
-            re-checking here just rejects samples Step 4 already
-            accepted. Without time-stretch the cloned is inserted at
-            its natural duration regardless of ratio.
         splice_seed: Base seed for per-word RNG. Seeded as (splice_seed, idx).
         valley_search_ms: Half-width (ms) of the search window used to
             snap each bonafide slot boundary to the nearest energy

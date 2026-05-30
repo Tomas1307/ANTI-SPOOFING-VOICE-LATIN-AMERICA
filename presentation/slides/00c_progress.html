@@ -1,0 +1,74 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Progress to Date &middot; May 2026</div>
+    <h2>Where the four pillars stand</h2>
+    <p style="max-width:800px; margin-bottom:26px;">Pillars 1 and 2 are implemented and validated. Pillars 3 and 4 &mdash; acoustic augmentation and the detector/benchmark suite &mdash; are the remaining thesis work.</p>
+
+    <div class="two" style="gap:32px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 1 &mdash; full-synthesis attacks <span class="tag green">mostly done</span></div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>FishGram (Fish Speech 4B)</span><span class="tag green">Prod 95.2%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>Qwen3-TTS</span><span class="tag green">Prod 87.9%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>OpenVoice</span><span class="tag green">Prod 83.4%</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>OmniVoice (diffusion LM)</span><span class="tag amber">Validated</span>
+        </div>
+        <div class="metric-row" style="display:flex; justify-content:space-between; padding:6px 0; font-size:13px;">
+          <span>Chatterbox / OuteTTS</span><span class="tag amber">Running</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 2 &mdash; partial spoof <span class="tag green">validated</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">7-step pipeline complete</span> &mdash; transcribe &rarr; clone &rarr; align &rarr; valley-select &rarr; splice &rarr; validate &rarr; format, 6 attack backends.</div>
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">Splice engine validated</span> (2026-05-24): natural-duration splicing, energy-refined boundaries, asymmetric valley snap. Audit auditiva passed.</div>
+          <div style="margin-bottom:8px;"><span style="color:var(--white); font-weight:500;">Boundary jitter implemented</span> (truncate / overlap / bleed, p=0.5).</div>
+          <div><span style="color:var(--white); font-weight:500;">Manifest dispatch</span> + parallel orchestrator, 6 attacks &times; 2 partitions.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two" style="gap:32px; margin-top:24px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 3 &mdash; acoustic augmentation <span class="tag amber">pending</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          Multi-condition pipeline (60% RIR+Noise / 30% Codec / 10% RawBoost) designed and grounded in the ASVspoof 5 winners' distribution, but <span style="color:var(--white); font-weight:500;">not yet applied to the corpus</span>. Augmenters scaffolded; integration into the production sweep is the next step.
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px;">Pillar 4 &mdash; cross-corpus benchmarking <span class="tag amber">pending</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.75; font-weight:300;">
+          SSL detector training (wav2vec 2.0 / WavLM, AM-Softmax) over full + partial spoof, then evaluation vs ASVspoof 2019 LA, HISPASpoof, and PartialSpoof. <span style="color:var(--white); font-weight:500;">Depends on the full production sweep finishing first.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="four">
+      <div class="stat-card">
+        <div class="stat-num">6</div>
+        <div class="stat-label">Neural TTS attacks integrated</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">1,567</div>
+        <div class="stat-label">Speakers, 7 LatAm accents</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">295</div>
+        <div class="stat-label">Partial-spoof validation samples</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">2 / 4</div>
+        <div class="stat-label">Pillars complete</div>
+      </div>
+    </div>
+  </div>
+</section>

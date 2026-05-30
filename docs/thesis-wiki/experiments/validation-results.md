@@ -1,7 +1,7 @@
 # Validation Results
 
-**Status:** Draft — pending v2 pipeline validation
-**Last updated:** 2026-05-06
+**Status:** Active — splice rewrite validated 2026-05-24
+**Last updated:** 2026-05-24
 **Source:** ml-server03 validation runs
 
 ---
@@ -22,21 +22,65 @@
 
 **Note:** This was before valley-score selection. Listening tests revealed audible artifacts at fluid speech boundaries despite all metrics passing. This led to the v2 pipeline rewrite (valley score + duration preserving + clone gate).
 
-## Partial Spoof Validation (v2 — PENDING)
+## Partial Spoof Validation (v2 — manifest mode, splice rewrite, 2026-05-24)
 
-**Planned speakers:** 5 (arf_00295, arf_00610, arf_01523, arm_00412, arm_00780)
-**Minimum audios per speaker:** 10
-**Changes to validate:**
-1. Valley-score word selection (score <= 0.65 threshold)
-2. Duration-preserving splice (output length = bonafide length)
-3. Clone similarity gate (ECAPA SIM >= 0.60)
+**Date:** 2026-05-24 (parallel orchestrator run, 12 cells, 23:47-00:56 UTC)
+**Mode:** manifest-driven, parallel launcher with `--max-concurrent 2` on GPU 1
+**Validation slice:** small subset (~5 speakers x 6 attacks x 2 partitions = 12 cells)
+**Configuration:** `ENABLE_BOUNDARY_JITTER=True/False` per cell, `ENABLE_STEP_6_REJECTION=False` (keep-bad-stuff), clone gate `MIN_CLONE_SIMILARITY=0.60` active.
 
-**Expected checks:**
-- All spliced WAVs have identical duration to bonafide source
-- `word_selection_metadata.json` contains `valley_score` per word
-- `clone_similarity_filter.json` exists
-- Listen to 10+ samples across speakers for natural rhythm
-- Compare WER/NISQA/SIM against v1 baseline
+### Per-attack yield (total spliced samples in samples.csv)
+
+| Attack     | Total samples | not_jittered | jittered |
+|------------|---------------|--------------|----------|
+| omnivoice  | 169           | --           | --       |
+| chatterbox | 62            | --           | --       |
+| fishgram   | 30            | --           | --       |
+| qwen       | 25            | --           | --       |
+| outetts    | 9             | --           | --       |
+| openvoice  | 0             | 0            | 0        |
+| **Total**  | **295**       |              |          |
+
+OpenVoice consistently yielded 0 across both partitions because its avg ECAPA SIM (0.394 in standalone) sits well below the `MIN_CLONE_SIMILARITY=0.60` clone gate; this is expected behaviour per the 2026-04-25 decision to keep the gate at 0.60. The corpus continues to ship without OpenVoice samples until either (a) the gate is relaxed for that pipeline or (b) OpenVoice itself is improved.
+
+### Structural assertions (post-run grep)
+
+| Assertion | Value | Status |
+|---|---|---|
+| `Alignment missing` warnings across all 12 logs | 0 | PASSED (Step 3 accumulate fix working) |
+| `expected non-negative integer` crashes across all 12 logs | 0 | PASSED (seed-mask fix working) |
+| Total runtime (parallel launcher) | 1h 8min | PASSED (vs. 2-3h pre-rewrite from retry overhead) |
+| Failed cells | 0/12 | PASSED |
+
+### Yield comparison vs. previous validation run (pre-splice-rewrite, 2026-05-23)
+
+| Attack     | Pre-rewrite | Post-rewrite | Factor |
+|------------|-------------|--------------|--------|
+| omnivoice  | 81          | 169          | 2.1x   |
+| qwen       | 6           | 25           | 4.2x   |
+| fishgram   | 19          | 30           | 1.6x   |
+| chatterbox | 41          | 62           | 1.5x   |
+| outetts    | 4           | 9            | 2.3x   |
+| openvoice  | 0           | 0            | --     |
+| **Total**  | **151**     | **295**      | **1.95x** |
+
+The Qwen 4.2x improvement is largest because the negative-seed bug (`hash(splice_key)` returning a signed int64 then crashing `np.random.default_rng`) disproportionately affected Qwen's W1/W3 splices that were silently rejected. Fixing the seed mask unblocks those splices; combined with the other architectural changes (energy refinement, valley snap, natural duration, silent-run extension gate), the entire splice pipeline now completes per sample instead of crashing mid-loop.
+
+### Audit auditiva (listening test)
+
+Master Tomas downloaded spot-check WAVs (4 problematic samples + sample-of-sample from each attack/tier) and confirmed:
+- Spliced word no longer audible twice (cloned + bonafide residual).
+- Cloned word no longer "cartoony/grueso" pitch-shifted.
+- Word body intact end-to-end ("lugar" sounds like "lugar", not "Luga-").
+- No leak of adjacent cloned words at the seams.
+
+Pass auditiva: **YES** ("Si me parecio bien").
+
+### Cleared for production
+
+- Pipeline architectural changes from this session locked.
+- Production sweep on full 1,567-speaker corpus is the next step.
+- Expected production yield: ~scale by manifest dispatch (manifest has ~35,927 bonafide files target * tier multiplicities).
 
 ## OmniVoice Standalone Validation
 
