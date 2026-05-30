@@ -13,8 +13,10 @@ data produces byte-identical CSV and summary outputs.
 Usage on ml-server03:
     export CUDA_VISIBLE_DEVICES=1
     source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
-    python -m app.scripts.generate_partial_spoof_manifest
+    python -m app.scripts.generate_partial_spoof_manifest          # validation slice
+    python -m app.scripts.generate_partial_spoof_manifest --full   # full production
 """
+import argparse
 import json
 from pathlib import Path
 from typing import Dict, List
@@ -55,14 +57,25 @@ class ManifestPreflightRunner:
         self.bonafide_dir = settings.BONAFIDE_DIR
         self.manifest_path = settings.MANIFEST_PATH
         self.summary_path = settings.MANIFEST_SUMMARY_PATH
-        self.transcripts_path = (
-            settings.MANIFEST_PATH.parent / self.TRANSCRIPTS_FILENAME
+        # Scope-specific transcript cache so a validation run (5 speakers)
+        # and a full production run (all speakers) never overwrite each
+        # other's cache and silently flip the manifest scope.
+        transcripts_name = (
+            "bonafide_transcripts_validation.json"
+            if settings.VALIDATION_MODE
+            else self.TRANSCRIPTS_FILENAME
         )
+        self.transcripts_path = settings.MANIFEST_PATH.parent / transcripts_name
 
-    def run(self) -> None:
+    def run(self, force_retranscribe: bool = False) -> None:
         """Execute the full pre-flight: transcribe, plan, persist.
 
         Idempotent and side-effect-bounded to the manifest directory.
+
+        Args:
+            force_retranscribe: When True, ignore any cached transcripts and
+                re-run Parakeet over the corpus. Used by the --full flag so a
+                stale validation-scoped cache cannot shrink a production run.
         """
         logger.info("=" * 80)
         logger.info("PARTIAL SPOOF MANIFEST PRE-FLIGHT - START")
@@ -75,7 +88,7 @@ class ManifestPreflightRunner:
         logger.info(f"Partition seed       : {settings.BONAFIDE_PARTITION_SEED}")
         logger.info("=" * 80)
 
-        transcripts = self._transcribe_full_corpus()
+        transcripts = self._transcribe_full_corpus(force_retranscribe)
         self._save_transcripts(transcripts)
 
         generator = ManifestGenerator(
@@ -100,7 +113,7 @@ class ManifestPreflightRunner:
         logger.info("PARTIAL SPOOF MANIFEST PRE-FLIGHT - COMPLETE")
         logger.info("=" * 80)
 
-    def _transcribe_full_corpus(self) -> Dict[str, Dict]:
+    def _transcribe_full_corpus(self, force_retranscribe: bool = False) -> Dict[str, Dict]:
         """Transcribe every bonafide file with Parakeet TDT.
 
         Bypasses the not_jittered/jittered partition filter so a single
@@ -112,7 +125,7 @@ class ManifestPreflightRunner:
             Dict from sample_key to entry dict with speaker_id, split,
             audio_path, transcript, word_count, word_timestamps.
         """
-        if self.transcripts_path.exists():
+        if self.transcripts_path.exists() and not force_retranscribe:
             logger.info(
                 f"Cached transcripts found at {self.transcripts_path}; "
                 "loading instead of re-transcribing."
@@ -255,4 +268,20 @@ class ManifestPreflightRunner:
 
 
 if __name__ == "__main__":
-    ManifestPreflightRunner().run()
+    parser = argparse.ArgumentParser(
+        description="Generate the partial spoof dispatch manifest.",
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Production scope: all speakers. Sets VALIDATION_MODE=False and "
+             "forces a fresh transcription pass so a stale validation cache "
+             "cannot shrink the manifest. Default is the validation slice.",
+    )
+    args = parser.parse_args()
+
+    if args.full:
+        settings.VALIDATION_MODE = False
+        logger.info("Full production manifest: VALIDATION_MODE forced to False.")
+
+    ManifestPreflightRunner().run(force_retranscribe=args.full)
