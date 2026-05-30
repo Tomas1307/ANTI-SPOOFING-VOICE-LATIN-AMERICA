@@ -33,7 +33,7 @@ from app.pipeline.partial_spoof.utils.crossfade import (
 )
 from app.pipeline.partial_spoof.utils.loudness import (
     compute_voiced_rms,
-    scale_to_reference_rms,
+    voiced_match_gain,
 )
 from app.pipeline.partial_spoof.utils.energy_refiner import (
     refine_word_boundary_by_energy,
@@ -274,7 +274,7 @@ def splice_words(
     # slot (word plus flanking silence), which deflated the target and
     # left spoof words too quiet. Computing it before any splice keeps
     # it independent of cumulative_offset. A zero anchor (all-silence
-    # host or matching disabled) makes scale_to_reference_rms a no-op.
+    # host or matching disabled) makes voiced_match_gain a no-op.
     if loudness_match_enabled:
         if loudness_reference_mode != "utterance":
             raise ValueError(
@@ -476,8 +476,13 @@ def splice_words(
 
         if method is SpliceMethod.CUT_PASTE or effective_cf == 0:
             cloned_segment = cloned_audio[c_start:c_end].astype(np.float32).copy()
-            cloned_segment, applied_scale = scale_to_reference_rms(
-                cloned_segment, loudness_anchor
+            cloned_segment, applied_scale = voiced_match_gain(
+                cloned_segment,
+                sample_rate,
+                loudness_anchor,
+                frame_ms=loudness_voiced_frame_ms,
+                gate_fraction=loudness_voiced_gate_fraction,
+                silence_rms=energy_refine_silence_rms,
             )
             result = np.concatenate([
                 result[:b_start],
@@ -498,7 +503,14 @@ def splice_words(
             # so the silence stays silent and the seams between word and
             # pads remain smooth.
             cloned_word_only = cloned_ext[effective_cf:effective_cf + cl_natural_len]
-            _, applied_scale = scale_to_reference_rms(cloned_word_only, loudness_anchor)
+            _, applied_scale = voiced_match_gain(
+                cloned_word_only,
+                sample_rate,
+                loudness_anchor,
+                frame_ms=loudness_voiced_frame_ms,
+                gate_fraction=loudness_voiced_gate_fraction,
+                silence_rms=energy_refine_silence_rms,
+            )
             cloned_ext = (cloned_ext * applied_scale).astype(np.float32)
 
             t = np.linspace(0.0, 1.0, effective_cf, dtype=np.float32)

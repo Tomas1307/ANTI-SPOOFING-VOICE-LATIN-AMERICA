@@ -18,7 +18,7 @@ import numpy as np
 from app.pipeline.partial_spoof.utils.loudness import (
     apply_peak_ceiling,
     compute_voiced_rms,
-    scale_to_reference_rms,
+    voiced_match_gain,
 )
 from app.pipeline.partial_spoof.utils.splice_engine import splice_words
 
@@ -55,9 +55,18 @@ def _build_synthetic():
         {"word": "hola", "start": 0.10, "end": 0.40},
         {"word": "mundo", "start": 0.50, "end": 0.80},
     ]
+    # The cloned word carries an internal silent gap so its plain RMS is
+    # below its voiced RMS. This exposes the plain-vs-voiced matching
+    # asymmetry: a plain-RMS match overshoots and leaves the spoof region
+    # louder than the host, while a voiced match lands on it.
+    cloned_word = np.concatenate([
+        _tone(0.02, 0.12),
+        _silence(0.06),
+        _tone(0.02, 0.12),
+    ])  # 0.30 s total, 10x quieter than host
     cloned = np.concatenate([
         _silence(0.10),
-        _tone(0.02, 0.30),   # quiet cloned "hola" (10x quieter than host)
+        cloned_word,
         _silence(0.10),
     ]).astype(np.float32)
     cloned_words = [{"word": "hola", "start": 0.10, "end": 0.40}]
@@ -73,20 +82,21 @@ def _spoof_region_rms(result, details):
 
 
 def test_unit_helpers():
-    """compute_voiced_rms / scale_to_reference_rms / apply_peak_ceiling."""
+    """compute_voiced_rms / voiced_match_gain / apply_peak_ceiling."""
     # Voiced RMS ignores silence: a sine of amplitude A has RMS A/sqrt(2).
     sig = np.concatenate([_silence(0.2), _tone(0.2, 0.2)])
     rms = compute_voiced_rms(sig, SAMPLE_RATE)
     assert abs(rms - 0.2 / np.sqrt(2)) < 0.01, rms
 
-    # Scaling brings a quiet segment up to the reference exactly.
-    quiet = _tone(0.02, 0.2)
-    scaled, scale = scale_to_reference_rms(quiet, rms)
+    # voiced_match_gain brings a quiet segment's VOICED RMS to the reference,
+    # measuring the segment the same (voiced) way despite its internal silence.
+    quiet = np.concatenate([_tone(0.02, 0.15), _silence(0.10), _tone(0.02, 0.15)])
+    scaled, scale = voiced_match_gain(quiet, SAMPLE_RATE, rms)
     assert scale > 1.0
     assert abs(compute_voiced_rms(scaled, SAMPLE_RATE) - rms) < 1e-3
 
     # Degenerate reference -> no-op, unit gain.
-    _, unit = scale_to_reference_rms(quiet, 0.0)
+    _, unit = voiced_match_gain(quiet, SAMPLE_RATE, 0.0)
     assert unit == 1.0
 
     # Peak ceiling clamps and preserves ratios.

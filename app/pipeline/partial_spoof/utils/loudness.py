@@ -68,22 +68,34 @@ def compute_voiced_rms(
     return float(np.sqrt(np.mean(voiced ** 2)))
 
 
-def scale_to_reference_rms(
+def voiced_match_gain(
     segment: np.ndarray,
+    sample_rate: int,
     reference_rms: float,
+    frame_ms: float = 20.0,
+    gate_fraction: float = 0.15,
+    silence_rms: float = 0.015,
     rms_floor: float = 1e-6,
 ) -> tuple[np.ndarray, float]:
-    """Scale a segment so its RMS matches a reference RMS, returning the gain.
+    """Scale a segment so its VOICED RMS matches a reference RMS.
 
-    Returning the applied scale factor alongside the scaled segment lets the
-    crossfade splice branch reuse the same gain on its padding regions without
-    recomputing the RMS ratio.
+    The segment's loudness is measured with the same silence-gated voiced RMS
+    used to compute the bonafide reference, so voiced energy is matched
+    apples-to-apples. Matching a segment's plain RMS to a voiced reference
+    instead systematically overshoots: intra-word silence drags the plain RMS
+    down, so the gain needed to reach the voiced reference pushes the segment's
+    actual voiced content above it (heard as the spoof word sitting louder than
+    the surrounding bonafide).
 
     Args:
         segment: Audio segment to scale as a 1-D float array.
-        reference_rms: Target RMS the segment should be scaled to match.
-        rms_floor: Magnitude below which the reference or the segment RMS is
-            treated as degenerate; in that case the segment is returned
+        sample_rate: Audio sample rate in Hz.
+        reference_rms: Target voiced RMS the segment should match.
+        frame_ms: Frame length (ms) for the voiced RMS measurement.
+        gate_fraction: Relative voiced-gate fraction (see compute_voiced_rms).
+        silence_rms: Absolute silence floor for the voiced gate.
+        rms_floor: Magnitude below which the reference or the segment's voiced
+            RMS is treated as degenerate; the segment is then returned
             unchanged with a unit gain.
 
     Returns:
@@ -93,11 +105,13 @@ def scale_to_reference_rms(
     if len(segment) == 0 or reference_rms < rms_floor:
         return segment, 1.0
 
-    segment_rms = float(np.sqrt(np.mean(segment.astype(np.float32) ** 2)))
-    if segment_rms < rms_floor:
+    segment_voiced_rms = compute_voiced_rms(
+        segment, sample_rate, frame_ms, gate_fraction, silence_rms
+    )
+    if segment_voiced_rms < rms_floor:
         return segment, 1.0
 
-    scale = reference_rms / segment_rms
+    scale = reference_rms / segment_voiced_rms
     return (segment * scale).astype(np.float32), float(scale)
 
 
