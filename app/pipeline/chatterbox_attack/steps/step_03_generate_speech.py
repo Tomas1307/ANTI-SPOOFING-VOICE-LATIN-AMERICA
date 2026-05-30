@@ -106,7 +106,16 @@ class SpeechGenerator:
                         gen_dir / f"{self.cloner.SYSTEM_ID}_{speaker_id}_{text_id}.wav"
                     )
 
-                    if sample_id in generated and output_path.exists():
+                    # A 0-byte file still "exists", so an exists()-only guard
+                    # skips a crash-truncated WAV forever and it never gets
+                    # regenerated (this is exactly how the April-run 0-byte
+                    # files survived into validation). Treat an empty file as
+                    # missing so resume heals it.
+                    if (
+                        sample_id in generated
+                        and output_path.exists()
+                        and output_path.stat().st_size > 0
+                    ):
                         pbar.update(1)
                         continue
 

@@ -127,7 +127,22 @@ class QualityValidator:
                 rejected.append({"sample_id": sample_id, "reason": "Audio file not found"})
                 continue
 
-            audio, sr = librosa.load(audio_path, sr=settings.SAMPLE_RATE)
+            # A generation killed mid-write (or an IO error on a single file)
+            # leaves a truncated / zero-byte WAV that librosa cannot open. One
+            # such file must not abort the validation of the other ~35k samples,
+            # so the load is guarded: a corrupt file is rejected and logged with
+            # its path (so it can be deleted and regenerated) and the loop
+            # continues.
+            try:
+                audio, sr = librosa.load(audio_path, sr=settings.SAMPLE_RATE)
+            except Exception as exc:
+                logger.error(f"Corrupt or unreadable audio {audio_path}: {exc}")
+                rejected.append({
+                    "sample_id": sample_id,
+                    "audio_path": str(audio_path),
+                    "reason": "Corrupt or unreadable audio",
+                })
+                continue
             audio_duration = len(audio) / sr
 
             if audio_duration < settings.MIN_AUDIO_DURATION or audio_duration > settings.MAX_AUDIO_DURATION:

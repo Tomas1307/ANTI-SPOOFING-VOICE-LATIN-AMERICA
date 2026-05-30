@@ -27,6 +27,7 @@ has the OLD code loaded in memory; if it crashes and restarts it will
 pick up the new Step 3 (which delegates here). generation_metadata.json
 schema is unchanged so resume continues to work.
 """
+import os
 import time
 from pathlib import Path
 from typing import Optional
@@ -157,7 +158,22 @@ class Cloner(BaseCloner):
             margin_ms=settings.VAD_MARGIN_MS,
         )
 
-        torchaudio.save(str(output_path), wav_trimmed, settings.SAMPLE_RATE)
+        # Atomic, durable write: save to a temp file, fsync it to physical
+        # storage, then rename into place. The fsync is the load-bearing
+        # part on ext4: without it, delayed allocation can journal the
+        # inode + (in the caller) the JSON metadata while the data pages
+        # are still only in the page cache, so a node crash / OOM-kill
+        # leaves a 0-byte file with correct metadata -- exactly the April
+        # corruption. os.replace is atomic on the same filesystem, so a
+        # crash can never expose a half-written WAV at the real path.
+        tmp_path = output_path.with_name(output_path.name + ".tmp")
+        torchaudio.save(str(tmp_path), wav_trimmed, settings.SAMPLE_RATE)
+        fd = os.open(str(tmp_path), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(str(tmp_path), str(output_path))
 
         generation_time = time.time() - start_time
         audio_duration = wav_trimmed.shape[-1] / settings.SAMPLE_RATE
