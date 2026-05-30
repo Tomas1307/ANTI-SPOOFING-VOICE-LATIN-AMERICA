@@ -4,7 +4,8 @@ Crossfade utility for splice boundary smoothing.
 Implements seven splice boundary methods (direct cut-paste plus six distinct
 fade-curve variants) used to blend bonafide and cloned word segments. Provides
 per-splice random method selection weighted by SPLICE_METHOD_WEIGHTS, along with
-zero-crossing snap and RMS energy normalization helpers.
+the nearest-valley snap helper used to relocate splice seams onto silence.
+Loudness matching lives in utils/loudness.py.
 
 Fade-curve summary for t in [0, 1] (fade_in shown; fade_out = fade_in(1-t)):
     LINEAR     : t                          equal-gain, straight diagonal
@@ -159,34 +160,3 @@ def find_nearest_valley(
             best_pos = p + window_samples // 2
 
     return int(best_pos)
-
-
-def normalize_energy(
-    cloned_segment: np.ndarray,
-    bonafide_region: np.ndarray,
-    margin_samples: int = 160,
-) -> np.ndarray:
-    """Normalize the energy of a cloned segment to match the bonafide region.
-
-    Computes RMS energy of the bonafide region and scales the cloned segment
-    to match, preventing loudness discontinuities at splice boundaries.
-
-    Args:
-        cloned_segment: The cloned word audio to be normalized.
-        bonafide_region: The bonafide audio region being replaced (same word).
-        margin_samples: Unused; kept for API compatibility.
-
-    Returns:
-        Energy-normalized cloned segment.
-    """
-    if len(cloned_segment) == 0 or len(bonafide_region) == 0:
-        return cloned_segment
-
-    rms_bonafide = np.sqrt(np.mean(bonafide_region ** 2))
-    rms_cloned = np.sqrt(np.mean(cloned_segment ** 2))
-
-    if rms_cloned < 1e-8 or rms_bonafide < 1e-8:
-        return cloned_segment
-
-    scale = rms_bonafide / rms_cloned
-    return (cloned_segment * scale).astype(np.float32)

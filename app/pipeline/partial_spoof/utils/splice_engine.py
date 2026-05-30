@@ -30,7 +30,10 @@ from app.pipeline.partial_spoof.utils.crossfade import (
     _compute_fade_curves,
     draw_splice_method,
     find_nearest_valley,
-    normalize_energy,
+)
+from app.pipeline.partial_spoof.utils.loudness import (
+    compute_voiced_rms,
+    scale_to_reference_rms,
 )
 from app.pipeline.partial_spoof.utils.energy_refiner import (
     refine_word_boundary_by_energy,
@@ -164,6 +167,10 @@ def splice_words(
     valley_search_ms: float = 0.0,
     energy_refine_radius_s: float = 0.0,
     energy_refine_silence_rms: float = 0.015,
+    loudness_match_enabled: bool = True,
+    loudness_reference_mode: str = "utterance",
+    loudness_voiced_frame_ms: float = 20.0,
+    loudness_voiced_gate_fraction: float = 0.15,
 ) -> Tuple[np.ndarray, List[Dict]]:
     """Replace selected words in bonafide audio with cloned word segments.
 
@@ -233,7 +240,24 @@ def splice_words(
             radius seconds. Set to 0.0 to disable.
         energy_refine_silence_rms: RMS threshold below which audio is
             considered silence in the energy refinement. Tune per
-            dataset; ~0.015 works for HABLA at 16 kHz mono.
+            dataset; ~0.015 works for HABLA at 16 kHz mono. Also reused
+            as the absolute silence floor of the voiced-RMS loudness
+            anchor.
+        loudness_match_enabled: When True, each cloned word is scaled so
+            its voiced RMS matches the bonafide loudness reference,
+            removing the loudness offset between spoof and surrounding
+            bonafide. When False, cloned words keep their native level
+            (ablation / legacy behaviour).
+        loudness_reference_mode: Strategy for the loudness reference.
+            ``"utterance"`` (default) computes one voiced-RMS anchor
+            from the original bonafide host and applies it to every
+            spoof word in the file, guaranteeing W2/W3 consistency.
+            Unknown values raise ValueError.
+        loudness_voiced_frame_ms: Frame length (ms) for the voiced-RMS
+            envelope of the loudness anchor.
+        loudness_voiced_gate_fraction: Fraction of the 95th-percentile
+            frame RMS used as the relative component of the voiced gate
+            when computing the loudness anchor.
 
     Returns:
         Tuple of (spliced_audio, splice_details) where splice_details is a
@@ -242,6 +266,36 @@ def splice_words(
     cloned_map = _build_cloned_word_map(cloned_words)
 
     result = bonafide_audio.copy().astype(np.float32)
+
+    # Per-file loudness anchor: one voiced-RMS target derived from the
+    # ORIGINAL bonafide host, computed once and shared by every spoof
+    # word in this call. Measuring on voiced frames only avoids the
+    # legacy bug where the reference was taken over the valley-snapped
+    # slot (word plus flanking silence), which deflated the target and
+    # left spoof words too quiet. Computing it before any splice keeps
+    # it independent of cumulative_offset. A zero anchor (all-silence
+    # host or matching disabled) makes scale_to_reference_rms a no-op.
+    if loudness_match_enabled:
+        if loudness_reference_mode != "utterance":
+            raise ValueError(
+                f"Unsupported loudness_reference_mode: {loudness_reference_mode!r}. "
+                f"Supported modes: 'utterance'."
+            )
+        loudness_anchor = compute_voiced_rms(
+            bonafide_audio,
+            sample_rate,
+            frame_ms=loudness_voiced_frame_ms,
+            gate_fraction=loudness_voiced_gate_fraction,
+            silence_rms=energy_refine_silence_rms,
+        )
+        if loudness_anchor <= 0.0:
+            logger.warning(
+                "Loudness anchor is zero (all-silence bonafide host); "
+                "skipping loudness matching for this sample."
+            )
+    else:
+        loudness_anchor = 0.0
+
     splice_details = []
     # For W2/W3: each splice can change the result's total duration
     # (cloned word duration != bonafide slot duration). Subsequent
@@ -415,10 +469,16 @@ def splice_words(
             ),
         )
 
+        # Gain applied to the cloned word to match the bonafide loudness
+        # anchor. Captured for traceability in splice_details. A zero
+        # anchor (matching disabled / all-silence host) yields 1.0.
+        applied_scale = 1.0
+
         if method is SpliceMethod.CUT_PASTE or effective_cf == 0:
             cloned_segment = cloned_audio[c_start:c_end].astype(np.float32).copy()
-            bonafide_slot = result[b_start:b_end].copy()
-            cloned_segment = normalize_energy(cloned_segment, bonafide_slot)
+            cloned_segment, applied_scale = scale_to_reference_rms(
+                cloned_segment, loudness_anchor
+            )
             result = np.concatenate([
                 result[:b_start],
                 cloned_segment,
@@ -432,21 +492,14 @@ def splice_words(
             c_end_ext = c_end + effective_cf
             cloned_ext = cloned_audio[c_start_ext:c_end_ext].astype(np.float32).copy()
 
-            # Energy-normalize using ONLY the word portion (not the
-            # silence pads, which would skew the RMS towards zero and
-            # blow up the scale).
+            # Loudness-match using ONLY the word portion (not the silence
+            # pads, which would skew the RMS towards zero and blow up the
+            # scale), then apply the SAME gain to the full padded segment
+            # so the silence stays silent and the seams between word and
+            # pads remain smooth.
             cloned_word_only = cloned_ext[effective_cf:effective_cf + cl_natural_len]
-            bonafide_slot = result[b_start:b_end].copy()
-            scaled_word = normalize_energy(cloned_word_only, bonafide_slot)
-            # Apply the same gain to the padding regions for continuity
-            # so the silence remains silent (multiplied by the same scale)
-            # and the seams between word and pads stay smooth.
-            if np.sqrt(np.mean(cloned_word_only ** 2) + 1e-12) > 1e-8:
-                scale = float(
-                    np.sqrt(np.mean(bonafide_slot ** 2) + 1e-12)
-                    / np.sqrt(np.mean(cloned_word_only ** 2) + 1e-12)
-                )
-                cloned_ext = cloned_ext * scale
+            _, applied_scale = scale_to_reference_rms(cloned_word_only, loudness_anchor)
+            cloned_ext = (cloned_ext * applied_scale).astype(np.float32)
 
             t = np.linspace(0.0, 1.0, effective_cf, dtype=np.float32)
             fade_in, fade_out = _compute_fade_curves(t, method)
@@ -538,6 +591,10 @@ def splice_words(
             "crossfade_ms": round(overlap_ms, 2),
             "effective_crossfade_ms": round(effective_cf * 1000 / sample_rate, 2),
             "splice_method": method.value,
+            # Loudness matching: voiced-RMS anchor of the bonafide host
+            # and the gain applied to this cloned word to reach it.
+            "loudness_target_rms": round(float(loudness_anchor), 6),
+            "loudness_applied_scale": round(float(applied_scale), 4),
             # FALSE under the new architecture: the spliced audio's
             # total duration shifts by ``size_diff`` per splice. The
             # field is kept for schema compatibility with downstream

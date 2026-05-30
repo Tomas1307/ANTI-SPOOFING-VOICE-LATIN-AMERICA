@@ -98,9 +98,18 @@ The Step 5 splice engine assembles each spliced WAV by concatenation, not in-pla
 5. CUMULATIVE OFFSET MAPPING (W2/W3 only)
      - Map original-bonafide positions to current-result positions
      - b_start_in_result = b_start_snapped + cumulative_offset_samples
-6. ENERGY NORMALIZATION
-     - Scale cloned amplitude so RMS matches bonafide slot RMS
-     - Prevents loudness discontinuity at seams
+6. LOUDNESS MATCHING (utils/loudness, per-file voiced-RMS anchor)
+     - Anchor = voiced RMS of the ORIGINAL bonafide host, computed ONCE per
+       utterance before any splice (independent of cumulative_offset), on
+       voiced frames only (gate = max(ENERGY_REFINE_SILENCE_RMS, 0.15*P95(frame_rms)))
+     - Scale each cloned word so its voiced RMS matches the anchor; same gain
+       reused on crossfade padding. Shared anchor keeps W2/W3 words consistent.
+     - Replaces the legacy normalize_energy whose reference was the valley-snapped
+       slot (word+silence), which deflated the target and left spoof words too quiet.
+     - Removes the loudness offset between spoof and bonafide (a trivial detector
+       shortcut), without the asymmetry of a fixed corpus-wide dB target.
+     - Peak ceiling (0.99) applied in Step 5 before write to avoid FLAC PCM_16
+       hard-clip in Step 7. Gated by LOUDNESS_MATCH_ENABLED (default True).
 7. CROSSFADE ASSEMBLY
      - seed_safe = (splice_seed & ((1<<63)-1)) ^ (idx & 0xFFFF)  # mask sign bit
      - method = draw_splice_method(seeded_rng)

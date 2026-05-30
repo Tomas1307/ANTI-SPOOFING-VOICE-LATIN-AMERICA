@@ -26,6 +26,7 @@ from tqdm import tqdm
 from app.pipeline.partial_spoof.settings import settings
 from app.pipeline.partial_spoof.schemas.splice_result import SpliceResult
 from app.pipeline.partial_spoof.utils.checkpoint_manager import CheckpointManager
+from app.pipeline.partial_spoof.utils.loudness import apply_peak_ceiling
 from app.pipeline.partial_spoof.utils.splice_engine import splice_words
 
 MAX_SPLICE_RETRIES = 5
@@ -210,6 +211,10 @@ class AudioSplicer:
                             valley_search_ms=settings.VALLEY_SEARCH_MS,
                             energy_refine_radius_s=settings.ENERGY_REFINE_RADIUS_S,
                             energy_refine_silence_rms=settings.ENERGY_REFINE_SILENCE_RMS,
+                            loudness_match_enabled=settings.LOUDNESS_MATCH_ENABLED,
+                            loudness_reference_mode=settings.LOUDNESS_REFERENCE_MODE,
+                            loudness_voiced_frame_ms=settings.LOUDNESS_VOICED_FRAME_MS,
+                            loudness_voiced_gate_fraction=settings.LOUDNESS_VOICED_GATE_FRACTION,
                         )
                     except Exception as exc:
                         retry_history.append({
@@ -253,6 +258,13 @@ class AudioSplicer:
                         break
 
                 if len(best_details) >= expected_count and best_result is not None:
+                    # Guard against clipping: loudness matching can scale a
+                    # quiet cloned word above 1.0, and the Step 7 FLAC export
+                    # (integer PCM) hard-clips out-of-range samples. A single
+                    # global down-scale preserves the spoof/bonafide ratio.
+                    best_result = apply_peak_ceiling(
+                        best_result, settings.LOUDNESS_PEAK_CEILING
+                    )
                     sf.write(str(output_path), best_result, settings.SAMPLE_RATE)
                     if self.checkpoint is not None:
                         self.checkpoint.mark_spliced(splice_key)

@@ -219,6 +219,45 @@ class PartialSpoofSettings(BaseModel):
                     "the segment is too short and gets rejected.",
     )
 
+    # === Loudness Matching (Step 5) ===
+    LOUDNESS_MATCH_ENABLED: bool = Field(
+        default=True,
+        description="When True, each cloned spoof word is scaled so its "
+                    "voiced RMS matches the bonafide loudness reference of "
+                    "the same file, removing the loudness offset that lets a "
+                    "detector cheat on a trivial 'loud = spoof' cue. When "
+                    "False, cloned words keep their native level (ablation).",
+    )
+    LOUDNESS_REFERENCE_MODE: str = Field(
+        default="utterance",
+        description="Strategy for the per-file loudness reference. "
+                    "'utterance' computes one voiced-RMS anchor from the "
+                    "original bonafide host and applies it to every spoof "
+                    "word in the file, guaranteeing W2/W3 internal "
+                    "consistency. Unknown values raise ValueError.",
+    )
+    LOUDNESS_VOICED_FRAME_MS: float = Field(
+        default=20.0,
+        description="Frame length (ms) used to compute the voiced-RMS "
+                    "loudness anchor of the bonafide host.",
+    )
+    LOUDNESS_VOICED_GATE_FRACTION: float = Field(
+        default=0.15,
+        description="Fraction of the 95th-percentile frame RMS used as the "
+                    "relative component of the voiced gate when measuring "
+                    "the loudness anchor. The absolute floor reuses "
+                    "ENERGY_REFINE_SILENCE_RMS. Higher values exclude more "
+                    "low-energy frames from the loudness estimate.",
+    )
+    LOUDNESS_PEAK_CEILING: float = Field(
+        default=0.99,
+        description="Maximum absolute sample amplitude of the final spliced "
+                    "audio. Scaling a quiet cloned word up can push samples "
+                    "past 1.0; the FLAC export (Step 7) uses integer PCM and "
+                    "hard-clips out-of-range samples, so the spliced WAV is "
+                    "down-scaled to this ceiling before being written.",
+    )
+
     # === Splice Quality Validation (Step 6) ===
     ENABLE_SPLICE_RETRY: bool = Field(
         default=False,
