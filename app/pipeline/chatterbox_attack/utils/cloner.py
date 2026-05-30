@@ -166,8 +166,13 @@ class Cloner(BaseCloner):
         # leaves a 0-byte file with correct metadata -- exactly the April
         # corruption. os.replace is atomic on the same filesystem, so a
         # crash can never expose a half-written WAV at the real path.
+        # format="wav" is mandatory here: torchaudio infers the encoder
+        # from the file extension, and the ".tmp" suffix has no associated
+        # muxer (the ffmpeg backend raises "Failed to open output ...
+        # (Invalid argument)"). Forcing the format keeps the atomic-write
+        # temp name while still writing a valid WAV.
         tmp_path = output_path.with_name(output_path.name + ".tmp")
-        torchaudio.save(str(tmp_path), wav_trimmed, settings.SAMPLE_RATE)
+        torchaudio.save(str(tmp_path), wav_trimmed, settings.SAMPLE_RATE, format="wav")
         fd = os.open(str(tmp_path), os.O_RDONLY)
         try:
             os.fsync(fd)
