@@ -24,6 +24,7 @@ from tqdm import tqdm
 
 from app.pipeline.chatterbox_attack.settings import settings
 from app.pipeline.chatterbox_attack.schemas.validation_result import ValidationResult
+from app.pipeline.chatterbox_attack.utils.validation_checkpoint import ValidationCheckpoint
 from app.utils.ecapa_similarity import EcapaSimilarity
 from app.utils.metrics_writer import MetricsWriter
 from app.utils.nisqa_scorer import NisqaScorer
@@ -116,15 +117,45 @@ class QualityValidator:
         similarity_scores = []
         prefix_trim_count = 0
         ref_embeddings = {}
+        reused = 0
+
+        # Validation checkpoint: reuse cached outcomes for unchanged WAVs so an
+        # interrupted pass resumes instead of restarting, and a re-run after
+        # regenerating a subset only re-validates the changed files. When no
+        # checkpoint exists yet, seed it from a prior completed
+        # validated_samples.json (passed samples whose WAV is untouched).
+        checkpoint = ValidationCheckpoint(self.output_dir / "validation_checkpoint.json")
+        checkpoint.load()
+        if checkpoint.is_empty():
+            checkpoint.bootstrap_from_validated(self.output_dir / "validated_samples.json")
 
         logger.info(f"Validating {len(generated)} samples...")
 
-        for sample_id, sample_data in tqdm(generated.items(), desc="Validating"):
+        for index, (sample_id, sample_data) in enumerate(
+            tqdm(generated.items(), desc="Validating")
+        ):
             audio_path = Path(sample_data["audio_path"])
             text = sample_data["text"]
 
             if not audio_path.exists():
                 rejected.append({"sample_id": sample_id, "reason": "Audio file not found"})
+                continue
+
+            # Reuse a cached outcome when the WAV is unchanged since it was
+            # last validated. This is what turns a full re-validation into a
+            # pass over only the regenerated samples.
+            if checkpoint.fresh(sample_id, audio_path):
+                record = checkpoint.outcome(sample_id)
+                if record["status"] == "passed":
+                    entry = record["payload"]
+                    validated[sample_id] = entry
+                    wer_scores.append(entry["wer"])
+                    cer_scores.append(entry["cer"])
+                    nisqa_scores.append(entry["nisqa_mos"])
+                    similarity_scores.append(entry["speaker_similarity"])
+                else:
+                    rejected.append(record["payload"])
+                reused += 1
                 continue
 
             # A generation killed mid-write (or an IO error on a single file)
@@ -137,20 +168,24 @@ class QualityValidator:
                 audio, sr = librosa.load(audio_path, sr=settings.SAMPLE_RATE)
             except Exception as exc:
                 logger.error(f"Corrupt or unreadable audio {audio_path}: {exc}")
-                rejected.append({
+                reject_entry = {
                     "sample_id": sample_id,
                     "audio_path": str(audio_path),
                     "reason": "Corrupt or unreadable audio",
-                })
+                }
+                rejected.append(reject_entry)
+                checkpoint.record(sample_id, "rejected", reject_entry, audio_path)
                 continue
             audio_duration = len(audio) / sr
 
             if audio_duration < settings.MIN_AUDIO_DURATION or audio_duration > settings.MAX_AUDIO_DURATION:
-                rejected.append({
+                reject_entry = {
                     "sample_id": sample_id,
                     "audio_duration": float(audio_duration),
                     "reason": f"Duration anomaly: {audio_duration:.1f}s",
-                })
+                }
+                rejected.append(reject_entry)
+                checkpoint.record(sample_id, "rejected", reject_entry, audio_path)
                 continue
 
             frame_length = int(0.025 * sr)
@@ -166,11 +201,13 @@ class QualityValidator:
                     current = 0
             max_consecutive = max(max_consecutive, current)
             if (max_consecutive * hop_length / sr) >= _SILENCE_MIN_DURATION:
-                rejected.append({
+                reject_entry = {
                     "sample_id": sample_id,
                     "audio_duration": float(audio_duration),
                     "reason": "Near-silent output",
-                })
+                }
+                rejected.append(reject_entry)
+                checkpoint.record(sample_id, "rejected", reject_entry, audio_path)
                 continue
 
             transcription, word_timestamps = transcriber.transcribe_with_timestamps(audio_path)
@@ -211,6 +248,10 @@ class QualityValidator:
                 nisqa_scores.append(sample_nisqa)
                 similarity_scores.append(sample_sim)
 
+                # Record AFTER any prefix trim above, so the cached
+                # fingerprint matches the trimmed WAV now on disk.
+                checkpoint.record(sample_id, "passed", validated[sample_id], audio_path)
+
                 logger.debug(
                     f"  NISQA={sample_nisqa:.2f} SpeakerSim={sample_sim:.3f}"
                 )
@@ -220,13 +261,22 @@ class QualityValidator:
                     reasons.append(f"WER {sample_wer:.3f} > {self.wer_max:.3f}")
                 if sample_cer > self.cer_max:
                     reasons.append(f"CER {sample_cer:.3f} > {self.cer_max:.3f}")
-                rejected.append({
+                reject_entry = {
                     "sample_id": sample_id,
                     "wer": float(sample_wer),
                     "cer": float(sample_cer),
                     "transcription": transcription,
                     "reason": "; ".join(reasons),
-                })
+                }
+                rejected.append(reject_entry)
+                checkpoint.record(sample_id, "rejected", reject_entry, audio_path)
+
+            # Periodically persist the checkpoint so a crash or disconnect
+            # mid-pass loses at most the last window of work, not everything.
+            if (index + 1) % 500 == 0:
+                checkpoint.flush()
+
+        checkpoint.flush()
 
         validated_path = self.output_dir / "validated_samples.json"
         with open(validated_path, "w", encoding="utf-8") as f:
@@ -239,6 +289,7 @@ class QualityValidator:
         pass_rate = (100.0 * len(validated) / len(generated)) if generated else 0.0
 
         logger.info("Validation complete")
+        logger.info(f"  Reused (checkpoint) : {reused}")
         logger.info(f"  Passed              : {len(validated)}/{len(generated)} ({pass_rate:.1f}%)")
         logger.info(f"  Rejected            : {len(rejected)}")
         logger.info(f"  Prefix trims        : {prefix_trim_count}")
