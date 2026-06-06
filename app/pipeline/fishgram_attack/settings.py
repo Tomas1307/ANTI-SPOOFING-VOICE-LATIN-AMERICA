@@ -95,6 +95,23 @@ class FishGramAttackSettings(BaseModel):
         default=1.1,
         description="Repetition penalty for Fish Speech (0.9-2.0)"
     )
+    FISH_SPEECH_HEALTH_RETRIES: int = Field(
+        default=5,
+        description="Number of health-probe attempts before declaring the "
+                    "Fish Speech server unreachable. Guards against false "
+                    "negatives when the GPU-bound server is busy serving "
+                    "an in-flight request from another client."
+    )
+    FISH_SPEECH_HEALTH_TIMEOUT: float = Field(
+        default=10.0,
+        description="Per-attempt timeout in seconds for the server health "
+                    "probe. Generous enough to survive a probe that queues "
+                    "behind in-flight inference on the shared worker."
+    )
+    FISH_SPEECH_HEALTH_BACKOFF: float = Field(
+        default=3.0,
+        description="Seconds to wait between failed health-probe attempts."
+    )
 
     # === Audio Processing ===
     SAMPLE_RATE: int = Field(

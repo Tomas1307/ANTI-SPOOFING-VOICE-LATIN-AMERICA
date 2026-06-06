@@ -55,35 +55,63 @@ class Cloner(BaseCloner):
     def load(self, device: str) -> None:
         """Resolve the Fish Speech API URL and verify the server is reachable.
 
+        The probe is deliberately tolerant. The Fish Speech ``api_server``
+        is GPU-bound and effectively serialises requests on a single
+        inference worker, so a liveness ``GET /`` issued while another
+        client's synthesis is in flight may queue behind it. To avoid a
+        false negative aborting a multi-hour run, the probe retries up to
+        ``settings.FISH_SPEECH_HEALTH_RETRIES`` times with a per-attempt
+        timeout of ``settings.FISH_SPEECH_HEALTH_TIMEOUT`` seconds and a
+        ``settings.FISH_SPEECH_HEALTH_BACKOFF`` pause between attempts. Any
+        HTTP response (regardless of status code) proves the socket is
+        alive and serving; only repeated connection or timeout failures
+        across every attempt are treated as the server being down.
+
         Args:
             device: Accepted for interface compatibility; FishGram does
                 its inference server-side, so the local device does not
                 affect anything here.
 
         Raises:
-            ConnectionError: If the Fish Speech server is not reachable
-                at ``settings.FISH_SPEECH_API_URL``.
+            ConnectionError: If every health-probe attempt fails with a
+                connection error or timeout, indicating the Fish Speech
+                server at ``settings.FISH_SPEECH_API_URL`` is unreachable.
         """
         self.api_url = settings.FISH_SPEECH_API_URL
         logger.info(f"FishGram Cloner: API URL = {self.api_url}")
 
-        try:
-            response = requests.get(f"{self.api_url}/", timeout=5)
-            ok = response.status_code == 200
-        except (requests.ConnectionError, requests.Timeout):
-            ok = False
+        retries = settings.FISH_SPEECH_HEALTH_RETRIES
+        last_error: str = "no attempts made"
+        for attempt in range(1, retries + 1):
+            try:
+                response = requests.get(
+                    f"{self.api_url}/",
+                    timeout=settings.FISH_SPEECH_HEALTH_TIMEOUT,
+                )
+                logger.info(
+                    f"FishGram Cloner: server health check OK "
+                    f"(HTTP {response.status_code}, attempt {attempt}/{retries})"
+                )
+                return
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                last_error = f"{exc.__class__.__name__}: {exc}"
+                logger.warning(
+                    f"FishGram Cloner: health probe attempt {attempt}/{retries} "
+                    f"failed ({exc.__class__.__name__})"
+                )
+                if attempt < retries:
+                    time.sleep(settings.FISH_SPEECH_HEALTH_BACKOFF)
 
-        if not ok:
-            raise ConnectionError(
-                f"Fish Speech API server is not reachable at {self.api_url}. "
-                "Start the server with: cd ~/fish-speech && "
-                "CUDA_VISIBLE_DEVICES=1 python -m tools.api_server "
-                "--listen 0.0.0.0:8080 "
-                "--llama-checkpoint-path checkpoints/s1-mini "
-                "--decoder-checkpoint-path checkpoints/s1-mini/codec.pth "
-                "--decoder-config-name modded_dac_vq"
-            )
-        logger.info("FishGram Cloner: server health check OK")
+        raise ConnectionError(
+            f"Fish Speech API server is not reachable at {self.api_url} "
+            f"after {retries} attempts (last error: {last_error}). "
+            "Start the server with: cd ~/fish-speech && "
+            "CUDA_VISIBLE_DEVICES=1 python -m tools.api_server "
+            "--listen 0.0.0.0:8080 "
+            "--llama-checkpoint-path checkpoints/s1-mini "
+            "--decoder-checkpoint-path checkpoints/s1-mini/codec.pth "
+            "--decoder-config-name modded_dac_vq"
+        )
 
     def prepare_speaker(
         self,
