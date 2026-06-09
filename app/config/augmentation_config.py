@@ -177,13 +177,13 @@ class AugmentationConfigManager:
         print(f"  T60 Range: {strategy.rir_noise_config.t60_range[0]}-{strategy.rir_noise_config.t60_range[1]}s")
         
         print(f"\nCodec Configuration:")
-        print(f"  Target Sample Rates: {strategy.codec_config.target_sample_rates}")
+        print(f"  Codec Set: {strategy.codec_config.codec_set}")
+        print(f"  Packet Loss Prob: {strategy.codec_config.apply_packet_loss_prob*100:.1f}%")
         print(f"  Packet Loss Range: {strategy.codec_config.packet_loss_range[0]*100:.1f}%-{strategy.codec_config.packet_loss_range[1]*100:.1f}%")
-        
+
         print(f"\nRawBoost Configuration:")
-        print(f"  Clipping Threshold: {strategy.rawboost_config.clipping_threshold}")
-        print(f"  Linear Filtering: {strategy.rawboost_config.apply_linear_filtering}")
-        print(f"  Nonlinear Filtering: {strategy.rawboost_config.apply_nonlinear_filtering}")
+        print(f"  Algo: {strategy.rawboost_config.algo} (0 = random per clip)")
+        print(f"  Algo Choices: {strategy.rawboost_config.algo_choices}")
         
         print(f"\n{'='*70}\n")
     

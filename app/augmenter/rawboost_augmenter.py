@@ -1,147 +1,76 @@
 """
-RawBoost Augmentation
+RawBoost Augmentation.
 
-Implements RawBoost data augmentation technique from Tak et al. (2022).
-Applies raw waveform perturbations including linear/nonlinear convolutive noise
-and signal-dependent additive noise.
+Wraps the official RawBoost algorithm (Tak et al., 2022) implemented in
+``app.augmenter.rawboost_reference``: linear-and-non-linear convolutive noise
+(LnL), impulsive signal-dependent additive noise (ISD), and stationary
+signal-independent additive noise (SSI). Loudness normalization is NOT done here;
+the orchestrator applies one uniform loudness policy on write.
 
 Reference:
-Tak, H., et al. (2022). "RawBoost: A Raw Data Boosting and Augmentation Method
-applied to Automatic Speaker Verification Anti-Spoofing"
+    H. Tak, M. Kamble, J. Patino, M. Todisco, N. Evans, "RawBoost: A Raw Data
+    Boosting and Augmentation Method applied to Automatic Speaker Verification
+    Anti-Spoofing," ICASSP 2022.
 """
+import random
 
 import numpy as np
-import random
-from scipy import signal
 
+from app.augmenter import rawboost_reference
 from app.augmenter.base_augmenter import BaseAugmenter
-from app.schema import RawBoostConfig
+from app.augmenter.schemas.codec_rawboost_config import RawBoostConfigV2
+
+# RawBoost algorithm id -> component tokens / human-readable name.
+_ALGO_OPERATIONS = {
+    1: ["LnL"],
+    2: ["ISD"],
+    3: ["SSI"],
+    4: ["LnL", "ISD", "SSI"],
+    5: ["LnL", "ISD"],
+    6: ["LnL", "SSI"],
+    7: ["LnL", "ISD"],
+}
+_ALGO_NAMES = {
+    1: "LnL",
+    2: "ISD",
+    3: "SSI",
+    4: "series_LnL_ISD_SSI",
+    5: "series_LnL_ISD",
+    6: "series_LnL_SSI",
+    7: "parallel_LnL_ISD",
+}
 
 
 class RawBoostAugmenter(BaseAugmenter):
     """
-    RawBoost augmentation implementation.
-    
-    Applies three types of perturbations:
-    1. Linear convolutive noise (LFR - Linear Filtering with Random impulse)
-    2. Nonlinear convolutive noise (nonlinear distortion)
-    3. Signal-dependent additive noise (SDAN - clipping, overflow effects)
-    
+    RawBoost augmentation using the real LnL/ISD/SSI algorithm.
+
     Attributes:
-        config: RawBoostConfig object with augmentation parameters.
+        config: RawBoostConfigV2 with the algorithm selection and parameter ranges.
     """
-    
-    def __init__(self, config: RawBoostConfig, sample_rate: int = 16000):
+
+    def __init__(self, config: RawBoostConfigV2, sample_rate: int = 16000):
         """
-        Initialize RawBoost augmenter.
-        
+        Initialize the RawBoost augmenter.
+
         Args:
-            config: Configuration object for RawBoost augmentation.
+            config: Configuration object (algorithm choice + parameter ranges).
             sample_rate: Target sample rate for processing.
         """
         super().__init__(sample_rate)
         self.config = config
-        
-        print(f"RawBoostAugmenter initialized:")
-        print(f"  - Linear filtering: {config.apply_linear_filtering}")
-        print(f"  - Nonlinear filtering: {config.apply_nonlinear_filtering}")
-        print(f"  - Additive noise: {config.apply_additive_noise}")
-        print(f"  - Clipping threshold: {config.clipping_threshold}")
-    
-    def _apply_linear_filtering(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Apply linear convolutive noise using random FIR filter.
-        
-        Simulates linear distortions from recording devices and channels.
-        
-        Args:
-            audio: Input audio signal.
-            
-        Returns:
-            Filtered audio signal.
-        """
-        filter_length = random.randint(5, 25)
-        
-        filter_coeffs = np.random.randn(filter_length)
-        filter_coeffs = filter_coeffs / np.sum(np.abs(filter_coeffs))
-        
-        filtered = signal.lfilter(filter_coeffs, [1.0], audio)
-        
-        return filtered
-    
-    def _apply_nonlinear_distortion(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Apply nonlinear distortion to simulate harmonic distortion.
-        
-        Uses polynomial nonlinearity to model amplifier distortion effects.
-        
-        Args:
-            audio: Input audio signal.
-            
-        Returns:
-            Distorted audio signal.
-        """
-        alpha = random.uniform(0.1, 0.5)
-        
-        distorted = np.tanh(alpha * audio)
-        
-        distorted = distorted / np.max(np.abs(distorted)) * 0.99
-        
-        return distorted
-    
-    def _apply_clipping(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Apply hard clipping to simulate ADC overflow.
-        
-        Args:
-            audio: Input audio signal.
-            
-        Returns:
-            Clipped audio signal.
-        """
-        threshold = self.config.clipping_threshold
-        
-        clipped = np.clip(audio, -threshold, threshold)
-        
-        return clipped
-    
-    def _apply_additive_noise(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Apply signal-dependent additive noise.
-        
-        Simulates quantization noise and electronic interference that
-        correlates with signal amplitude.
-        
-        Args:
-            audio: Input audio signal.
-            
-        Returns:
-            Audio with additive noise.
-        """
-        noise_level = random.uniform(0.001, 0.01)
-        
-        signal_dependent_noise = audio * np.random.randn(len(audio)) * noise_level
-        
-        noise = np.random.randn(len(audio)) * noise_level * 0.5
-        
-        noisy = audio + signal_dependent_noise + noise
-        
-        return noisy
-    
-    def _apply_random_gain(self, audio: np.ndarray) -> np.ndarray:
-        """
-        Apply random gain variation to simulate AGC effects.
-        
-        Args:
-            audio: Input audio signal.
-            
-        Returns:
-            Audio with gain variation.
-        """
-        gain = random.uniform(0.7, 1.3)
-        
-        return audio * gain
-    
+
+        print("RawBoostAugmenter initialized:")
+        print(f"  - Algo: {config.algo} (0 = random per clip)")
+        print(f"  - Algo choices: {config.algo_choices}")
+
+    def _select_algo(self) -> int:
+        """Return the fixed algo, or a weighted random one from algo_choices when algo == 0."""
+        if self.config.algo != 0:
+            return self.config.algo
+        weights = [self.config.algo_weights.get(a, 1.0) for a in self.config.algo_choices]
+        return random.choices(self.config.algo_choices, weights=weights, k=1)[0]
+
     def augment(
         self,
         audio: np.ndarray,
@@ -150,82 +79,49 @@ class RawBoostAugmenter(BaseAugmenter):
     ) -> np.ndarray:
         """
         Apply RawBoost augmentation to audio.
-        
-        Randomly applies combination of:
-        - Linear filtering
-        - Nonlinear distortion
-        - Additive noise
-        - Clipping
-        - Gain variation
-        
+
         Args:
             audio: Input audio signal.
             sr: Sample rate of input audio.
             return_metadata: If True, returns tuple (audio, metadata).
-            
+
         Returns:
-            Augmented audio signal, or tuple (audio, metadata) if return_metadata=True.
+            Augmented audio signal, or tuple (audio, metadata) if return_metadata.
         """
         audio, sr = self._ensure_sample_rate(audio, sr)
-        
-        augmented = audio.copy()
-        
-        applied_operations = []
-        
-        if self.config.apply_linear_filtering and random.random() < 0.5:
-            augmented = self._apply_linear_filtering(augmented)
-            applied_operations.append("linear_filter")
-        
-        if self.config.apply_nonlinear_filtering and random.random() < 0.3:
-            augmented = self._apply_nonlinear_distortion(augmented)
-            applied_operations.append("nonlinear_distortion")
-        
-        if self.config.apply_additive_noise and random.random() < 0.6:
-            augmented = self._apply_additive_noise(augmented)
-            applied_operations.append("additive_noise")
-        
-        if random.random() < 0.4:
-            augmented = self._apply_random_gain(augmented)
-            applied_operations.append("gain_variation")
-        
-        if random.random() < 0.2:
-            augmented = self._apply_clipping(augmented)
-            applied_operations.append("clipping")
-        
-        augmented = self._normalize_audio(augmented)
+
+        algo = self._select_algo()
+        feature = np.asarray(audio, dtype=np.float64)
+        augmented = rawboost_reference.process_Rawboost_feature(
+            feature, sr, self.config.params, algo
+        )
+
+        augmented = np.asarray(augmented, dtype=np.float32)
         augmented = self._clip_audio(augmented, max_val=0.99)
-        
+
+        operations = _ALGO_OPERATIONS.get(algo, [])
+
         if return_metadata:
             metadata = {
-                "operations": applied_operations,
-                "num_operations": len(applied_operations)
+                "operations": operations,
+                "num_operations": len(operations),
+                "algo": algo,
+                "algo_name": _ALGO_NAMES.get(algo, "none"),
             }
             return augmented, metadata
-        
+
         return augmented
-    
+
     def get_augmentation_label(self, operations: list) -> str:
         """
-        Generate descriptive label for augmentation applied.
-        
+        Generate a descriptive label for the RawBoost components applied.
+
         Args:
-            operations: List of operations applied.
-            
+            operations: List of component tokens (e.g. ["LnL", "ISD"]).
+
         Returns:
-            Formatted augmentation label.
+            Formatted augmentation label, e.g. "RAWBOOST_LnL_ISD".
         """
         if not operations:
             return "RAWBOOST_NONE"
-        
-        op_short = {
-            "linear_filter": "LF",
-            "nonlinear_distortion": "NL",
-            "additive_noise": "AN",
-            "gain_variation": "GV",
-            "clipping": "CL"
-        }
-        
-        ops = "_".join([op_short.get(op, op[:2].upper()) for op in operations])
-        
-        return f"RAWBOOST_{ops}"
-
+        return f"RAWBOOST_{'_'.join(operations)}"

@@ -67,7 +67,34 @@ Strategy:
         default="3x",
         help="Minimum total augmentation factor (e.g., 3x, 5x, 10x)"
     )
-    
+
+    # Balancing mode
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["balanced", "uniform"],
+        default="balanced",
+        help="balanced: self-contained, hits target_ratio with equal clean "
+             "fraction. uniform: same factor both classes, natural ratio preserved."
+    )
+
+    # Clean fraction (equal across classes; the leak fix)
+    parser.add_argument(
+        "--clean_fraction",
+        type=float,
+        default=0.25,
+        help="Fraction of each class emitted as clean copies (identical across "
+             "classes). Balanced mode only."
+    )
+
+    # Uniform loudness target
+    parser.add_argument(
+        "--loudness_dbfs",
+        type=float,
+        default=-23.0,
+        help="Target RMS level (dBFS) applied uniformly to every emitted clip"
+    )
+
     # Data paths
     parser.add_argument(
         "--voices",
@@ -121,6 +148,9 @@ Strategy:
             output_root=args.output,
             target_ratio=args.target_ratio,
             min_factor=args.min_factor,
+            mode=args.mode,
+            clean_fraction=args.clean_fraction,
+            loudness_target_dbfs=args.loudness_dbfs,
             seed=args.seed
         )
 
@@ -133,8 +163,11 @@ Strategy:
         logger.info("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
         logger.info("="*70)
         logger.info(f"\nRun Configuration:")
+        logger.info(f"  Mode:         {args.mode}")
         logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
         logger.info(f"  Min factor:   {args.min_factor}")
+        logger.info(f"  Clean frac:   {args.clean_fraction:.0%}")
+        logger.info(f"  Loudness:     {args.loudness_dbfs} dBFS")
         logger.info(f"  Voices:       {args.voices}")
         logger.info(f"  MUSAN:        {args.musan}")
         logger.info(f"  RIR:          {args.rir}")

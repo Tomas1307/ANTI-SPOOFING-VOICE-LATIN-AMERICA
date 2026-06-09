@@ -25,6 +25,7 @@
 | [Partial Spoof Approach](methodology/partial-spoof-approach.md) | Valley-score selection, **natural-duration splice (2026-05-24)**, energy refinement, asymmetric valley snap, seam crossfade, clone similarity gate, edge cases |
 | [Dataset Design](methodology/dataset-design.md) | HABLA v2 (1,567 speakers, 7 accents), W1/W2/W3 tiers, bonafide ratio |
 | [Quality Metrics](methodology/quality-metrics.md) | WER/CER thresholds, NISQA MOS, ECAPA SIM, valley score formula |
+| [Data Augmentation](methodology/data-augmentation.md) | **Channel/device augmentation (RIR+Noise / Codec / RawBoost). Audited 2026-06-08: two label-leak shortcuts + mislabeled RawBoost/Codec. Option B chosen; remediation roadmap** |
 
 ## Experiments
 

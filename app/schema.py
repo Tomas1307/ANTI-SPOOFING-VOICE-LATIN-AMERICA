@@ -22,6 +22,8 @@ from transformers import (
 import torch.multiprocessing as mp
 mp.set_start_method('spawn', force=True)
 
+from app.augmenter.schemas.codec_rawboost_config import RawBoostConfigV2, CodecConfigV2
+
 class AugmentationType(Enum):
     """Enumeration of available augmentation types."""
     
@@ -170,8 +172,8 @@ class AugmentationStrategy:
         AugmentationType.RAWBOOST: 0.10
     })
     rir_noise_config: RIRNoiseConfig = field(default_factory=RIRNoiseConfig)
-    codec_config: CodecConfig = field(default_factory=CodecConfig)
-    rawboost_config: RawBoostConfig = field(default_factory=RawBoostConfig)
+    codec_config: CodecConfigV2 = field(default_factory=CodecConfigV2)
+    rawboost_config: RawBoostConfigV2 = field(default_factory=RawBoostConfigV2)
     include_original: bool = True
     
     def validate(self):

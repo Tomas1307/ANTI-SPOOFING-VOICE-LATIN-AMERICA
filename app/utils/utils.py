@@ -124,24 +124,74 @@ def mix_audio_with_snr(
 
 def convolve_with_rir(audio: np.ndarray, rir: np.ndarray) -> np.ndarray:
     """
-    Convolve audio with Room Impulse Response.
-    
+    Convolve audio with a Room Impulse Response, preserving causal alignment.
+
+    Reverberation must be causal: the direct-path sound arrives first, then a
+    decaying tail of reflections. ``mode='same'`` centers the convolution,
+    which smears the response symmetrically and time-shifts the signal by
+    roughly half the RIR length. Instead this uses ``mode='full'`` and trims
+    the output starting at the RIR's direct-path tap (the peak of ``|rir|``),
+    yielding an output the same length as the input with the onset preserved.
+
     Args:
         audio: Input audio signal.
         rir: Room Impulse Response.
-        
+
     Returns:
-        Convolved audio signal.
+        Convolved audio signal, same length as ``audio``.
     """
     from scipy import signal as scipy_signal
-    
-    convolved = scipy_signal.fftconvolve(audio, rir, mode='same')
-    
+
+    convolved = scipy_signal.fftconvolve(audio, rir, mode='full')
+
+    direct_path = int(np.argmax(np.abs(rir)))
+    convolved = convolved[direct_path:direct_path + len(audio)]
+
+    if len(convolved) < len(audio):
+        convolved = np.pad(convolved, (0, len(audio) - len(convolved)))
+
     max_val = np.max(np.abs(convolved))
     if max_val > 0:
         convolved = convolved / max_val * 0.99
-    
+
     return convolved
+
+
+def normalize_loudness(
+    audio: np.ndarray,
+    target_dbfs: float = -23.0,
+    peak_ceiling: float = 0.99
+) -> np.ndarray:
+    """
+    Apply the single, uniform loudness policy for the whole corpus.
+
+    Every output clip (clean originals and every augmentation type) is passed
+    through this function so that loudness carries no information about whether
+    a clip was augmented or which class it belongs to. The signal is
+    RMS-normalized to ``target_dbfs`` and then peak-limited (scaled down, not
+    hard-clipped) so the peak never exceeds ``peak_ceiling``. Peak limiting is
+    preferred over hard clipping because clipping injects broadband distortion
+    that could corrupt the spoofing artifact the detector must learn.
+
+    Args:
+        audio: Input audio signal.
+        target_dbfs: Target RMS level in dBFS.
+        peak_ceiling: Maximum absolute sample value after normalization.
+
+    Returns:
+        Loudness-normalized audio signal.
+    """
+    rms = calculate_rms(audio)
+    if rms <= 0:
+        return audio
+
+    audio = audio * (10 ** (target_dbfs / 20) / rms)
+
+    peak = np.max(np.abs(audio))
+    if peak > peak_ceiling:
+        audio = audio * (peak_ceiling / peak)
+
+    return audio
 
 
 def apply_clipping(audio: np.ndarray, threshold: float = 0.9) -> np.ndarray:
