@@ -1,0 +1,97 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Related Work — SpeechFake-MD</div>
+    <h2>SpeechFake: Multilingual Deepfake Dataset</h2>
+    <p style="margin-bottom:28px; max-width:680px;">3+ million deepfake samples across 46 languages from 40 TTS tools. Published at ACL 2025 (arXiv:2507.21463). Spanish is one of 9 primary languages. Bonafide sourced from Mozilla CommonVoice — same as our text pipeline.</p>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Dataset structure</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Scale</div>
+            <div style="display:flex; gap:24px;">
+              <div><div style="font-size:24px; font-weight:700;">3M+</div><div style="font-size:10px; color:var(--muted2);">Deepfake samples</div></div>
+              <div><div style="font-size:24px; font-weight:700;">3,000h</div><div style="font-size:10px; color:var(--muted2);">Total audio</div></div>
+              <div><div style="font-size:24px; font-weight:700;">40</div><div style="font-size:10px; color:var(--muted2);">TTS tools</div></div>
+            </div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Spanish detection (W2V+AASIST)</div>
+            <div style="display:flex; gap:20px; margin-top:6px;">
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; color:var(--green);">0.12–0.42%</div>
+                <div style="font-size:10px; color:var(--muted2);">Spanish EER range</div>
+              </div>
+              <div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:24px; font-weight:700; color:var(--muted);">0.15%</div>
+                <div style="font-size:10px; color:var(--muted2);">English EER (best)</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Key finding</div>
+            <div style="font-size:13px; color:var(--white); line-height:1.6; font-style:italic;">"Language content does affect detection performance, even when the generation methods are seen during training."</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">HABLA 2.0 vs related datasets</h3>
+        <table style="font-size:12px;">
+          <thead>
+            <tr><th>Aspect</th><th>HABLA 2.0 (ours)</th><th>LRLSpoof</th><th>SpeechFake</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Focus</td>
+              <td class="pass"><strong>LatAm Spanish</strong></td>
+              <td>66 languages</td>
+              <td>46 languages</td>
+            </tr>
+            <tr>
+              <td>Accent detail</td>
+              <td class="pass"><strong>7 accents</strong></td>
+              <td class="fail">None</td>
+              <td class="fail">None</td>
+            </tr>
+            <tr>
+              <td>Bonafide data</td>
+              <td class="pass">Yes (HABLA speakers)</td>
+              <td class="fail">No</td>
+              <td>CommonVoice</td>
+            </tr>
+            <tr>
+              <td>TTS systems</td>
+              <td>4 (+2 planned)</td>
+              <td><strong>24</strong></td>
+              <td><strong>40</strong></td>
+            </tr>
+            <tr>
+              <td>Attack type</td>
+              <td class="pass"><strong>Voice cloning</strong></td>
+              <td>General TTS</td>
+              <td>TTS + VC</td>
+            </tr>
+            <tr>
+              <td>Quality metrics</td>
+              <td class="pass"><strong>WER/CER/NISQA/SIM</strong></td>
+              <td>SRR only</td>
+              <td>EER only</td>
+            </tr>
+            <tr>
+              <td>Speakers</td>
+              <td><strong>1,567</strong></td>
+              <td>—</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:16px;" class="callout hi">
+          <strong style="color:var(--white);">Our novel contributions.</strong> (1) Latin American accent-level granularity (7 accents vs undifferentiated Spanish). (2) Paired bonafide + spoofed data from same speaker pool. (3) Qwen3-TTS — absent from both LRLSpoof and SpeechFake. (4) Per-sample quality validation pipeline (WER, CER, NISQA, speaker similarity).
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

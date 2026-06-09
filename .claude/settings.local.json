@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:www.isca-archive.org)",
+      "WebFetch(domain:www.mozillafoundation.org)",
+      "WebFetch(domain:discourse.mozilla.org)",
+      "WebFetch(domain:datacollective.mozillafoundation.org)",
+      "WebFetch(domain:www.researchgate.net)",
+      "Bash(python3:*)",
+      "mcp__notion__notion-fetch",
+      "Bash(\"d:/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/select_mozilla_speakers/schemas/__init__.py\":*)",
+      "Bash(\"d:/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/select_mozilla_speakers/__init__.py\":*)",
+      "Bash(find:*)",
+      "Bash(soxi:*)",
+      "Bash(ffprobe:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/schemas\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/steps\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/utils\")",
+      "Bash(mkdir -p \"c:/Users/ASUS/Desktop/Andes/Maestria/ANTI-SPOOFING-VOICE-LATIN-AMERICA/app/pipeline/partial_spoof/strategies\")"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "engram"
+  ],
+  "enableAllProjectMcpServers": true
+}

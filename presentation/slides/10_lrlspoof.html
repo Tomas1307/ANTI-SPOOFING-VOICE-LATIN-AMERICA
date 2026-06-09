@@ -1,0 +1,61 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Related Work — LRLSpoof</div>
+    <h2>LRLSpoof: Low-Resource Language Spoofing Corpus</h2>
+    <p style="margin-bottom:28px; max-width:680px;">2,732 hours of synthetic speech across 66 languages and 24 TTS systems. Submitted to Interspeech 2026 (arXiv:2603.02364). Only synthetic audio — no bonafide samples. Evaluation uses threshold transfer from ASVspoof 2021.</p>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Dataset structure</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Scale</div>
+            <div style="display:flex; gap:24px;">
+              <div><div style="font-size:24px; font-weight:700;">2,732h</div><div style="font-size:10px; color:var(--muted2);">Total audio</div></div>
+              <div><div style="font-size:24px; font-weight:700;">66</div><div style="font-size:10px; color:var(--muted2);">Languages</div></div>
+              <div><div style="font-size:24px; font-weight:700;">24</div><div style="font-size:10px; color:var(--muted2);">TTS systems</div></div>
+            </div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Spanish portion</div>
+            <div style="font-size:24px; font-weight:700;">23.14 hours</div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">11 TTS systems used for Spanish · no accent differentiation</div>
+          </div>
+          <div class="card-sm">
+            <div style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">TTS overlap with our work</div>
+            <div style="font-size:13px; color:var(--white); line-height:1.8;">
+              <span class="tag green" style="margin:0 4px 4px 0;">Fish Speech</span>
+              <span class="tag green" style="margin:0 4px 4px 0;">Chatterbox</span>
+              <span class="tag blue" style="margin:0 4px 4px 0;">MeloTTS</span>
+              <span class="tag amber" style="margin:0 4px 4px 0;">OuteTTS</span>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">3 of our 4 systems + MeloTTS (used by OpenVoice). They do NOT have Qwen3-TTS.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Spanish spoof rejection rates (SRR)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Countermeasure</th><th>Spanish SRR</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>w2v2_300</td><td class="pass"><strong>100.00%</strong></td></tr>
+            <tr><td>aasist3</td><td class="pass">99.83%</td></tr>
+            <tr><td>df_arena_500</td><td class="pass">99.99%</td></tr>
+            <tr><td>rescapsguard</td><td class="pass">99.98%</td></tr>
+            <tr><td>df_arena_1b</td><td class="warn">31.64%</td></tr>
+            <tr><td>res2tcn</td><td class="warn">26.28%</td></tr>
+            <tr><td>ssl_aasist</td><td class="fail">0.61%</td></tr>
+            <tr><td>nes2net</td><td class="fail">0.00%</td></tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:16px;" class="callout warn">
+          <strong style="color:var(--amber);">Massive cross-model disparity.</strong> Some detectors achieve near-perfect Spanish detection (w2v2_300: 100%), while others completely fail (nes2net: 0%). Detector choice matters enormously — this supports our thesis motivation.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

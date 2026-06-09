@@ -1,0 +1,58 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 1 / 7 &mdash; 10% of dataset</div>
+    <h2 style="margin-bottom:4px;">Direct cut-paste</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Hard concatenation at zero-crossings with no overlap or fading. The simplest and most forensically detectable method.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <!-- Step function: no crossfade -->
+            <polyline points="10,10 130,10 130,110 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 130,110 130,10 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <!-- Vertical cut line -->
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,77,77,0.5)" stroke-width="1.5" stroke-dasharray="4,3"/>
+            <text x="115" y="125" fill="rgba(255,77,77,0.6)" font-size="8" font-family="JetBrains Mono">cut point</text>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag red" style="font-size:10px;">No overlap</span>
+          <span class="tag blue" style="font-size:10px;">10% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Method</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Abrupt concatenation at the splice point. Overlap = 0 ms. No fade curves applied. Bonafide segment ends, cloned segment begins immediately.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">PartialSpoof (Zhang et al., 2023), HAD (Yi et al., 2021). Both use simple concatenation as their baseline splicing method.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Produces energy discontinuities and potential phase jumps at the boundary. Even with zero-crossing alignment, spectral differences between segments create a measurable forensic trace. <strong style="color:var(--white);">Most detectable technique</strong> &mdash; Negroni et al. achieves 6.16% EER with zero training.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Why include it?</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Forces detectors to handle the easiest case. If a model cannot detect cut-paste splices, it has no chance with smoother methods. Serves as the <strong style="color:var(--white);">forensic floor</strong>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

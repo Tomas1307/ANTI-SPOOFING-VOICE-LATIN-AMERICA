@@ -26,6 +26,9 @@ def run_batch(
     musan: str = "data/noise_dataset/musan",
     rir: str = "data/noise_dataset/RIR",
     output: str = "data/augmented",
+    mode: str = "balanced",
+    clean_fraction: float = 0.25,
+    loudness_dbfs: float = -23.0,
     seed: int = 42,
 ):
     """
@@ -68,6 +71,9 @@ def run_batch(
                 output_root=output,
                 target_ratio=target_ratio,
                 min_factor=factor,
+                mode=mode,
+                clean_fraction=clean_fraction,
+                loudness_target_dbfs=loudness_dbfs,
                 seed=seed,
             )
 
@@ -151,6 +157,26 @@ Examples:
         help="Target bonafide ratio (0.0-1.0)",
     )
     parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["balanced", "uniform"],
+        default="balanced",
+        help="balanced (equal clean fraction, hits target_ratio) or uniform "
+             "(same factor both classes, natural ratio preserved)",
+    )
+    parser.add_argument(
+        "--clean_fraction",
+        type=float,
+        default=0.25,
+        help="Fraction of each class emitted as clean copies (balanced mode)",
+    )
+    parser.add_argument(
+        "--loudness_dbfs",
+        type=float,
+        default=-23.0,
+        help="Target RMS level (dBFS) applied uniformly to every emitted clip",
+    )
+    parser.add_argument(
         "--voices",
         type=str,
         default="data/partition_dataset_by_speaker",
@@ -204,6 +230,9 @@ Examples:
         musan=args.musan,
         rir=args.rir,
         output=args.output,
+        mode=args.mode,
+        clean_fraction=args.clean_fraction,
+        loudness_dbfs=args.loudness_dbfs,
         seed=args.seed,
     )
 

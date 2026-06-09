@@ -1,0 +1,107 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 07 &mdash; OuteTTS Production Run</div>
+    <h2>OuteTTS at scale</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers. OuteTTS 1.0 0.6B (Llama 3.1 backbone + WavTokenizer codes), zero-shot voice cloning via 15s speaker prompt tokens. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN. Moderate RTF ~5.6x.</p>
+
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,461</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">25,642</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">72.3% pass rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">9,819</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">27.7% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">30.9h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 4.33s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>2.36%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>4.36%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.85%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.84%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.453</strong></td>
+              <td>4.625</td>
+              <td>0.534</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td class="fail"><strong>0.462</strong></td>
+              <td>0.471</td>
+              <td>0.115</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout warn">
+          <strong style="color:var(--amber);">Lower speaker similarity than other pipelines.</strong> OuteTTS's 0.462 mean ECAPA SIM is well below Qwen (0.720) and FishGram (0.602), comparable to OpenVoice (0.394). The WavTokenizer-based reproduction preserves linguistic content well (NISQA 4.45 -- second only to FishGram) but speaker timbre transfer is weaker.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">5,968</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">60.8% of rejections &mdash; both thresholds exceeded simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">3,375</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">34.4% &mdash; word-level pronunciation errors on complex vocabulary</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">CER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">262</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">2.7% &mdash; character-level substitutions below WER threshold</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent / artifacts</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">214</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">2.2% &mdash; near-silent output (213) + duration anomaly (1)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

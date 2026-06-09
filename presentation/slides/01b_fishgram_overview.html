@@ -1,0 +1,32 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Attack Pipeline — FishGram</div>
+    <h2>Fish Speech 4B (OpenAudio S1-mini)</h2>
+    <p style="margin-bottom:32px; max-width:680px;">HTTP API-based TTS with VQGAN vocoder and zero-shot voice cloning. The largest model in our attack suite at 4 billion parameters, requiring only 15 seconds of reference audio to clone a speaker.</p>
+
+    <div class="four" style="margin-bottom:36px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">4B</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Model size</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:16px; font-weight:600; color:var(--white); margin-top:4px;">VQGAN</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Architecture</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:16px; font-weight:600; color:var(--white); margin-top:4px;">HTTP API</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Inference</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">15s</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Reference audio</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="callout hi" style="margin-top:24px;">
+      <strong style="color:var(--white);">First pipeline to reach production.</strong> FishGram is present in both LRLSpoof and HispaSpoof, enabling direct cross-dataset comparison against our HABLA 2.0 results. Its high pass rate (95.2%) and NISQA (4.571) make it the most reliable generator in the suite.
+    </div>
+  </div>
+</section>

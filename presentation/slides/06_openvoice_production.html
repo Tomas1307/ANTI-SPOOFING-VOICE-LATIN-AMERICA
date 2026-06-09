@@ -1,0 +1,107 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 05 — OpenVoice Production Run</div>
+    <h2>OpenVoice at scale</h2>
+    <p style="margin-bottom:28px; max-width:640px;">Full production run: 1,567 speakers. OpenVoice V2 (MeloTTS base + ToneColorConverter at tau=0.3). Fastest pipeline at RTF 0.07-0.10 (10-14x real-time). Quality validated via Parakeet STT + NISQA + ECAPA-TDNN.</p>
+
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,544</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">29,626</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">83.4% pass rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">5,918</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">16.6% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">37.2h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 4.52s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>1.50%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>3.67%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.45%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.28%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.409</strong></td>
+              <td>4.556</td>
+              <td>0.542</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td style="color:var(--amber);"><strong>0.394</strong></td>
+              <td>0.397</td>
+              <td>0.107</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout warn">
+          <strong style="color:var(--amber);">Lowest speaker similarity.</strong> OpenVoice's tone-color conversion at tau=0.3 only partially transfers speaker characteristics (0.394 mean), less than half of Qwen's 0.720. The MeloTTS base voice "bleeds through." However, it achieves the lowest CER (0.45%) and highest consistency (lowest std on NISQA). For anti-spoofing, OpenVoice attacks are the easiest for embedding-based detectors to catch.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">2,873</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">48.5% of rejections — MeloTTS sentence splitting causes word-level errors</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Other (duration/format)</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">1,919</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">32.4% — duration anomalies from MeloTTS sentence chunking artifacts</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">1,009</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">17.1% — both thresholds exceeded simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">CER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">117</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">2.0% — minor character-level errors</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

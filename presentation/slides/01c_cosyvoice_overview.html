@@ -1,0 +1,46 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Attack Pipeline — CosyVoice 2 (Dropped)</div>
+    <h2>CosyVoice 2: no Spanish support</h2>
+    <p style="margin-bottom:32px; max-width:700px;">CosyVoice2-0.5B (Conditional Flow Matching) was evaluated but generates Chinese phonemes when given Spanish input. Supports only zh/en/ja/yue/ko. Near real-time speed but fundamentally unable to produce Spanish speech. Dropped from the attack suite.</p>
+
+    <table style="max-width:640px; margin-bottom:36px;">
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Model</td>
+          <td><strong>CosyVoice2-0.5B</strong></td>
+        </tr>
+        <tr>
+          <td>Architecture</td>
+          <td>Conditional Flow Matching</td>
+        </tr>
+        <tr>
+          <td>Speed</td>
+          <td>RTF 0.77 - 0.99</td>
+        </tr>
+        <tr>
+          <td>Languages</td>
+          <td>zh / en / ja / yue / ko</td>
+        </tr>
+        <tr>
+          <td>Spanish support</td>
+          <td class="fail"><strong>NO</strong></td>
+        </tr>
+        <tr>
+          <td>Status</td>
+          <td class="fail"><strong>DROPPED</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout danger">
+      <strong style="color:var(--red);">Valid negative finding.</strong> Documents that not all multilingual TTS systems handle Spanish despite marketing claims. CosyVoice 2 defaults to Chinese phonemization for unsupported languages, producing unintelligible output for Spanish input text.
+    </div>
+  </div>
+</section>

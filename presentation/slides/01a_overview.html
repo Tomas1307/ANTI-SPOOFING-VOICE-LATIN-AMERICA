@@ -1,0 +1,106 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Overview</div>
+    <h2>Nine pipelines</h2>
+    <p style="margin-bottom:28px; max-width:700px;">All share the same architecture — Facade orchestrator, Strategy steps, Pydantic schemas, loguru logging. Seven distinct TTS codec architectures ensure the detector cannot overfit to a single synthesis fingerprint. Plus a novel word-level partial spoof pipeline.</p>
+
+    <!-- Row 1: Original 5 pipelines -->
+    <div class="pipe-vis">
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 01</div>
+        <div class="pipe-box-title">Mozilla Speaker Selection</div>
+        <div class="pipe-box-sub">select_mozilla_speakers/</div>
+        <div class="pipe-box-desc">Expands the bonafide dataset with CV v24.0 speakers — adds Mexico and Spain for the first time.</div>
+        <div style="margin-top:12px;"><span class="tag green">Complete</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 02</div>
+        <div class="pipe-box-title">FishGram Attack</div>
+        <div class="pipe-box-sub">fishgram_attack/</div>
+        <div class="pipe-box-desc">Zero-shot cloning via Fish Speech 4B (VQGAN). HTTP API on ml-server03.</div>
+        <div style="margin-top:12px;"><span class="tag green">Production</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 03</div>
+        <div class="pipe-box-title">Qwen Attack</div>
+        <div class="pipe-box-sub">qwen_attack/</div>
+        <div class="pipe-box-desc">Qwen3-TTS 1.7B (Dual-Track codec). Local inference, STT-enhanced reference.</div>
+        <div style="margin-top:12px;"><span class="tag green">Production</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 04</div>
+        <div class="pipe-box-title">Chatterbox Attack</div>
+        <div class="pipe-box-sub">chatterbox_attack/</div>
+        <div class="pipe-box-desc">Chatterbox 500M (flow-matching). Trailing-noise post-processing.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Running</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 05</div>
+        <div class="pipe-box-title">OpenVoice Attack</div>
+        <div class="pipe-box-sub">openvoice_attack/</div>
+        <div class="pipe-box-desc">MeloTTS + ToneColorConverter. Two-stage tone-color transfer.</div>
+        <div style="margin-top:12px;"><span class="tag green">Production</span></div>
+      </div>
+    </div>
+
+    <!-- Row 2: New pipelines -->
+    <div class="pipe-vis" style="margin-top:0;">
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 06</div>
+        <div class="pipe-box-title">OuteTTS Attack</div>
+        <div class="pipe-box-sub">outetts_attack/</div>
+        <div class="pipe-box-desc">OuteTTS 1.0 0.6B (Qwen3 + DAC codec). LLM-based, 14 languages incl. Spanish.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Validated</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 07</div>
+        <div class="pipe-box-title">OmniVoice Attack</div>
+        <div class="pipe-box-sub">omnivoice_attack/</div>
+        <div class="pipe-box-desc">k2-fsa OmniVoice (diffusion LM, 646 languages, 27,559 h Spanish). Custom prefix-bleed detection + retry loop.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Validated</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box">
+        <div class="pipe-box-label">Pipeline 08</div>
+        <div class="pipe-box-title">CosyVoice</div>
+        <div class="pipe-box-sub">cosyvoice_attack/</div>
+        <div class="pipe-box-desc">CosyVoice2-0.5B (Conditional Flow Matching). No Spanish support — generates Chinese.</div>
+        <div style="margin-top:12px;"><span class="tag red">Dropped</span></div>
+      </div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-box" style="flex:2;">
+        <div class="pipe-box-label">Pipeline 09 — Novel Contribution</div>
+        <div class="pipe-box-title">Partial Spoof</div>
+        <div class="pipe-box-sub">partial_spoof/</div>
+        <div class="pipe-box-desc">Word-level splicing: replaces 1-3 words in bonafide audio with TTS-cloned versions. 7-step pipeline with 6 attack backends. First partial spoof for Latin American Spanish.</div>
+        <div style="margin-top:12px;"><span class="tag amber">Testing</span></div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="four">
+      <div>
+        <div class="stat-num">5</div>
+        <div class="stat-label">Steps per pipeline</div>
+      </div>
+      <div>
+        <div class="stat-num">7</div>
+        <div class="stat-label">TTS architectures</div>
+      </div>
+      <div>
+        <div class="stat-num">7</div>
+        <div class="stat-label">Accent regions</div>
+      </div>
+      <div>
+        <div class="stat-num">1,567</div>
+        <div class="stat-label">Speakers in HABLA v2</div>
+      </div>
+    </div>
+  </div>
+</section>

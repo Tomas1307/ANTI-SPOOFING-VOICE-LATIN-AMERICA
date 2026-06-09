@@ -1,0 +1,40 @@
+<section class="slide">
+  <div class="inner">
+    <div class="eyebrow">Attack Pipeline — OuteTTS 1.0</div>
+    <h2>OuteTTS 1.0 0.6B (Qwen3 + DAC)</h2>
+    <p style="margin-bottom:32px; max-width:720px;">LLM-based TTS using a Qwen3 0.6B backbone with DAC audio codec. Supports 14 languages including Spanish, trained on MLS and Common Voice. Autoregressive generation yields high audio quality at the cost of speed. Apache 2.0 license.</p>
+
+    <div class="three" style="margin-bottom:12px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">0.6B</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Model size</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--white); margin-top:6px;">LLM + DAC codec</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Architecture</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:20px; font-weight:700; color:var(--amber); letter-spacing:-0.5px;">~6x RTF</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Speed (slow)</div>
+      </div>
+    </div>
+    <div class="three" style="margin-bottom:36px;">
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">3s</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Reference audio</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:28px; font-weight:700; color:var(--white); letter-spacing:-1px;">14</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">Languages (incl. Spanish)</div>
+      </div>
+      <div class="card-sm" style="text-align:center;">
+        <div style="font-size:14px; font-weight:600; color:var(--green); margin-top:6px;">Apache 2.0</div>
+        <div style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-top:6px;">License</div>
+      </div>
+    </div>
+
+    <div class="callout hi">
+      <strong style="color:var(--white);">Novel architecture.</strong> Absent from both LRLSpoof and HispaSpoof. The LLM backbone (Qwen3) represents a fundamentally different approach to speech synthesis compared to flow-matching or VQGAN methods, adding architectural diversity to our attack suite.
+    </div>
+  </div>
+</section>

@@ -1,0 +1,74 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Partial Spoof &mdash; Summary</div>
+    <h2>Technique distribution &amp; literature gaps</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Seven techniques with varied proportions produce a forensically diverse dataset. Each splice independently draws its method and overlap duration, preventing detectors from learning a single crossfade fingerprint.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:28px;">
+      <!-- Left: Distribution table -->
+      <div>
+        <h3 style="margin-bottom:14px;">Per-splice distribution</h3>
+        <table style="font-size:12px; width:100%;">
+          <thead>
+            <tr><th>Technique</th><th>Proportion</th><th>Energy</th><th>Overlap</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Direct cut-paste</td><td><strong>10%</strong></td><td><span class="tag red" style="font-size:9px;">none</span></td><td>0 ms</td></tr>
+            <tr><td>OLA Hanning</td><td><strong>20%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+            <tr><td>Linear</td><td><strong>15%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+            <tr><td>Cosine</td><td><strong>20%</strong></td><td><span class="tag amber" style="font-size:9px;">equal-power</span></td><td>30-80 ms</td></tr>
+            <tr><td>Square-root</td><td><strong>15%</strong></td><td><span class="tag amber" style="font-size:9px;">equal-power</span></td><td>30-80 ms</td></tr>
+            <tr><td>Logarithmic</td><td><strong>10%</strong></td><td><span class="tag red" style="font-size:9px;">dip</span></td><td>30-80 ms</td></tr>
+            <tr><td>Inv. parabola</td><td><strong>10%</strong></td><td><span class="tag green" style="font-size:9px;">equal-gain</span></td><td>30-80 ms</td></tr>
+          </tbody>
+        </table>
+
+        <div class="callout hi" style="margin-top:14px;">
+          <strong style="color:var(--white);">Design rationale:</strong> Equal proportions for the two SOTA methods (OLA Hanning 20%, Cosine 20%). Lower proportions for extreme cases (cut-paste 10%, log 10%, parabola 10%). LlamaPartialSpoof assigns 30-80ms uniformly &mdash; we follow this anchor.
+        </div>
+      </div>
+
+      <!-- Right: Literature gaps -->
+      <div>
+        <h3 style="margin-bottom:14px;">Unsolved problems (thesis contributions)</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">1. Zero-gap boundary policy</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">No pipeline specifies behavior when adjacent cloned words leave &lt;30ms of bonafide margin. Five strategies exist; none is attested in any paper.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">2. F0 discontinuity</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">No partial-spoof paper reports pitch discontinuity at splice boundaries. Publishing F0 histograms at MFA word boundaries would be novel.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">3. Crossfade duration vs EER</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof's 30-80ms range is the only anchor. No paper maps overlap length to detection performance &mdash; a tractable publishable experiment.</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(245,166,35,0.2);">
+            <div style="font-size:13px; font-weight:500; color:var(--amber); margin-bottom:4px;">4. No source code released</div>
+            <div style="font-size:11px; color:var(--muted); line-height:1.5;">None of the 4 canonical pipelines (PartialSpoof, LlamaPartialSpoof, HAD, HQ-MPSD) releases their splicer code. Our pipeline is fully reproducible.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- Comparison with existing pipelines -->
+    <h3 style="margin-bottom:14px;">Our pipeline vs existing partial spoof datasets</h3>
+    <table style="font-size:11px; width:100%;">
+      <thead>
+        <tr><th>Feature</th><th>PartialSpoof</th><th>LlamaPartialSpoof</th><th>HAD</th><th>HQ-MPSD</th><th style="color:var(--green);">Ours (HABLA 2.0)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Language</td><td>English</td><td>English</td><td>Chinese</td><td>6 languages</td><td style="color:var(--green);">Spanish (7 accents)</td></tr>
+        <tr><td>Splice level</td><td>Segment (VAD)</td><td>Word (MFA)</td><td>Character</td><td>Word (MFA)</td><td style="color:var(--green);">Word (Parakeet TDT)</td></tr>
+        <tr><td>Crossfade types</td><td>1 (simple OLA)</td><td>5 shapes</td><td>0 (pydub cut)</td><td>1 (cosine 30ms)</td><td style="color:var(--green);">7 techniques</td></tr>
+        <tr><td>Overlap range</td><td>VAD margins</td><td>30-80ms uniform</td><td>None</td><td>Fixed 30ms</td><td style="color:var(--green);">30-80ms uniform</td></tr>
+        <tr><td>TTS systems</td><td>ASVspoof 2019 LA</td><td>XTTS, Parler, Llama</td><td>7 legacy</td><td>3 modern</td><td style="color:var(--green);">6 modern (2024-2026)</td></tr>
+        <tr><td>Speakers</td><td>107 (VCTK)</td><td>~40 (VCTK)</td><td>281</td><td>4 / language</td><td style="color:var(--green);">1,567 (HABLA v2)</td></tr>
+        <tr><td>Code released</td><td>No</td><td>No</td><td>No</td><td>No</td><td style="color:var(--green);">Yes (open source)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>

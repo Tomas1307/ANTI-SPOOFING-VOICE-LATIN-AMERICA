@@ -1,0 +1,114 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 08 &mdash; OmniVoice Production Run</div>
+    <h2>OmniVoice at scale</h2>
+    <p style="margin-bottom:28px; max-width:680px;">Full production run: 1,567 speakers. OmniVoice (k2-fsa) diffusion language model TTS, 646 languages, 27,559 h Spanish training data. Zero-shot voice cloning via 10s reference. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN, with a non-verbal prefix detector and 5-round retry loop guarding against reference-bleed artifacts.</p>
+
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,927</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">33,743</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">93.9% pass rate (best of suite)</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">2,184</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">6.1% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">39.3h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 4.19s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>1.06%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>3.16%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.30%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.05%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.284</strong></td>
+              <td>4.657</td>
+              <td>0.888</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td><strong>0.686</strong></td>
+              <td>0.705</td>
+              <td>0.109</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout hi">
+          <strong style="color:var(--white);">Lowest WER of the suite (1.06%) and highest pass rate (93.9%).</strong> OmniVoice's diffusion conditioning produces highly intelligible Spanish despite being a non-autoregressive architecture. Speaker similarity 0.686 sits between Qwen (0.720) and FishGram (0.602) -- a strong all-around attack profile.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent / artifacts</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">989</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">45.3% &mdash; near-silent (979) + duration anomaly (10)</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">679</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">31.1% &mdash; word-level pronunciation errors</div>
+          </div>
+          <div class="card-sm" style="border-color:rgba(62,255,139,0.25); background:rgba(62,255,139,0.04);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--green); font-weight:500;">Non-verbal prefix artifact</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--green);">367</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">16.8% &mdash; reference-bleed caught by custom RMS detector (defense in depth)</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">139</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">6.4% &mdash; both thresholds exceeded simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">CER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">10</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">0.5% &mdash; character-level substitutions below WER threshold</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -12,23 +12,25 @@ AUGMENTATION STRATEGY:
    - Prevents model from learning speaker-specific features
    - Ensures true generalization evaluation
 
-2. BALANCED MODE:
-   - Calculates different augmentation factors for bonafide vs spoof
-   - Achieves target ratio (e.g., 50/50, 60/40) while maintaining clean data percentage
-   - Example: If target is 50/50 with 3x minimum:
-     * Bonafide: 5x augmentation (to increase representation)
-     * Spoof: 2x augmentation (already have more)
-     * Result: ~50/50 ratio achieved
+2. MODES:
+   - BALANCED (default): reaches the target bonafide:spoof ratio by varying the
+     per-class TOTAL (how many times each original is reused), while holding the
+     clean fraction IDENTICAL across classes. This is the leak fix: the legacy
+     "different factor per class" approach made clean fraction = 1/factor differ
+     by class, so "is this clip augmented?" predicted the label.
+   - UNIFORM: same augmentation factor for both classes (clean fraction = 1/factor,
+     identical by construction); the natural class imbalance is preserved in the
+     corpus and is expected to be corrected at training time (class weights or a
+     balanced sampler) once a trainer is chosen.
 
-3. CLEAN DATA PRESERVATION (25% Rule):
-   - TRAIN: 25% clean (original) audio, 75% augmented
-     * Prevents model from losing sensitivity to original voices
-     * Clean audio always includes ALL originals (both bonafide and spoof)
-     * Augmented copies calculated to reach 25% clean ratio
-   - VAL: 100% clean (NO augmentation)
-     * Pure evaluation during training
-   - TEST: 100% clean (NO augmentation)
-     * Final evaluation on unseen speakers
+3. CLEAN FRACTION (equal across classes):
+   - TRAIN: a fixed clean_fraction (default 25%) of EACH class is emitted as clean
+     (unaugmented), identical for bonafide and spoof, so clean-vs-augmented carries
+     no information about the label.
+   - VAL/TEST: 100% clean (NO augmentation).
+   - LOUDNESS: every emitted clip (clean and all augmentation types, every split)
+     is passed through one uniform loudness normalization so loudness reveals
+     nothing about augmentation type or class.
 
 4. AUGMENTATION TYPES (Applied to train only):
    - RIR + Noise (60%): Room acoustics + background noise
@@ -85,38 +87,21 @@ USAGE:
         --target_ratio 0.60 \\
         --min_factor 5x
 
-EXAMPLE CALCULATION:
--------------------
+EXAMPLE (BALANCED, equal clean fraction):
+-----------------------------------------
 
-Input (train split):
-  - 80 bonafide originals
-  - 176 spoof originals
-  - Total: 256 originals
+Input (train split): 20,000 bonafide originals, 80,000 spoof originals.
+Target: 50/50, min factor 3x, clean_fraction 0.25.
 
-Target: 50/50 ratio with minimum 3x augmentation and 25% clean
+  - grand_total = ceil(100,000 * 3) = 300,000
+  - bonafide_total = 150,000, spoof_total = 150,000  (50/50)
+  - bonafide: 0.25 * 150,000 = 37,500 clean + 112,500 augmented
+  - spoof:    0.25 * 150,000 = 37,500 clean + 112,500 augmented
 
-Step 1: Calculate total needed for 3x minimum
-  - 256 * 3 = 768 total files minimum
-
-Step 2: Calculate targets for 50/50
-  - Bonafide target: 768 * 0.50 = 384 files
-  - Spoof target: 768 * 0.50 = 384 files
-
-Step 3: Calculate augmentation factors
-  - Bonafide factor: 384 / 80 = 4.8 → 5x
-  - Spoof factor: 384 / 176 = 2.2 → 2x
-
-Step 4: Calculate actual totals
-  - Bonafide: 80 * 5 = 400 files (53.2%)
-  - Spoof: 176 * 2 = 352 files (46.8%)
-  - Total: 752 files (2.9x actual)
-
-Step 5: Verify clean data ratio
-  - Clean: 256 originals
-  - Total: 752 files
-  - Clean ratio: 256/752 = 34.0% (> 25% target ✓)
-
-Note: We ALWAYS include ALL originals, so clean ratio may exceed 25%
+Clean fraction is 25% for BOTH classes -> no augmentation/class coupling. The
+minority (bonafide, 20,000 originals) is reused across its 150,000 copies; the
+clean copies beyond 20,000 are duplicates of originals (a documented cost of
+self-contained balancing without a trainer). Use UNIFORM mode to avoid duplication.
 """
 
 import os
@@ -133,7 +118,7 @@ from app.augmenter.codec_augmenter import CodecAugmenter
 from app.augmenter.rawboost_augmenter import RawBoostAugmenter
 
 # Import utilities
-from app.utils.augmentation_calculator import AugmentationModeCalculator, AugmentationFactors
+from app.utils.augmentation_calculator import AugmentationModeCalculator
 from app.dataset_loader import DatasetLoader
 from app.config.augmentation_config import AugmentationConfigManager
 from app.schema import AugmentationType
@@ -159,37 +144,61 @@ class AugmentationPipeline:
         output_root: str = "data/augmented",
         target_ratio: float = 0.50,
         min_factor: str = "3x",
+        mode: str = "balanced",
+        clean_fraction: float = 0.25,
+        loudness_target_dbfs: float = -23.0,
+        loudness_peak_ceiling: float = 0.99,
         seed: int = 42
     ):
         """
         Initialize augmentation pipeline.
-        
+
         Args:
             voices_root: Path to speaker-independent partitioned dataset
             musan_root: Path to MUSAN noise dataset
             rir_root: Path to RIR files
             output_root: Output directory
-            target_ratio: Target bonafide ratio (0.0-1.0)
+            target_ratio: Target bonafide ratio (0.0-1.0), balanced mode only
             min_factor: Minimum total augmentation factor (e.g., "3x", "5x")
+            mode: "balanced" (self-contained, equal clean fraction, hits
+                target_ratio) or "uniform" (same factor both classes, natural
+                ratio preserved for training-time rebalancing)
+            clean_fraction: Fraction of each class emitted as clean copies;
+                identical across classes (the leak fix). Balanced mode only.
+            loudness_target_dbfs: Target RMS level applied to every emitted clip
+            loudness_peak_ceiling: Peak ceiling applied after loudness normalization
             seed: Random seed for reproducibility
+
+        Raises:
+            ValueError: If mode is not "balanced"/"uniform" or clean_fraction is
+                outside [0.0, 1.0).
         """
+        if mode not in ("balanced", "uniform"):
+            raise ValueError(f"mode must be 'balanced' or 'uniform', got '{mode}'")
+        if not 0.0 <= clean_fraction < 1.0:
+            raise ValueError(f"clean_fraction must be in [0.0, 1.0), got {clean_fraction}")
+
         self.voices_root = Path(voices_root)
         self.musan_root = Path(musan_root)
         self.rir_root = Path(rir_root)
         self.output_root = Path(output_root)
         self.target_ratio = target_ratio
         self.min_factor = min_factor
+        self.mode = mode
+        self.clean_fraction = clean_fraction
+        self.loudness_target_dbfs = loudness_target_dbfs
+        self.loudness_peak_ceiling = loudness_peak_ceiling
         self.seed = seed
-        
+
         random.seed(seed)
         np.random.seed(seed)
-        
+
         # Parse factor
         self.factor_num = int(min_factor.replace('x', ''))
-        
-        # Create output directory name
+
+        # Create output directory name (mode tag kept in the path)
         ratio_str = f"{int(target_ratio*100)}{int((1-target_ratio)*100)}"
-        self.output_dir = self.output_root / f"augmented_{min_factor}_balanced_{ratio_str}"
+        self.output_dir = self.output_root / f"augmented_{min_factor}_{mode}_{ratio_str}"
         
         # Initialize components
         self.loader = DatasetLoader(
@@ -241,9 +250,12 @@ class AugmentationPipeline:
 
         # Statistics
         self.stats = {
-            'train': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0},
-            'dev': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0},
-            'eval': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0}
+            'train': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0,
+                      'bonafide_clean': 0, 'spoof_clean': 0},
+            'dev': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0,
+                    'bonafide_clean': 0, 'spoof_clean': 0},
+            'eval': {'bonafide': 0, 'spoof': 0, 'total': 0, 'clean': 0, 'augmented': 0,
+                     'bonafide_clean': 0, 'spoof_clean': 0}
         }
         
         # Audio ID counters
@@ -274,7 +286,8 @@ class AugmentationPipeline:
             augmented, metadata = self.codec_augmenter.augment(audio, sr, return_metadata=True)
             system_id = self.codec_augmenter.get_augmentation_label(
                 metadata['codec_sr'], metadata['packet_loss'],
-                metadata['bandpass'], metadata['quantization_bits']
+                metadata['bandpass'], metadata['quantization_bits'],
+                metadata.get('codec')
             )
         elif aug_type == AugmentationType.RAWBOOST:
             augmented, metadata = self.rawboost_augmenter.augment(audio, sr, return_metadata=True)
@@ -304,39 +317,80 @@ class AugmentationPipeline:
         flac_dir.mkdir(parents=True, exist_ok=True)
         
         audio_path = flac_dir / f"{audio_id}.flac"
+        # Single, uniform loudness policy for every emitted clip (clean and all
+        # augmentation types, every split) so loudness leaks nothing about class.
+        audio = utils.normalize_loudness(
+            audio, self.loudness_target_dbfs, self.loudness_peak_ceiling
+        )
         utils.save_audio_flac(audio, str(audio_path), sr=sr)
-        
+
         protocol_entry = f"{speaker_id} {audio_id} {system_id} {key}"
         self.protocol_entries[split].append(protocol_entry)
-        
+
         self.stats[split][key] += 1
         self.stats[split]['total'] += 1
-        
+
         if system_id == "-":
             self.stats[split]['clean'] += 1
+            self.stats[split][f'{key}_clean'] += 1
         else:
             self.stats[split]['augmented'] += 1
     
-    def _process_file(
-        self, file_info: Dict, split: str, n_copies: int, key: str
+    def _emit_class(
+        self, files: List[Dict], split: str, key: str,
+        clean_count: int, aug_count: int
     ):
-        """Process a single file with augmentation."""
-        audio, sr = utils.load_audio(file_info['filepath'])
-        speaker_id = file_info['speaker_id']
-        
-        # Save original (always)
-        self._save_audio_and_protocol(audio, sr, split, speaker_id, "-", key)
-        
-        # Create augmented copies
-        for _ in range(n_copies - 1):
+        """Emit clean + augmented copies for one class.
+
+        Clean and augmented counts are decoupled from "one original, once" so the
+        clean fraction can be held identical across classes (the leak fix). When a
+        count exceeds the number of originals, sources are reused round-robin;
+        each reused augmented copy still receives an independent, re-randomized
+        augmentation, while reused clean copies are exact duplicates of originals.
+
+        Args:
+            files: List of file-info dicts for this class/split.
+            split: One of "train"/"dev"/"eval".
+            key: "bonafide" or "spoof".
+            clean_count: Number of clean copies to emit. ``None`` means "one clean
+                copy per original" (used for the unaugmented dev/eval splits).
+            aug_count: Number of augmented copies to emit.
+        """
+        if not files:
+            self.logger.warning(f"  No {key} files for {split}; skipping.")
+            return
+
+        if clean_count is None:
+            clean_count = len(files)
+
+        audio_cache: Dict[str, Tuple[np.ndarray, int]] = {}
+
+        def _load(idx: int) -> Tuple[str, np.ndarray, int]:
+            info = files[idx % len(files)]
+            path = info['filepath']
+            if path not in audio_cache:
+                audio_cache[path] = utils.load_audio(path)
+            audio, sr = audio_cache[path]
+            return info['speaker_id'], audio, sr
+
+        for i in tqdm(range(clean_count), desc=f"  {split} {key} clean"):
+            speaker_id, audio, sr = _load(i)
+            self._save_audio_and_protocol(audio, sr, split, speaker_id, "-", key)
+
+        for i in tqdm(range(aug_count), desc=f"  {split} {key} aug"):
+            speaker_id, audio, sr = _load(i)
             aug_type = self._select_augmentation_type()
             augmented, system_id = self._apply_augmentation(audio, sr, aug_type)
             self._save_audio_and_protocol(augmented, sr, split, speaker_id, system_id, key)
-    
-    def _process_split(
-        self, split: str, bonafide_factor: int, spoof_factor: int
-    ):
-        """Process a complete split."""
+
+    def _process_split(self, split: str, counts: Dict[str, Tuple]):
+        """Process a complete split from per-class (clean, aug) counts.
+
+        Args:
+            split: One of "train"/"dev"/"eval".
+            counts: Mapping ``{'bonafide': (clean, aug), 'spoof': (clean, aug)}``.
+                A ``clean`` value of ``None`` means "one clean copy per original".
+        """
         self.logger.info(f"\nProcessing {split} split...")
 
         if split == 'train':
@@ -349,14 +403,19 @@ class AugmentationPipeline:
             bonafide_files = self.loader.load_bonafide_test_files()
             spoof_files = self.loader.load_spoof_test_files()
 
-        self.logger.info(f"  Bonafide: {len(bonafide_files)} files x {bonafide_factor}")
-        self.logger.info(f"  Spoof:    {len(spoof_files)} files x {spoof_factor}")
-        
-        for file_info in tqdm(bonafide_files, desc=f"  {split} bonafide"):
-            self._process_file(file_info, split, bonafide_factor, 'bonafide')
-        
-        for file_info in tqdm(spoof_files, desc=f"  {split} spoof"):
-            self._process_file(file_info, split, spoof_factor, 'spoof')
+        b_clean, b_aug = counts['bonafide']
+        s_clean, s_aug = counts['spoof']
+        self.logger.info(
+            f"  Bonafide: {len(bonafide_files)} originals -> "
+            f"{b_clean if b_clean is not None else len(bonafide_files)} clean + {b_aug} aug"
+        )
+        self.logger.info(
+            f"  Spoof:    {len(spoof_files)} originals -> "
+            f"{s_clean if s_clean is not None else len(spoof_files)} clean + {s_aug} aug"
+        )
+
+        self._emit_class(bonafide_files, split, 'bonafide', b_clean, b_aug)
+        self._emit_class(spoof_files, split, 'spoof', s_clean, s_aug)
     
     def _write_protocol_files(self):
         """Write protocol files for all splits."""
@@ -379,29 +438,20 @@ class AugmentationPipeline:
 
                 self.logger.info(f"  Written: {filename} ({len(self.protocol_entries[split])} entries)")
     
-    def _print_final_report(self, factors: AugmentationFactors):
-        """Print and log comprehensive final report."""
+    def _print_final_report(self):
+        """Print and log the final report, including the per-class clean-fraction
+        check that proves shortcut #1 is gone (bonafide and spoof clean % equal)."""
         self.logger.info("\n" + "="*70)
         self.logger.info("AUGMENTATION COMPLETE")
         self.logger.info("="*70)
 
         self.logger.info(f"\nConfiguration:")
-        self.logger.info(f"  Mode:         BALANCED")
+        self.logger.info(f"  Mode:         {self.mode.upper()}")
         self.logger.info(f"  Target ratio: {self.target_ratio:.0%} bonafide")
         self.logger.info(f"  Min factor:   {self.min_factor}")
+        self.logger.info(f"  Clean frac:   {self.clean_fraction:.0%}")
         self.logger.info(f"  Seed:         {self.seed}")
         self.logger.info(f"  Output:       {self.output_dir}")
-
-        self.logger.info(f"\nCalculated Factors (train only):")
-        self.logger.info(f"  Bonafide: {factors.bonafide_factor}x")
-        self.logger.info(f"  Spoof:    {factors.spoof_factor}x")
-        self.logger.info(f"  Total:    {factors.total_factor:.2f}x")
-
-        self.logger.info(f"\nBalance Achievement:")
-        self.logger.info(f"  Target:   {factors.target_ratio[0]:.1f}% / {factors.target_ratio[1]:.1f}%")
-        self.logger.info(f"  Achieved: {factors.final_ratio[0]:.1f}% / {factors.final_ratio[1]:.1f}%")
-        deviation = abs(factors.final_ratio[0] - factors.target_ratio[0])
-        self.logger.info(f"  Deviation: ±{deviation:.1f}%")
 
         self.logger.info(f"\nFinal Dataset Statistics:")
         for split in ['train', 'dev', 'eval']:
@@ -411,12 +461,20 @@ class AugmentationPipeline:
                 spoof_pct = (s['spoof'] / s['total']) * 100
                 clean_pct = (s['clean'] / s['total']) * 100
 
+                # Per-class clean fraction: these MUST match (leak #1 check).
+                b_clean_pct = (s['bonafide_clean'] / s['bonafide'] * 100) if s['bonafide'] else 0.0
+                s_clean_pct = (s['spoof_clean'] / s['spoof'] * 100) if s['spoof'] else 0.0
+
                 self.logger.info(f"\n  {split.upper()}:")
                 self.logger.info(f"    Total:    {s['total']:,} files")
                 self.logger.info(f"    Bonafide: {s['bonafide']:,} ({bonafide_pct:.1f}%)")
                 self.logger.info(f"    Spoof:    {s['spoof']:,} ({spoof_pct:.1f}%)")
                 self.logger.info(f"    Clean:    {s['clean']:,} ({clean_pct:.1f}%)")
                 self.logger.info(f"    Augmented: {s['augmented']:,} ({100-clean_pct:.1f}%)")
+                self.logger.info(
+                    f"    Clean fraction per class (must match): "
+                    f"bonafide {b_clean_pct:.1f}% vs spoof {s_clean_pct:.1f}%"
+                )
 
         self.logger.info("="*70 + "\n")
         self.logger.info(f"Log saved to: {self.log_path}")
@@ -428,8 +486,11 @@ class AugmentationPipeline:
         self.logger.info("="*70)
 
         self.logger.info(f"\nConfiguration:")
+        self.logger.info(f"  Mode:         {self.mode.upper()}")
         self.logger.info(f"  Target ratio: {self.target_ratio:.0%} bonafide")
         self.logger.info(f"  Min factor:   {self.min_factor}")
+        self.logger.info(f"  Clean frac:   {self.clean_fraction:.0%}")
+        self.logger.info(f"  Loudness:     {self.loudness_target_dbfs} dBFS")
         self.logger.info(f"  Seed:         {self.seed}")
 
         # Load dataset stats
@@ -442,28 +503,45 @@ class AugmentationPipeline:
         self.logger.info(f"  Train bonafide: {n_bonafide:,}")
         self.logger.info(f"  Train spoof:    {n_spoof:,}")
 
-        # Calculate factors
-        self.logger.info("\nCalculating balanced augmentation factors...")
-        factors = self.calculator.calculate_balanced_mode(
-            n_bonafide=n_bonafide,
-            n_spoof=n_spoof,
-            target_ratio=self.target_ratio,
-            min_total_factor=self.factor_num
-        )
-        
-        summary = self.calculator.get_calculation_summary(n_bonafide, n_spoof, factors, "balanced")
-        self.logger.info(summary)
-        
-        # Process splits
-        self._process_split('train', factors.bonafide_factor, factors.spoof_factor)
-        self._process_split('dev', 1, 1)  # No augmentation
-        self._process_split('eval', 1, 1)  # No augmentation
-        
+        # Build per-class (clean, aug) emission counts for the train split.
+        if self.mode == "balanced":
+            blocks = self.calculator.calculate_equal_clean_blocks(
+                n_bonafide=n_bonafide,
+                n_spoof=n_spoof,
+                target_ratio=self.target_ratio,
+                min_total_factor=self.factor_num,
+                clean_fraction=self.clean_fraction,
+            )
+            train_counts = {
+                'bonafide': (blocks['bonafide_clean'], blocks['bonafide_aug']),
+                'spoof': (blocks['spoof_clean'], blocks['spoof_aug']),
+            }
+            self.logger.info(
+                f"\nBalanced blocks (equal clean fraction {self.clean_fraction:.0%}): "
+                f"achieved ratio {blocks['achieved_ratio'][0]:.1f}% / "
+                f"{blocks['achieved_ratio'][1]:.1f}%, total factor {blocks['total_factor']:.2f}x"
+            )
+        else:  # uniform: same factor both classes, natural ratio preserved
+            f = self.factor_num
+            train_counts = {
+                'bonafide': (n_bonafide, n_bonafide * (f - 1)),
+                'spoof': (n_spoof, n_spoof * (f - 1)),
+            }
+            self.logger.info(
+                f"\nUniform mode: factor {f}x for both classes "
+                f"(clean fraction {1.0 / f:.0%}), natural ratio preserved."
+            )
+
+        # Process splits (dev/eval are clean only: one clean copy per original).
+        self._process_split('train', train_counts)
+        self._process_split('dev', {'bonafide': (None, 0), 'spoof': (None, 0)})
+        self._process_split('eval', {'bonafide': (None, 0), 'spoof': (None, 0)})
+
         # Write protocols
         self._write_protocol_files()
-        
+
         # Final report
-        self._print_final_report(factors)
+        self._print_final_report()
 
 
 if __name__ == "__main__":

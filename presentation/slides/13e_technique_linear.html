@@ -1,0 +1,51 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 3 / 7 &mdash; 15% of dataset</div>
+    <h2 style="margin-bottom:4px;">Linear crossfade</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">The simplest crossfade: a straight diagonal blend. Equal-gain but with a perceptual loudness dip at the midpoint.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,20 58,30 82,40 106,50 130,60 154,70 178,80 202,90 226,100 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,100 58,90 82,80 106,70 130,60 154,50 178,40 202,30 226,20 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag green" style="font-size:10px;">Equal-gain</span>
+          <span class="tag blue" style="font-size:10px;">15% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = t<br>fade_out(t) = 1 - t</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof (Luong et al., ICASSP 2025) &mdash; one of 5 crossfade functions randomly assigned per splice. Also the baseline in Negroni et al.'s "triangular window" analysis.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Constant total amplitude (in + out = 1.0), but perceived loudness dips at t=0.5 because <strong style="color:var(--white);">power = 0.5 + 0.5 = 0.5</strong> (half of original). This "loudness hole" is the main perceptual artifact and the main forensic signature of linear crossfades.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,111 @@
+<section class="slide tall">
+  <div class="glow" style="width:500px;height:500px;background:var(--green);top:-200px;left:-200px;"></div>
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Solution &mdash; Smart Selection + Quality Gate</div>
+    <h2>Valley-score selection + clone similarity gate</h2>
+    <p style="margin-bottom:24px; max-width:700px;">Three fixes that address the root causes: select only words with clean boundaries, reject bad clones early, and preserve speech rhythm by matching durations exactly.</p>
+
+    <div class="two" style="gap:36px; margin-bottom:24px;">
+      <!-- Left: Valley score -->
+      <div>
+        <h3 style="margin-bottom:14px;">Fix 1: Valley-score word selection</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px;">score = min_rms / avg_rms</code>
+          <div style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">For each word boundary: compute RMS energy in 5ms frames within &plusmn;100ms. The ratio of the minimum frame to the average tells us how deep the valley is. Score 0.0 = perfect silence. Score 1.0 = no valley at all.</div>
+        </div>
+
+        <!-- Ranking visual -->
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Ranking: "Dame unicamente el dato mas relevante"</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; display:flex; flex-direction:column; gap:4px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:20px;">#1</span>
+              <span style="width:90px;">"el"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:83%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:40px;">0.165</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:20px;">#2</span>
+              <span style="width:90px;">"relevante"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:82%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:40px;">0.179</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--amber); width:20px;">#3</span>
+              <span style="width:90px;">"dato"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:79%; height:100%; background:var(--amber); border-radius:4px;"></div></div>
+              <span style="color:var(--amber); width:40px;">0.210</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--red); width:20px;">#5</span>
+              <span style="width:90px;">"Dame"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:30%; height:100%; background:var(--red); border-radius:4px;"></div></div>
+              <span style="color:var(--red); width:40px;">0.700</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--red); width:20px;">#6</span>
+              <span style="width:90px;">"unicamente"</span>
+              <div style="flex:1; height:8px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:30%; height:100%; background:var(--red); border-radius:4px;"></div></div>
+              <span style="color:var(--red); width:40px;">0.700</span>
+            </div>
+          </div>
+          <div style="font-size:10px; color:var(--muted2); margin-top:8px;">Words above threshold (0.65) are never selected. "Dame" and "unicamente" are rejected because their shared boundary has no energy valley.</div>
+        </div>
+      </div>
+
+      <!-- Right: Gate + duration -->
+      <div>
+        <h3 style="margin-bottom:14px;">Fix 2: Clone similarity gate</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">Before alignment and splicing, compute <strong style="color:var(--white);">ECAPA-TDNN cosine similarity</strong> between the bonafide reference and the TTS clone. Clones with SIM &lt; 0.60 are rejected immediately &mdash; saving compute and preventing obviously bad splices.</div>
+        </div>
+        <div style="display:flex; gap:12px; margin-bottom:20px;">
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:12px; flex:1; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">THRESHOLD</div>
+            <div style="font-size:20px; font-weight:700; color:var(--amber);">0.60</div>
+          </div>
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:12px; flex:1; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">EMBEDDING</div>
+            <div style="font-size:20px; font-weight:700; color:var(--white);">192-d</div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom:14px;">Fix 3: Duration-preserving splice</h3>
+        <div class="card-sm" style="border-color:rgba(62,255,139,0.2); margin-bottom:12px;">
+          <div style="font-size:12px; color:var(--muted); line-height:1.6;">The cloned word is <strong style="color:var(--white);">time-stretched to fit the exact bonafide slot</strong>. Total audio length never changes. Gaps between words are preserved. Speech rhythm stays intact.</div>
+        </div>
+
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Before vs After</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.8; font-family:'JetBrains Mono',monospace;">
+            <div><span style="color:var(--red);">Before:</span> cut 640ms, insert 480ms &rarr; <span style="color:var(--red);">-160ms shift</span></div>
+            <div><span style="color:var(--green);">After:</span>&nbsp; stretch 480ms &rarr; 640ms &rarr; <span style="color:var(--green);">0ms shift</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edge cases -->
+    <div class="div"></div>
+    <h3 style="margin-bottom:14px;">Edge cases handled</h3>
+    <div class="four" style="gap:12px;">
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">All bad scores</div>
+        <div style="font-size:10px; color:var(--muted);">Reject sample entirely</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">Word &lt; 200ms</div>
+        <div style="font-size:10px; color:var(--muted);">Ineligible (too short)</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">Stretch &gt; 1.25x</div>
+        <div style="font-size:10px; color:var(--muted);">Skip word (distortion)</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:500; color:var(--white); margin-bottom:4px;">First/last word</div>
+        <div style="font-size:10px; color:var(--muted);">Only internal boundary scored</div>
+      </div>
+    </div>
+  </div>
+</section>

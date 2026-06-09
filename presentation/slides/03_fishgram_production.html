@@ -1,0 +1,102 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Production Run</div>
+    <h2>FishGram at scale</h2>
+    <p style="margin-bottom:28px; max-width:640px;">Full production run: 1,567 speakers x ~23 samples each. Fish Speech (OpenAudio S1-mini, VQGAN vocoder) running as persistent HTTP API on ml-server03 GPU 3. Quality validated via Parakeet STT + NISQA + ECAPA-TDNN.</p>
+
+    <!-- Hero stats -->
+    <div class="four" style="margin-bottom:36px;">
+      <div class="stat-card">
+        <div class="num">35,927</div>
+        <div class="sub">Samples generated</div>
+        <div class="detail">1,567 speakers</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--green);">34,197</div>
+        <div class="sub">Passed validation</div>
+        <div class="detail">95.2% pass rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num" style="color:var(--red);">1,730</div>
+        <div class="sub">Rejected</div>
+        <div class="detail">4.8% rejection rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">36.1h</div>
+        <div class="sub">Total audio</div>
+        <div class="detail">avg 3.80s per sample</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <!-- Key metrics summary -->
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Quality metrics (passed samples)</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Metric</th><th>Mean</th><th>Median</th><th>Std</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>WER</td>
+              <td class="pass"><strong>2.17%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>4.26%</td>
+            </tr>
+            <tr>
+              <td>CER</td>
+              <td class="pass"><strong>0.70%</strong></td>
+              <td class="pass">0.00%</td>
+              <td>1.62%</td>
+            </tr>
+            <tr>
+              <td>NISQA MOS</td>
+              <td><strong>4.571</strong></td>
+              <td>4.890</td>
+              <td>0.764</td>
+            </tr>
+            <tr>
+              <td>Speaker similarity</td>
+              <td><strong>0.602</strong></td>
+              <td>0.618</td>
+              <td>0.112</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;" class="callout hi">
+          <strong style="color:var(--white);">Scale vs validation shift.</strong> At production scale, mean similarity dropped from 0.567 (validation, 6 samples) to 0.602 (production, 34K samples) — actually <em>improved</em> with more speakers. NISQA dropped from 4.978 to 4.571 as more diverse and challenging texts were generated, but median remains high at 4.890.
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">Rejection breakdown</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER only</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--red);">1,341</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">77.5% of rejections — pronunciation errors on proper nouns and rare words</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">WER + CER</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--amber);">378</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">21.8% — both word and character errors exceeded thresholds simultaneously</div>
+          </div>
+          <div class="card-sm">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-size:13px; color:var(--white); font-weight:500;">Near-silent output</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:20px; font-weight:700; color:var(--muted);">11</div>
+            </div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px;">0.6% — model produced near-silent or garbled audio (RMS below threshold)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

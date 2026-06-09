@@ -1,0 +1,51 @@
+<section class="slide">
+  <div class="inner" style="max-width:900px;">
+    <div class="eyebrow">Splice Technique 7 / 7 &mdash; 10% of dataset</div>
+    <h2 style="margin-bottom:4px;">Inverted parabola</h2>
+    <p style="color:var(--muted); margin-bottom:20px; font-size:13px; max-width:680px;">Concave quadratic blend. Equal-gain with a smooth acceleration profile, sitting between linear and Hann in perceptual smoothness.</p>
+
+    <div class="two" style="gap:36px; align-items:start;">
+      <div>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:20px 20px 12px 20px;">
+          <svg viewBox="0 0 260 130" style="width:100%; height:auto;">
+            <line x1="10" y1="10" x2="10" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="130" y1="10" x2="130" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="250" y1="10" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="10" x2="250" y2="10" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <line x1="10" y1="60" x2="250" y2="60" stroke="rgba(255,255,255,0.06)" stroke-width="0.5" stroke-dasharray="3,3"/>
+            <line x1="10" y1="110" x2="250" y2="110" stroke="rgba(255,255,255,0.06)" stroke-width="0.5"/>
+            <text x="2" y="14" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">1</text>
+            <text x="2" y="64" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">.5</text>
+            <text x="2" y="114" fill="rgba(255,255,255,0.2)" font-size="7" font-family="JetBrains Mono">0</text>
+            <polyline points="10,10 34,29 58,46 82,61 106,74 130,85 154,94 178,101 202,106 226,109 250,110" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+            <polyline points="10,110 34,91 58,74 82,59 106,46 130,35 154,26 178,19 202,14 226,11 250,10" fill="none" stroke="#3eff8b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="130" cy="60" r="3" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+            <line x1="155" y1="124" x2="170" y2="124" stroke="#3eff8b" stroke-width="2"/>
+            <text x="173" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">in</text>
+            <line x1="195" y1="124" x2="210" y2="124" stroke="#f5a623" stroke-width="2"/>
+            <text x="213" y="127" fill="rgba(255,255,255,0.4)" font-size="8" font-family="JetBrains Mono">out</text>
+          </svg>
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <span class="tag green" style="font-size:10px;">Equal-gain</span>
+          <span class="tag blue" style="font-size:10px;">10% of splices</span>
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Formula</div>
+          <code style="color:var(--white); font-size:12px; line-height:1.8;">fade_in(t) = 1 - (1 - t)&sup2; = 2t - t&sup2;<br>fade_out(t) = (1 - t)&sup2;</code>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Source</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">LlamaPartialSpoof &mdash; "inverted parabola" variant. The quadratic complement to their logarithmic and linear fades. Named for the shape of 1-(1-t)&sup2; which is a downward-opening parabola.</div>
+        </div>
+        <div class="card-sm">
+          <div style="font-size:10px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Acoustic effect</div>
+          <div style="font-size:12px; color:var(--muted); line-height:1.5;">Equal-gain: <strong style="color:var(--white);">(2t - t&sup2;) + (1-t)&sup2; = 1.0</strong>. Rises faster than linear at the start (concave shape) but slower than logarithmic. Perceptually intermediate: smoother than linear but without the S-curve smoothness of Hann. The fast initial blend makes it more like "swapping" the signal with a gentle fade.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

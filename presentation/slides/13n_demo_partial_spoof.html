@@ -1,0 +1,162 @@
+<section class="slide tall">
+  <div class="glow" style="width:400px;height:400px;background:var(--blue);top:-150px;right:-150px;"></div>
+  <div class="inner" style="max-width:920px;">
+    <div class="eyebrow">Demo &mdash; Partial Spoof Pipeline &middot; Qwen3-TTS</div>
+    <h2>Bonafide vs. Partially Spoofed Speech</h2>
+    <p style="margin-bottom:24px; max-width:680px;">Speaker arf_00295 (Argentina Female). Same utterance. Words replaced with voice-cloned versions using valley-score selection and duration-preserving splice.</p>
+
+    <!-- Audio cards row -->
+    <div class="three" style="gap:20px; margin-bottom:28px;">
+
+      <!-- Bonafide -->
+      <div class="audio-card" style="flex-direction:column; gap:14px; border-color:rgba(255,255,255,0.08);">
+        <div>
+          <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:6px;">Original &middot; Bonafide</div>
+          <div style="font-size:15px; font-weight:600; color:var(--white); margin-bottom:2px;">arf_00295</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted2); margin-bottom:8px;">Argentina &middot; Female &middot; HABLA v2</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.5;"><em>"Hay varios cines cerca del hotel. &iquest;Est&aacute;s buscando algo en especial?"</em></div>
+        </div>
+        <audio controls style="width:100%;" src="data/bonafide_dataset_by_speaker/arf_00295/train/arf_00295_00020689215.wav"></audio>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Spoofed words</span>
+            <span style="color:var(--white);">none</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Spoof ratio</span>
+            <span style="color:var(--white);">0.0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PSW1 -->
+      <div class="audio-card" style="flex-direction:column; gap:14px; border-color:rgba(245,166,35,0.25); background:rgba(245,166,35,0.03);">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--amber);">PSW1 &middot; Partial Spoof</div>
+            <span class="tag" style="background:rgba(245,166,35,0.15); color:var(--amber); border:1px solid rgba(245,166,35,0.3); font-size:8px;">W1</span>
+          </div>
+          <div style="font-size:15px; font-weight:600; color:var(--white); margin-bottom:2px;">1 word replaced</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted2); margin-bottom:8px;">Qwen3-TTS &middot; linear crossfade &middot; 58.8ms</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.5;">
+            "Hay varios cines <strong style="color:var(--amber); text-decoration:underline; text-decoration-color:rgba(245,166,35,0.5);">cerca</strong> del hotel. &iquest;Est&aacute;s buscando algo en especial?"
+          </div>
+        </div>
+        <audio controls style="width:100%;" src="data/attacks/qwen_partial_spoof/spliced/QWEN3TTS_PSW1_arf_00295_arf_00295_00020689215.wav"></audio>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Valley score</span>
+            <span style="color:var(--green);">0.142</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Stretch ratio</span>
+            <span style="color:var(--white);">1.00x</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">WER &middot; NISQA &middot; SIM</span>
+            <span style="color:var(--green);">0% &middot; 4.81 &middot; 0.992</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PSW2 -->
+      <div class="audio-card" style="flex-direction:column; gap:14px; border-color:rgba(77,159,255,0.25); background:rgba(77,159,255,0.03);">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <div style="font-size:9px; letter-spacing:2px; text-transform:uppercase; color:var(--blue);">PSW2 &middot; Partial Spoof</div>
+            <span class="tag blue" style="font-size:8px;">W2</span>
+          </div>
+          <div style="font-size:15px; font-weight:600; color:var(--white); margin-bottom:2px;">2 words replaced</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted2); margin-bottom:8px;">Qwen3-TTS &middot; logarithmic + half_sine</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.5;">
+            "Hay <strong style="color:var(--blue); text-decoration:underline; text-decoration-color:rgba(77,159,255,0.5);">varios</strong> cines <strong style="color:var(--blue); text-decoration:underline; text-decoration-color:rgba(77,159,255,0.5);">cerca</strong> del hotel. &iquest;Est&aacute;s buscando algo en especial?"
+          </div>
+        </div>
+        <audio controls style="width:100%;" src="data/attacks/qwen_partial_spoof/spliced/QWEN3TTS_PSW2_arf_00295_arf_00295_00020689215.wav"></audio>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Valley scores</span>
+            <span style="color:var(--green);">0.118 · 0.142</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">Stretch ratios</span>
+            <span style="color:var(--white);">1.00x · 1.00x</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; font-family:'JetBrains Mono',monospace;">
+            <span style="color:var(--muted2);">WER &middot; NISQA &middot; SIM</span>
+            <span style="color:var(--green);">0% &middot; 4.81 &middot; 0.961</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="div"></div>
+
+    <!-- Valley score formula + selection explanation -->
+    <div class="two" style="gap:24px; margin-top:20px;">
+      <div>
+        <h3 style="margin-bottom:12px;">How words are selected</h3>
+        <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px;">
+          <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:10px;">Valley score ranking for this utterance</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; display:flex; flex-direction:column; gap:5px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:18px;">#1</span>
+              <span style="width:70px; color:var(--white);">"varios"</span>
+              <div style="flex:1; height:7px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:88%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:36px; text-align:right;">0.118</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); width:18px;">#2</span>
+              <span style="width:70px; color:var(--white);">"cerca"</span>
+              <div style="flex:1; height:7px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:86%; height:100%; background:var(--green); border-radius:4px;"></div></div>
+              <span style="color:var(--green); width:36px; text-align:right;">0.142</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--amber); width:18px;">#3</span>
+              <span style="width:70px; color:var(--muted);">"cines"</span>
+              <div style="flex:1; height:7px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:55%; height:100%; background:var(--amber); border-radius:4px;"></div></div>
+              <span style="color:var(--amber); width:36px; text-align:right;">0.430</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; opacity:0.5;">
+              <span style="color:var(--red); width:18px;">&times;</span>
+              <span style="width:70px; color:var(--muted);">"Hay"</span>
+              <div style="flex:1; height:7px; background:#111; border-radius:4px; overflow:hidden;"><div style="width:1%; height:100%; background:var(--red); border-radius:4px;"></div></div>
+              <span style="color:var(--red); width:36px; text-align:right;">0.006</span>
+            </div>
+            <div style="font-size:9px; color:var(--muted2); margin-top:4px;">"Hay" rejected: stretch ratio 0.67 outside [0.80, 1.25] — too short in clone.</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:12px;">Validation summary (7 samples)</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">AVG WER</div>
+            <div style="font-size:26px; font-weight:700; color:var(--green);">2.27%</div>
+            <div style="font-size:10px; color:var(--muted2);">vs 30% ceiling</div>
+          </div>
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">AVG NISQA</div>
+            <div style="font-size:26px; font-weight:700; color:var(--white);">4.66</div>
+            <div style="font-size:10px; color:var(--muted2);">high quality</div>
+          </div>
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">AVG SIM</div>
+            <div style="font-size:26px; font-weight:700; color:var(--amber);">0.885</div>
+            <div style="font-size:10px; color:var(--muted2);">speaker preserved</div>
+          </div>
+          <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:14px; text-align:center;">
+            <div style="font-size:10px; letter-spacing:1px; color:var(--muted2); margin-bottom:4px;">PASS RATE</div>
+            <div style="font-size:26px; font-weight:700; color:var(--green);">7 / 7</div>
+            <div style="font-size:10px; color:var(--muted2);">validation (arf_00295)</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;" class="callout hi" style="font-size:11px;">
+          Audio files are relative to project root on ml-server03. Open presentation.html from <code style="font-size:10px;">~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/</code> to play audio.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

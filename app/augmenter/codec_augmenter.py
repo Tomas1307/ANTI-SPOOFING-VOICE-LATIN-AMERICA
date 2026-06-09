@@ -1,136 +1,62 @@
 """
-Codec and Channel Degradation Augmentation
+Codec and Channel Degradation Augmentation.
 
-Simulates telephone and communication channel effects including downsampling,
-codec compression, and packet loss. Based on ASVspoof channel augmentation
-strategies.
+Applies REAL codec degradation (G.711 mu-law/A-law, AMR-NB, iLBC, Opus, AAC) via
+the ffmpeg-backed ``torchaudio.io.AudioEffector`` round-trip implemented in
+``app.augmenter.codec_backend``. Optionally simulates packet loss on top. Codecs
+unavailable in the host ffmpeg build are detected once at construction time and
+skipped. Loudness normalization is NOT done here; it is applied uniformly by the
+orchestrator on write so loudness cannot leak augmentation type.
 """
+import random
+from typing import List, Optional
 
 import numpy as np
-import random
-from typing import Optional, Tuple
 
+import app.augmenter.codec_backend as codec_backend
 from app.augmenter.base_augmenter import BaseAugmenter
-from app.schema import CodecConfig
+from app.augmenter.codec_backend import DEFAULT_CODEC_REGISTRY
+from app.augmenter.schemas.codec_rawboost_config import CodecConfigV2
 import app.utils.utils as utils
 
 
 class CodecAugmenter(BaseAugmenter):
     """
-    Channel and codec degradation augmentation.
-    
-    Simulates telecommunication channel effects by applying:
-    - Sample rate conversion (e.g., 16kHz -> 8kHz -> 16kHz)
-    - Packet loss simulation
-    - Codec compression artifacts
-    
+    Real codec/channel degradation augmentation.
+
+    Encodes and decodes each clip through a randomly chosen real codec (drawn
+    from the configured, ffmpeg-available set) and optionally simulates packet
+    loss, modelling telephony and VoIP transmission.
+
     Attributes:
-        config: CodecConfig object with degradation parameters.
+        config: CodecConfigV2 selecting the enabled codecs and packet-loss params.
+        registry: Codec specification registry.
+        available_codecs: Configured codec names confirmed available at runtime.
     """
-    
-    def __init__(self, config: CodecConfig, sample_rate: int = 16000):
+
+    def __init__(self, config: CodecConfigV2, sample_rate: int = 16000):
         """
-        Initialize codec augmenter.
-        
+        Initialize codec augmenter and probe codec availability.
+
         Args:
-            config: Configuration object for codec augmentation.
-            sample_rate: Target sample rate for output.
+            config: Configuration selecting codecs and packet-loss behaviour.
+            sample_rate: Target sample rate for output (16 kHz).
         """
         super().__init__(sample_rate)
         self.config = config
-        
-        print(f"CodecAugmenter initialized:")
-        print(f"  - Target sample rates: {config.target_sample_rates}")
-        print(f"  - Packet loss range: {config.packet_loss_range[0]*100:.1f}%-{config.packet_loss_range[1]*100:.1f}%")
-    
-    def _apply_telephone_codec(self, audio: np.ndarray, sr: int, target_sr: int) -> np.ndarray:
-        """
-        Simulate telephone codec by downsampling and upsampling.
+        self.registry = DEFAULT_CODEC_REGISTRY
 
-        This creates bandwidth limitation typical of telephone networks.
+        probe = codec_backend.probe_available_codecs(self.registry)
+        self.available_codecs: List[str] = [
+            name for name in config.codec_set if probe.get(name, False)
+        ]
+        skipped = [name for name in config.codec_set if not probe.get(name, False)]
 
-        Args:
-            audio: Input audio signal.
-            sr: Current sample rate.
-            target_sr: Target sample rate for codec simulation.
+        print("CodecAugmenter initialized:")
+        print(f"  - Enabled codecs: {self.available_codecs}")
+        if skipped:
+            print(f"  - Skipped (unavailable in ffmpeg build): {skipped}")
 
-        Returns:
-            Audio with telephone codec simulation.
-        """
-        if target_sr == sr:
-            return audio
-
-        downsampled = utils.downsample_audio(audio, sr, target_sr)
-
-        upsampled = utils.upsample_audio(downsampled, target_sr, sr)
-
-        return upsampled
-    
-    def _apply_packet_loss(self, audio: np.ndarray, sr: int) -> np.ndarray:
-        """
-        Simulate packet loss in VoIP transmission.
-        
-        Args:
-            audio: Input audio signal.
-            sr: Sample rate.
-            
-        Returns:
-            Audio with simulated packet loss.
-        """
-        loss_rate = random.uniform(*self.config.packet_loss_range)
-        
-        return utils.simulate_packet_loss(audio, loss_rate, sr)
-    
-    def _apply_bandpass_filter(self, audio: np.ndarray, sr: int) -> np.ndarray:
-        """
-        Apply bandpass filter to simulate channel bandwidth limitation.
-        
-        Typical telephone bandwidth: 300-3400 Hz
-        
-        Args:
-            audio: Input audio signal.
-            sr: Sample rate.
-            
-        Returns:
-            Filtered audio signal.
-        """
-        from scipy import signal
-        
-        lowcut = 300.0
-        highcut = 3400.0
-        
-        nyquist = sr / 2
-        low = lowcut / nyquist
-        high = highcut / nyquist
-        
-        if high >= 1.0:
-            high = 0.99
-        
-        b, a = signal.butter(4, [low, high], btype='band')
-        
-        filtered = signal.filtfilt(b, a, audio)
-        
-        return filtered
-    
-    def _apply_quantization_noise(self, audio: np.ndarray, bits: int = 8) -> np.ndarray:
-        """
-        Simulate quantization noise from low-bitrate codec.
-        
-        Args:
-            audio: Input audio signal.
-            bits: Number of quantization bits.
-            
-        Returns:
-            Quantized audio signal.
-        """
-        levels = 2 ** bits
-        
-        quantized = np.round(audio * (levels / 2)) / (levels / 2)
-        
-        quantized = np.clip(quantized, -1.0, 1.0)
-        
-        return quantized
-    
     def augment(
         self,
         audio: np.ndarray,
@@ -138,90 +64,102 @@ class CodecAugmenter(BaseAugmenter):
         return_metadata: bool = False
     ) -> np.ndarray:
         """
-        Apply codec and channel degradation to audio.
-        
-        Process:
-        1. Ensure audio is at target sample rate
-        2. Apply telephone codec simulation (downsample/upsample)
-        3. Apply bandpass filter for channel limitation
-        4. Apply packet loss simulation
-        5. Apply quantization noise
-        6. Normalize and clip output
-        
+        Apply a real codec round-trip (and optional packet loss) to audio.
+
         Args:
             audio: Input audio signal.
             sr: Sample rate of input audio.
             return_metadata: If True, returns tuple (audio, metadata).
-            
+
         Returns:
-            Augmented audio signal, or tuple (audio, metadata) if return_metadata=True.
+            Augmented audio signal, or tuple (audio, metadata) if return_metadata.
         """
         audio, sr = self._ensure_sample_rate(audio, sr)
-        
-        original_sr = sr
-        
-        codec_sr = random.choice(self.config.target_sample_rates)
-        augmented = self._apply_telephone_codec(audio, sr, codec_sr)
+        augmented = audio
 
-        applied_bandpass = False
-        if random.random() < 0.7:
-            augmented = self._apply_bandpass_filter(augmented, sr)
-            applied_bandpass = True
+        codec_name: Optional[str] = None
+        codec_sr = self.sample_rate
+        bandpass = False
+        bitrate = 0
+        skipped = False
+        fallback = False
+
+        apply_codec = (
+            self.available_codecs and random.random() < self.config.apply_probability
+        )
+        if apply_codec:
+            codec_name = random.choices(
+                self.available_codecs,
+                weights=[self.config.codec_weights.get(c, 1.0) for c in self.available_codecs],
+                k=1,
+            )[0]
+            spec = self.registry[codec_name]
+            bitrate = random.choice(spec.bitrates) if spec.bitrates else 0
+            degraded = codec_backend.apply_codec(
+                augmented, spec, bitrate if bitrate else None
+            )
+            if degraded is None:
+                # Codec failed at runtime: fall back to passthrough rather than crash.
+                fallback = True
+                codec_name = None
+            else:
+                augmented = degraded
+                codec_sr = spec.sample_rate
+                bandpass = spec.narrowband
+        else:
+            skipped = True
 
         packet_loss_rate = 0.0
-        if random.random() < 0.5:
+        if random.random() < self.config.apply_packet_loss_prob:
             packet_loss_rate = random.uniform(*self.config.packet_loss_range)
-            augmented = self._apply_packet_loss(augmented, sr)
+            augmented = utils.simulate_packet_loss(augmented, packet_loss_rate, sr)
 
-        quantization_bits = 0
-        if random.random() < 0.3:
-            quantization_bits = random.choice([8, 12])
-            augmented = self._apply_quantization_noise(augmented, bits=quantization_bits)
-
-        augmented = self._normalize_audio(augmented)
         augmented = self._clip_audio(augmented)
 
         if return_metadata:
             metadata = {
                 "codec_sr": codec_sr,
                 "packet_loss": packet_loss_rate,
-                "bandpass": applied_bandpass,
-                "quantization_bits": quantization_bits
+                "bandpass": bandpass,
+                "quantization_bits": 0,
+                "codec": codec_name,
+                "bitrate": bitrate,
+                "skipped": skipped,
+                "fallback": fallback,
             }
             return augmented, metadata
-        
+
         return augmented
-    
+
     def get_augmentation_label(
         self,
         codec_sr: int,
         packet_loss: float,
         bandpass: bool,
-        quantization_bits: int
+        quantization_bits: int,
+        codec_name: Optional[str] = None
     ) -> str:
         """
-        Generate descriptive label for augmentation applied.
+        Generate a descriptive label for the codec augmentation applied.
 
         Args:
-            codec_sr: Sample rate used for codec simulation.
+            codec_sr: Codec operating sample rate.
             packet_loss: Packet loss rate applied.
-            bandpass: Whether bandpass filter was applied.
-            quantization_bits: Quantization bit depth used (0 if not applied).
+            bandpass: Whether the codec is narrowband (telephony-band).
+            quantization_bits: Retained for metadata-contract compatibility (0).
+            codec_name: Real codec name; None for a passthrough/skip.
 
         Returns:
             Formatted augmentation label.
         """
+        if not codec_name:
+            return "CODEC_SKIP_PASSTHROUGH"
+
         sr_khz = codec_sr // 1000
         loss_pct = int(packet_loss * 100)
-
-        label = f"CODEC_{sr_khz}K_LOSS{loss_pct}PCT"
+        label = f"CODEC_{codec_name.upper()}_{sr_khz}K_LOSS{loss_pct}PCT"
 
         if bandpass:
             label += "_BP"
 
-        if quantization_bits > 0:
-            label += f"_Q{quantization_bits}"
-
         return label
-
-

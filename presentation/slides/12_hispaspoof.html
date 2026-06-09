@@ -1,0 +1,105 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Related Work — HISPASpoof</div>
+    <h2>HISPASpoof: Spanish Speech Forensics</h2>
+    <p style="margin-bottom:28px; max-width:680px;">535,687 speech signals across 6 Spanish accents and 6 TTS systems. From Purdue VIPER Lab (Risques et al., arXiv:2509.09155). The first large-scale Spanish-specific anti-spoofing dataset — and the closest related work to our thesis.</p>
+
+    <div class="two" style="gap:40px;">
+      <div>
+        <h3 style="margin-bottom:16px;">Critical finding: English detectors fail on Spanish</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Detector</th><th>ASVspoof (English)</th><th>HISPASpoof (Spanish)</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>LFCC+GMM</td>
+              <td class="pass">3.59% EER</td>
+              <td class="fail"><strong>42.71%</strong> EER</td>
+            </tr>
+            <tr>
+              <td>Wav2Vec2-AASIST</td>
+              <td class="pass"><strong>0.27%</strong> EER</td>
+              <td class="fail"><strong>19.92%</strong> EER</td>
+            </tr>
+            <tr>
+              <td>PaSST</td>
+              <td>4.77% EER</td>
+              <td class="fail"><strong>32.14%</strong> EER</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:16px;" class="callout danger">
+          <strong style="color:var(--red);">Language gap:</strong> Best English detector (0.27% EER) jumps to 19.92% on Spanish. This validates our entire thesis premise — language-specific anti-spoofing research is essential.
+        </div>
+
+        <h3 style="margin-top:24px; margin-bottom:12px;">Spanish-trained detectors</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Detector</th><th>HISPASpoof EER</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Spec-ResNet</td><td class="pass"><strong>0.72%</strong></td></tr>
+            <tr><td>LFCC+GMM</td><td class="pass">1.57%</td></tr>
+            <tr><td>PaSST</td><td>4.10%</td></tr>
+            <tr><td>Wav2Vec2-AASIST</td><td class="warn">10.27%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h3 style="margin-bottom:16px;">HABLA 2.0 vs HISPASpoof</h3>
+        <table style="font-size:13px;">
+          <thead>
+            <tr><th>Aspect</th><th>HABLA 2.0</th><th>HISPASpoof</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Accents</td>
+              <td class="pass"><strong>7 LatAm</strong></td>
+              <td>6 (incl. Peninsular)</td>
+            </tr>
+            <tr>
+              <td>Speakers</td>
+              <td class="pass"><strong>1,567</strong></td>
+              <td>24 + 6 unseen</td>
+            </tr>
+            <tr>
+              <td>TTS systems</td>
+              <td>5 (+ partial spoof)</td>
+              <td>6</td>
+            </tr>
+            <tr>
+              <td>TTS overlap</td>
+              <td colspan="2" style="font-size:11px; color:var(--muted);">FishSpeech in both</td>
+            </tr>
+            <tr>
+              <td>Novel TTS</td>
+              <td class="pass"><strong>Qwen3-TTS, OuteTTS</strong></td>
+              <td>ElevenLabs, F5-TTS</td>
+            </tr>
+            <tr>
+              <td>Partial spoof</td>
+              <td class="pass"><strong>Yes (W1/W2/W3)</strong></td>
+              <td class="fail">No</td>
+            </tr>
+            <tr>
+              <td>Quality metrics</td>
+              <td class="pass"><strong>WER/CER/NISQA/SIM</strong></td>
+              <td>EER only</td>
+            </tr>
+            <tr>
+              <td>Focus</td>
+              <td>Voice cloning attacks</td>
+              <td>Detection + attribution</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:16px;" class="callout hi">
+          <strong style="color:var(--white);">Key differentiators.</strong> (1) 65x more speakers (1,567 vs 24). (2) Qwen3-TTS and OuteTTS are absent from HISPASpoof. (3) Partial spoof is entirely novel for Spanish. (4) We include Venezuelan and Puerto Rican accents; they include Peninsular. (5) Our per-sample quality validation enables fine-grained attack analysis beyond EER.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

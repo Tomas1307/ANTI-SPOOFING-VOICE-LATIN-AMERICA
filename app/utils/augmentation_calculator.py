@@ -163,6 +163,79 @@ class AugmentationModeCalculator:
         )
     
     @staticmethod
+    def calculate_equal_clean_blocks(
+        n_bonafide: int,
+        n_spoof: int,
+        target_ratio: float = 0.50,
+        min_total_factor: int = 3,
+        clean_fraction: float = 0.25
+    ) -> Dict[str, float]:
+        """
+        Compute leak-free per-class emission blocks with an EQUAL clean fraction.
+
+        The legacy balanced mode reaches the target ratio by giving bonafide and
+        spoof different augmentation factors, which makes the clean fraction
+        (``1 / factor``) differ by class and turns "is this clip augmented?"
+        into a predictor of the label (a shortcut the detector can exploit).
+        This method removes that coupling: it applies the SAME ``clean_fraction``
+        to both classes regardless of how many copies each receives, so a clip
+        being clean or augmented reveals nothing about its class.
+
+        The target ratio is achieved by varying the per-class TOTAL (and thus how
+        many times each original is reused), never by varying the clean fraction.
+        Class totals are floored at the original count so no originals are
+        dropped; the grand total is recomputed if a floor binds.
+
+        Args:
+            n_bonafide: Number of bonafide originals.
+            n_spoof: Number of spoof originals.
+            target_ratio: Target proportion of bonafide in the corpus (0.0-1.0).
+            min_total_factor: Minimum overall augmentation factor.
+            clean_fraction: Fraction of each class emitted as clean (unaugmented)
+                copies. Identical across classes by construction.
+
+        Returns:
+            Dict with per-class ``*_total``, ``*_clean``, ``*_aug``, ``*_orig``
+            counts plus ``achieved_ratio`` (bonafide_pct, spoof_pct),
+            ``total_factor`` and the echoed ``clean_fraction``.
+        """
+        n_total = n_bonafide + n_spoof
+        grand_total = math.ceil(n_total * min_total_factor)
+
+        bonafide_total = round(grand_total * target_ratio)
+        spoof_total = grand_total - bonafide_total
+
+        # Never drop originals: each class total is at least its original count.
+        bonafide_total = max(bonafide_total, n_bonafide)
+        spoof_total = max(spoof_total, n_spoof)
+        grand_total = bonafide_total + spoof_total
+
+        def _split(total: int) -> Tuple[int, int]:
+            clean = round(clean_fraction * total)
+            clean = max(1, min(clean, total)) if total > 0 else 0
+            return clean, total - clean
+
+        bonafide_clean, bonafide_aug = _split(bonafide_total)
+        spoof_clean, spoof_aug = _split(spoof_total)
+
+        return {
+            "bonafide_total": bonafide_total,
+            "spoof_total": spoof_total,
+            "bonafide_clean": bonafide_clean,
+            "spoof_clean": spoof_clean,
+            "bonafide_aug": bonafide_aug,
+            "spoof_aug": spoof_aug,
+            "bonafide_orig": n_bonafide,
+            "spoof_orig": n_spoof,
+            "achieved_ratio": (
+                (bonafide_total / grand_total) * 100,
+                (spoof_total / grand_total) * 100,
+            ),
+            "total_factor": grand_total / n_total,
+            "clean_fraction": clean_fraction,
+        }
+
+    @staticmethod
     def get_calculation_summary(
         n_bonafide: int,
         n_spoof: int,

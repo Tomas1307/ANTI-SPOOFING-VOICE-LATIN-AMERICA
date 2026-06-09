@@ -1,0 +1,11 @@
+VALLEY SCORE POR PALABRA (menor = mejor corte)
+
+#1 [2] el              score=0.165 BUENO  cut=1.280s-1.485s
+#2 [5] relevante.      score=0.179 BUENO  cut=2.000s-2.700s
+#3 [3] dato            score=0.210 BUENO  cut=1.485s-1.925s
+#4 [4] más             score=0.210 BUENO  cut=1.925s-2.000s
+#5 [0] Dame            score=0.700 REGULAR  cut=0.185s-0.895s
+#6 [1] únicamente      score=0.700 REGULAR  cut=0.895s-1.280s
+
+Formula: score = min_energy / avg_energy en ventana +-100ms
+Combined = max(score_izquierdo, score_derecho)

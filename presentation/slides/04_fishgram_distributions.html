@@ -1,0 +1,126 @@
+<section class="slide tall">
+  <div class="inner">
+    <div class="eyebrow">Pipeline 02 — FishGram Distribution Analysis</div>
+    <h2>Quality distributions</h2>
+    <p style="margin-bottom:28px; max-width:640px;">Distribution of NISQA MOS, speaker similarity, WER, and per-accent pass rates across all 34,197 passed samples.</p>
+
+    <div class="two" style="gap:40px; margin-bottom:36px;">
+      <!-- NISQA distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">NISQA MOS distribution</h3>
+        <div class="chart-row">
+          <div class="chart-label">4.5+</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:74.7%">25,544</div></div>
+          <div class="chart-val">74.7%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">4.0 - 4.5</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:9.8%"></div></div>
+          <div class="chart-val">9.8%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">3.0 - 4.0</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:9.3%"></div></div>
+          <div class="chart-val">9.3%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">&lt; 3.0</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill red" style="width:6.2%"></div></div>
+          <div class="chart-val">6.2%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Median: 4.890 — three quarters of samples achieve near-perfect perceptual quality</div>
+      </div>
+
+      <!-- WER distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">WER distribution (passed)</h3>
+        <div class="chart-row">
+          <div class="chart-label">0%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:78.2%">26,746</div></div>
+          <div class="chart-val">78.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">5 - 10%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:14.2%"></div></div>
+          <div class="chart-val">14.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">10 - 15%</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:7.6%"></div></div>
+          <div class="chart-val">7.6%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">78.2% of passed samples have perfect transcription (0% WER)</div>
+      </div>
+    </div>
+
+    <div class="div"></div>
+
+    <div class="two" style="gap:40px;">
+      <!-- Speaker similarity distribution -->
+      <div>
+        <h3 style="margin-bottom:12px;">Speaker similarity distribution</h3>
+        <div class="chart-row">
+          <div class="chart-label">0.7+</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:18.3%"></div></div>
+          <div class="chart-val">18.3%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">0.5 - 0.7</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill white" style="width:65.4%">22,365</div></div>
+          <div class="chart-val">65.4%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">&lt; 0.5</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:16.3%"></div></div>
+          <div class="chart-val">16.3%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Mean: 0.602 — bulk of clones land in the moderate fidelity zone (0.5-0.7)</div>
+      </div>
+
+      <!-- Per-accent pass rates -->
+      <div>
+        <h3 style="margin-bottom:12px;">Pass rate by accent</h3>
+        <div class="chart-row">
+          <div class="chart-label">PE</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:96%"></div></div>
+          <div class="chart-val">96.0%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">CL</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.8%"></div></div>
+          <div class="chart-val">95.8%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">VE</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.7%"></div></div>
+          <div class="chart-val">95.7%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">MX</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.4%"></div></div>
+          <div class="chart-val">95.4%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">CO</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.2%"></div></div>
+          <div class="chart-val">95.2%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">AR</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill green" style="width:95.1%"></div></div>
+          <div class="chart-val">95.1%</div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-label">ES</div>
+          <div class="chart-bar-track"><div class="chart-bar-fill amber" style="width:93.2%"></div></div>
+          <div class="chart-val">93.2%</div>
+        </div>
+        <div style="margin-top:10px; font-size:11px; color:var(--muted2);">Accent-uniform quality — Spain (ES) slightly lower, likely due to phonetic diversity in text prompts</div>
+      </div>
+    </div>
+
+    <div style="margin-top:28px;" class="callout hi">
+      <strong style="color:var(--white);">Production insight.</strong> Pass rates are remarkably uniform across all 7 accents (93.2% - 96.0%), confirming that Fish Speech's VQGAN architecture handles Latin American Spanish accent diversity well. The slight ES dip may reflect Castilian-specific phonemes in the Common Voice text corpus that challenge the model.
+    </div>
+  </div>
+</section>
