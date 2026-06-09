@@ -1,8 +1,8 @@
 # Detection Methods for Voice Anti-Spoofing
 
 **Status:** Active
-**Last updated:** 2026-04-25
-**Source:** investigation.md Sections 8.1, 8.3, 8.6; general literature references
+**Last updated:** 2026-05-25
+**Source:** investigation.md Sections 8.1, 8.3, 8.6; general literature references; verified bibliography pass 2026-05-25 (IEEE/references.bib)
 
 ---
 
@@ -43,6 +43,8 @@ See [Splicing Techniques](splicing-techniques.md) for full parameter details.
 
 **Relevance:** Used as a feature extractor in multiple anti-spoofing systems. The pre-trained representations capture phonetic, speaker, and acoustic features that can distinguish bonafide from spoofed speech without hand-crafted features.
 
+**Canonical SSL countermeasure:** Tak, Todisco, Wang, Jung, Yamagishi, Evans, "Automatic Speaker Verification Spoofing and Deepfake Detection Using wav2vec 2.0 and Data Augmentation," Odyssey 2022, pp. 112-119, arXiv:2202.12233. wav2vec 2.0 front-end + fine-tuning + RawBoost-style augmentation; lowest reported EER on ASVspoof 2021 LA/DF at the time (~90% relative improvement over baseline). This is the wav2vec2-based baseline the thesis references.
+
 ### WavLM
 
 **Architecture:** Self-supervised speech representation model (Microsoft). Similar to wav2vec 2.0 but trained with a denoising objective, making it more robust to real-world noise and channel conditions.
@@ -70,7 +72,14 @@ SSL-based detectors follow a common pattern:
 
 **Status in the field:** De facto standard countermeasure architecture for anti-spoofing evaluation. Used as a benchmark system in ASVspoof challenges. When new partial-spoof datasets or attacks are introduced, AASIST is typically the first detector evaluated against them.
 
+**Reference:** Jung, Heo, Tak, Shim, Chung, Lee, Yu, Evans, "AASIST: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention Networks," ICASSP 2022, arXiv:2110.01200, DOI:10.1109/ICASSP43922.2022.9747766.
+
 **Relevance to this thesis:** AASIST will likely be one of the primary countermeasure systems evaluated against the HABLA 2.0 attack dataset.
+
+### RawNet2 (Tak et al., 2021) -- raw-waveform baseline
+
+End-to-end countermeasure ingesting raw audio directly (RawNet1 + SincNet first layer), no hand-crafted features. First application of RawNet2 to anti-spoofing; strong on the A17 voice-conversion attack and an ASVspoof baseline. The natural second baseline alongside AASIST for HABLA-Spoof.
+**Reference:** Tak, Patino, Todisco, Nautsch, Evans, Larcher, "End-to-End Anti-Spoofing with RawNet2," ICASSP 2021, arXiv:2011.01108.
 
 ---
 

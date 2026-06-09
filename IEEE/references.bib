@@ -1,0 +1,332 @@
+% =====================================================================
+% HABLA-Spoof -- Verified Reference Library
+% Target venue: IEEE/ACM Transactions on Audio, Speech and Language
+%                Processing (TASLP)
+% Verification pass: 2026-05-25 (every entry checked against arXiv /
+%                    DOI / ISCA archive / publisher). See
+%                    docs/thesis-wiki/decisions/decision-log.md.
+% Status legend in trailing comments:
+%   [VERIFIED]  full metadata confirmed against a primary source
+%   [SOFTWARE]  no formal paper; cite as software/model release
+%   [TODO-AUTH] paper confirmed, full author list still to be pulled
+% =====================================================================
+
+% ---------------------------------------------------------------------
+% Bonafide corpus foundation
+% ---------------------------------------------------------------------
+@inproceedings{habla,
+  author    = {Tamayo-Fl{\'o}rez, Pablo Andr{\'e}s and Manrique, Rub{\'e}n and Pereira Nunes, Bernardo},
+  title     = {{HABLA}: A Dataset of Latin American Spanish Accents for Voice Anti-Spoofing},
+  booktitle = {Proc. Interspeech},
+  pages     = {1963--1967},
+  year      = {2023},
+  doi       = {10.21437/Interspeech.2023-2272}
+}  % [VERIFIED] Advisor (Manrique) is a co-author. NOTE: this paper describes
+   % 5 nations / ~22k bonafide samples; the thesis uses "HABLA v2" with 7 accents /
+   % 1,567 speakers. v2 must be described as our own extension (no v2 paper exists).
+
+% ---------------------------------------------------------------------
+% Foundational anti-spoofing benchmarks
+% ---------------------------------------------------------------------
+@inproceedings{asvspoof2019,
+  author    = {Todisco, Massimiliano and Wang, Xin and Vestman, Ville and Sahidullah, Md and Delgado, H{\'e}ctor and Nautsch, Andreas and Yamagishi, Junichi and Evans, Nicholas and Kinnunen, Tomi and Lee, Kong Aik},
+  title     = {{ASVspoof} 2019: Future Horizons in Spoofed and Fake Audio Detection},
+  booktitle = {Proc. Interspeech},
+  pages     = {1008--1012},
+  year      = {2019},
+  eprint    = {1904.05441}
+}  % [VERIFIED] arXiv:1904.05441
+
+@inproceedings{asvspoof2021,
+  author    = {Yamagishi, Junichi and Wang, Xin and Todisco, Massimiliano and Sahidullah, Md and Patino, Jose and Nautsch, Andreas and Liu, Xuechen and Lee, Kong Aik and Kinnunen, Tomi and Evans, Nicholas and Delgado, H{\'e}ctor},
+  title     = {{ASVspoof} 2021: Accelerating Progress in Spoofed and Deepfake Speech Detection},
+  booktitle = {Proc. ASVspoof 2021 Workshop},
+  year      = {2021},
+  eprint    = {2109.00537}
+}  % [VERIFIED] arXiv:2109.00537
+
+% ---------------------------------------------------------------------
+% Generalization crisis
+% ---------------------------------------------------------------------
+@inproceedings{muller2022generalize,
+  author    = {M{\"u}ller, Nicolas M. and Czempin, Pavel and Diekmann, Franziska and Froghyar, Adam and B{\"o}ttinger, Konstantin},
+  title     = {Does Audio Deepfake Detection Generalize?},
+  booktitle = {Proc. Interspeech},
+  pages     = {2783--2787},
+  year      = {2022},
+  eprint    = {2203.16263}
+}  % [VERIFIED] arXiv:2203.16263
+
+@inproceedings{muller2024harder,
+  author    = {M{\"u}ller, Nicolas M. and Evans, Nicholas and Tak, Hemlata and Sperl, Philip and B{\"o}ttinger, Konstantin},
+  title     = {Harder or Different? Understanding Generalization of Audio Deepfake Detection},
+  booktitle = {Proc. Interspeech},
+  year      = {2024},
+  eprint    = {2406.03512}
+}  % [VERIFIED] arXiv:2406.03512 (was mis-cited as single-author "N. Muller 2024")
+
+% ---------------------------------------------------------------------
+% Partial-spoof canon (the four pipelines)
+% ---------------------------------------------------------------------
+@article{zhang2023partialspoof,
+  author  = {Zhang, Lin and Wang, Xin and Cooper, Erica and Evans, Nicholas and Yamagishi, Junichi},
+  title   = {The {PartialSpoof} Database and Countermeasures for the Detection of Short Fake Speech Segments Embedded in an Utterance},
+  journal = {IEEE/ACM Trans. Audio, Speech, Lang. Process.},
+  volume  = {31},
+  pages   = {813--825},
+  year    = {2023},
+  doi     = {10.1109/TASLP.2022.3233236}
+}  % [VERIFIED] arXiv:2204.05177
+
+@inproceedings{luong2024llama,
+  author    = {Luong, Hieu-Thi and Li, Haoyang and Zhang, Lin and Lee, Kong Aik and Chng, Eng Siong},
+  title     = {{LlamaPartialSpoof}: An {LLM}-Driven Fake Speech Dataset Simulating Disinformation Generation},
+  booktitle = {Proc. ICASSP},
+  year      = {2025},
+  eprint    = {2409.14743}
+}  % [VERIFIED] ICASSP 2025 (Hyderabad) confirmed; title was truncated before
+
+@inproceedings{yi2021had,
+  author    = {Yi, Jiangyan and Bai, Ye and Tao, Jianhua and Ma, Haoxin and Tian, Zhengkun and Wang, Chenglong and Wang, Tao and Fu, Ruibo},
+  title     = {Half-Truth: A Partially Fake Audio Detection Dataset},
+  booktitle = {Proc. Interspeech},
+  pages     = {1654--1658},
+  year      = {2021},
+  eprint    = {2104.03617}
+}  % [VERIFIED] arXiv:2104.03617
+
+@article{li2025hqmpsd,
+  author  = {Li, Menglu and others},
+  title   = {{HQ-MPSD}: A Multilingual Artifact-Controlled Benchmark for Partial Deepfake Speech Detection},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2512.13012}
+}  % [VERIFIED] First author M. Li (not "J. Li"); "Deepfake" not "spoof" in title
+
+% ---------------------------------------------------------------------
+% Third-party forensic analyses
+% ---------------------------------------------------------------------
+@inproceedings{negroni2024splicing,
+  author    = {Negroni, Viola and Salvi, Davide and Bestagini, Paolo and Tubaro, Stefano},
+  title     = {Analyzing the Impact of Splicing Artifacts in Partially Fake Speech Signals},
+  booktitle = {Proc. ASVspoof 5 Workshop (Interspeech satellite)},
+  year      = {2024},
+  eprint    = {2408.13784}
+}  % [VERIFIED] arXiv:2408.13784
+
+@inproceedings{huang2024detectable,
+  author    = {Huang, Sung-Feng and Kuo, Heng-Cheng and Chen, Zhehuai and Yang, Xuesong and Yang, Chao-Han Huck and Tsao, Yu and Wang, Yu-Chiang Frank and Lee, Hung-yi and Fu, Szu-Wei},
+  title     = {Detecting the Undetectable: Assessing the Efficacy of Current Spoof Detection Methods Against Seamless Speech Edits},
+  booktitle = {Proc. IEEE Spoken Language Technology Workshop (SLT)},
+  year      = {2024},
+  eprint    = {2501.03805}
+}  % [VERIFIED] First author S.-F. Huang (not "W. Huang")
+
+% ---------------------------------------------------------------------
+% TTS / voice-cloning systems used as attacks
+% ---------------------------------------------------------------------
+@misc{fishspeech,
+  author       = {Liao, Shijia and others},
+  title        = {Fish-Speech: Leveraging Large Language Models for Advanced Multilingual Text-to-Speech Synthesis},
+  howpublished = {arXiv preprint},
+  year         = {2024},
+  eprint       = {2411.01156}
+}  % [VERIFIED] Title was wrong before ("OpenAudio-S1 technical report")
+
+@misc{qwen3tts,
+  author       = {{Qwen Team, Alibaba Group}},
+  title        = {{Qwen3-TTS} Technical Report},
+  howpublished = {arXiv preprint},
+  year         = {2026},
+  eprint       = {2601.15621}
+}  % [VERIFIED] Year was wrong before (2025 -> 2026); title corrected
+
+@misc{openvoice,
+  author       = {Qin, Zengyi and Zhao, Wenliang and Yu, Xumin and Sun, Xin},
+  title        = {{OpenVoice}: Versatile Instant Voice Cloning},
+  howpublished = {arXiv preprint},
+  year         = {2024},
+  eprint       = {2312.01479}
+}  % [VERIFIED]
+
+@misc{chatterbox,
+  author       = {{Resemble AI}},
+  title        = {Chatterbox: Open-Source Text-to-Speech with Neural Watermarking},
+  howpublished = {Software release, \url{https://github.com/resemble-ai/chatterbox}},
+  year         = {2025}
+}  % [SOFTWARE] No formal paper; MIT-licensed release. Perth watermarker is real.
+
+@misc{outetts,
+  author       = {{OuteAI}},
+  title        = {{OuteTTS}: {LLM}-Based Text-to-Speech via Discrete Audio Tokens},
+  howpublished = {Software release, \url{https://huggingface.co/OuteAI}},
+  year         = {2025}
+}  % [SOFTWARE] No formal paper; HuggingFace/blog release. DAC codec (1.0) confirmed.
+
+@misc{omnivoice,
+  author       = {Zhu, Han and Ye, Lingxuan and Kang, Wei and Yao, Zengwei and Guo, Liyong and Kuang, Fangjun and Han, Zhifeng and Zhuang, Weiji and Lin, Long and Povey, Daniel},
+  title        = {{OmniVoice}: Towards Omnilingual Zero-Shot Text-to-Speech with Diffusion Language Models},
+  howpublished = {arXiv preprint},
+  year         = {2026},
+  eprint       = {2604.00688}
+}  % [VERIFIED] First author H. Zhu (not "K. Zhu"); k2-fsa, last author D. Povey
+
+@misc{cosyvoice,
+  author       = {Du, Zhihao and others},
+  title        = {{CosyVoice} 3: Towards In-the-Wild Speech Generation via Scaling-Up and Post-Training},
+  howpublished = {arXiv preprint},
+  year         = {2025},
+  eprint       = {2505.17589}
+}  % [VERIFIED] Excluded system; title was invented before ("conditional flow matching")
+
+% ---------------------------------------------------------------------
+% Detection / countermeasure baselines
+% ---------------------------------------------------------------------
+@inproceedings{aasist,
+  author    = {Jung, Jee-weon and Heo, Hee-Soo and Tak, Hemlata and Shim, Hye-jin and Chung, Joon Son and Lee, Bong-Jin and Yu, Ha-Jin and Evans, Nicholas},
+  title     = {{AASIST}: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention Networks},
+  booktitle = {Proc. ICASSP},
+  year      = {2022},
+  doi       = {10.1109/ICASSP43922.2022.9747766},
+  eprint    = {2110.01200}
+}  % [VERIFIED]
+
+@inproceedings{rawnet2,
+  author    = {Tak, Hemlata and Patino, Jose and Todisco, Massimiliano and Nautsch, Andreas and Evans, Nicholas and Larcher, Anthony},
+  title     = {End-to-End Anti-Spoofing with {RawNet2}},
+  booktitle = {Proc. ICASSP},
+  year      = {2021},
+  eprint    = {2011.01108}
+}  % [VERIFIED]
+
+@inproceedings{tak2022ssl,
+  author    = {Tak, Hemlata and Todisco, Massimiliano and Wang, Xin and Jung, Jee-weon and Yamagishi, Junichi and Evans, Nicholas},
+  title     = {Automatic Speaker Verification Spoofing and Deepfake Detection Using {wav2vec} 2.0 and Data Augmentation},
+  booktitle = {Proc. Odyssey Speaker and Language Recognition Workshop},
+  pages     = {112--119},
+  year      = {2022},
+  eprint    = {2202.12233}
+}  % [VERIFIED]
+
+% ---------------------------------------------------------------------
+% Spanish / multilingual spoofing datasets (related work)
+% ---------------------------------------------------------------------
+@misc{hispaspoof,
+  author       = {{Purdue VIPER Lab} and others},
+  title        = {{HISPASpoof}: A New Dataset for Spanish Speech Forensics},
+  howpublished = {arXiv preprint},
+  year         = {2025},
+  eprint       = {2509.09155}
+}  % [TODO-AUTH] 6 accents, 6 zero-shot TTS; full author list to be pulled
+
+@inproceedings{speechfake,
+  author    = {Huang, Yi and Gu, Jiarui and others},
+  title     = {{SpeechFake}: A Large-Scale Multilingual Speech Deepfake Dataset Incorporating Cutting-Edge Generation Methods},
+  booktitle = {Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
+  year      = {2025},
+  eprint    = {2507.21463}
+}  % [TODO-AUTH] 46 languages; the MD subset = "SpeechFake-MD"
+
+@misc{lrlspoof,
+  author       = {Anonymous and others},
+  title        = {When Spoof Detectors Travel: Evaluation Across 66 Languages in the Low-Resource Language Spoofing Corpus},
+  howpublished = {arXiv preprint},
+  year         = {2026},
+  eprint       = {2603.02364}
+}  % [TODO-AUTH] 66 languages, 24 TTS; full author list to be pulled
+
+% ---------------------------------------------------------------------
+% Quality metrics, ASR, and forced alignment
+% ---------------------------------------------------------------------
+@inproceedings{ecapa,
+  author    = {Desplanques, Brecht and Thienpondt, Jenthe and Demuynck, Kris},
+  title     = {{ECAPA-TDNN}: Emphasized Channel Attention, Propagation and Aggregation in {TDNN} Based Speaker Verification},
+  booktitle = {Proc. Interspeech},
+  pages     = {3830--3834},
+  year      = {2020},
+  eprint    = {2005.07143}
+}  % [VERIFIED]
+
+@inproceedings{nisqa,
+  author    = {Mittag, Gabriel and Naderi, Babak and Chehadi, Assmaa and M{\"o}ller, Sebastian},
+  title     = {{NISQA}: A Deep {CNN}-Self-Attention Model for Multidimensional Speech Quality Prediction with Crowdsourced Datasets},
+  booktitle = {Proc. Interspeech},
+  pages     = {2127--2131},
+  year      = {2021},
+  eprint    = {2104.09494}
+}  % [VERIFIED]
+
+@inproceedings{tdt,
+  author    = {Xu, Hainan and Jia, Fei and Majumdar, Somshubra and Watanabe, Shinji and Ginsburg, Boris},
+  title     = {Efficient Sequence Transduction by Jointly Predicting Tokens and Durations},
+  booktitle = {Proc. International Conference on Machine Learning (ICML)},
+  year      = {2023},
+  eprint    = {2304.06795}
+}  % [VERIFIED] The actual TDT-architecture paper (replaces fabricated "Parakeet TDT report")
+
+@misc{parakeet,
+  author       = {{NVIDIA NeMo Team}},
+  title        = {{Parakeet-TDT-0.6B-v3}: Multilingual Token-and-Duration Transducer {ASR}},
+  howpublished = {Model release, \url{https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3}},
+  year         = {2024}
+}  % [SOFTWARE] The specific checkpoint used; cite alongside {tdt} for the method
+
+@inproceedings{mfa,
+  author    = {McAuliffe, Michael and Socolof, Michaela and Mihuc, Sarah and Wagner, Michael and Sonderegger, Morgan},
+  title     = {{Montreal Forced Aligner}: Trainable Text-Speech Alignment Using {Kaldi}},
+  booktitle = {Proc. Interspeech},
+  pages     = {498--502},
+  year      = {2017},
+  doi       = {10.21437/Interspeech.2017-1386}
+}  % [VERIFIED]
+
+% ---------------------------------------------------------------------
+% Acoustic augmentation resources (Pillar 3)
+% ---------------------------------------------------------------------
+@misc{musan,
+  author       = {Snyder, David and Chen, Guoguo and Povey, Daniel},
+  title        = {{MUSAN}: A Music, Speech, and Noise Corpus},
+  howpublished = {arXiv preprint},
+  year         = {2015},
+  eprint       = {1510.08484}
+}  % [VERIFIED]
+
+@inproceedings{ko2017rir,
+  author    = {Ko, Tom and Peddinti, Vijayaditya and Povey, Daniel and Seltzer, Michael L. and Khudanpur, Sanjeev},
+  title     = {A Study on Data Augmentation of Reverberant Speech for Robust Speech Recognition},
+  booktitle = {Proc. ICASSP},
+  year      = {2017},
+  doi       = {10.1109/ICASSP.2017.7953152}
+}  % [VERIFIED] Source of the RIRS_NOISES room-impulse-response set
+
+% ---------------------------------------------------------------------
+% Concatenative-synthesis classics (crossfade / splice grounding)
+% ---------------------------------------------------------------------
+@inproceedings{hunt1996,
+  author    = {Hunt, Andrew J. and Black, Alan W.},
+  title     = {Unit Selection in a Concatenative Speech Synthesis System Using a Large Speech Database},
+  booktitle = {Proc. ICASSP},
+  volume    = {1},
+  pages     = {373--376},
+  year      = {1996}
+}  % [VERIFIED]
+
+@article{moulines1990,
+  author  = {Moulines, Eric and Charpentier, Francis},
+  title   = {Pitch-Synchronous Waveform Processing Techniques for Text-to-Speech Synthesis Using Diphones},
+  journal = {Speech Communication},
+  volume  = {9},
+  number  = {5--6},
+  pages   = {453--467},
+  year    = {1990}
+}  % [VERIFIED] PSOLA
+
+@article{stylianou2001,
+  author  = {Stylianou, Yannis},
+  title   = {Applying the Harmonic Plus Noise Model in Concatenative Speech Synthesis},
+  journal = {IEEE Trans. Speech Audio Process.},
+  volume  = {9},
+  number  = {1},
+  pages   = {21--29},
+  year    = {2001}
+}  % [VERIFIED] HNM

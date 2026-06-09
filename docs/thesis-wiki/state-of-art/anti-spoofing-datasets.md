@@ -1,8 +1,8 @@
 # Anti-Spoofing Datasets
 
 **Status:** Active
-**Last updated:** 2026-04-25
-**Source:** investigation.md Section 8.2, 8.8; general literature
+**Last updated:** 2026-05-25
+**Source:** investigation.md Section 8.2, 8.8; general literature; verified bibliography pass 2026-05-25 (IEEE/references.bib)
 
 ---
 
@@ -39,6 +39,36 @@ A critical finding from the literature review: **no public pipeline releases its
 | **Code released** | Evaluation toolkit released |
 | **Notes** | Added real-world transmission conditions (VoIP, PSTN) to test robustness. Codec-based attacks showed 41.4% performance degradation for detectors trained only on GAN-vocoder artifacts. |
 | **Reference** | Yamagishi et al., "ASVspoof 2021," 2021 |
+
+### HABLA (Tamayo-Florez et al., 2023) -- bonafide foundation of this thesis
+
+| Attribute | Value |
+|-----------|-------|
+| **Language** | Latin American Spanish |
+| **Size (v1, published)** | ~22,000 bonafide samples (5 nations) + ~58,000 spoof samples from 6 synthesis methods |
+| **Size (v2, used here)** | 1,567 speakers across 7 accents spanning TWO continents; ~35,927 bonafide utterances (16 kHz). Verified on ml-server03 2026-06-01. |
+| **Code released** | Dataset on Zenodo (10.5281/...7370805); GitHub Ruframapi/HABLA |
+| **Reference** | Tamayo-Florez, Manrique, Pereira Nunes, "HABLA: A Dataset of Latin American Spanish Accents for Voice Anti-Spoofing," Interspeech 2023, pp. 1963-1967. DOI:10.21437/Interspeech.2023-2272 |
+| **Notes** | **Advisor Ruben Manrique is a co-author.** The published v1 paper describes 5 LatAm nations / ~22k bonafide. HABLA-Spoof (this work) is a deliberate EXTENSION of v1: the bonafide pool is expanded to 1,567 speakers / 7 accents ("v2"), and we add the full-synthesis attacks, the multi-system partial-spoof corpus, and boundary jitter. Cite v1 (`habla`) as prior work; position v2 + attacks as the novel extension. |
+
+**HABLA v2 authoritative accent inventory** (verified on ml-server03, `data/bonafide_dataset_by_speaker_v2`, 2026-06-01):
+
+| Code | Accent | Speakers | (m / f) | Share |
+|------|--------|---------:|---------|------:|
+| `es` | **Spain (Peninsular / European)** | **528** | 297 / 231 | 33.7% |
+| `mx` | Mexico | 406 | 267 / 139 | 25.9% |
+| `co` | Colombia | 357 | 270 / 87 | 22.8% |
+| `cl` | Chile | 173 | 126 / 47 | 11.0% |
+| `ar` | Argentina | 42 | 12 / 30 | 2.7% |
+| `pe` | Peru | 38 | 20 / 18 | 2.4% |
+| `ve` | Venezuela | 23 | 12 / 11 | 1.5% |
+| **Total** | **7 accents, 2 continents** | **1,567** | | 100% |
+
+**CRITICAL CORRECTIONS (2026-06-01):**
+1. **HABLA v2 is CROSS-CONTINENTAL, not Latin-American-only.** Peninsular Spanish (`es`) is the LARGEST accent (33.7%) -- 6 LatAm accents + European Spanish. The paper's scope is cross-continental Spanish; European Spanish is a CONTRIBUTION, not future work.
+2. **Prior records were WRONG.** Auto-memory said "7 Latin American accents (ar, co, mx, pe, cl, ve, cu)"; presentation slides (`00b/00c/12_hispaspoof`) say "7 LatAm accents" and "we include Venezuelan and Puerto Rican; HISPASpoof includes Peninsular." All false: there is NO Cuba (`cu`) or Puerto Rico (`pr`) code, and HABLA DOES include Peninsular (more than HISPASpoof). Slides need correcting before any external use.
+3. **`transcriber.py` `country_map` is incomplete** (maps only ar/cl/co/pe/ve -> sends `es`/`mx` to "unknown"). Latent bug.
+4. **Severe accent imbalance.** es+mx+co = 1,291 / 1,567 (82%); ar+pe+ve = 103 (6.6%). Per-accent EER for AR/PE/VE will be statistically fragile -- must be declared in Limitations. The `382:1 Mexico:Caribbean` ratio in `app/helpers/generate_cv_graphs.py` suggests HABLA v2 was sourced from Mozilla Common Voice (would explain the Spain plurality) -- confirm provenance.
 
 ---
 
@@ -118,17 +148,20 @@ A critical finding from the literature review: **no public pipeline releases its
 
 ## Related Datasets (Multilingual and Spanish)
 
-### LRLSpoof
+### HISPASpoof (2025)
 
-Low-resource language spoofing dataset. Targets languages underrepresented in ASVspoof. Relevant as a reference for methodology when building datasets for non-English languages.
+First large-scale Spanish dataset for synthetic-speech detection and attribution. Real speech across 6 accents + synthetic speech from 6 zero-shot TTS systems. Key finding directly supporting this thesis: **detectors trained on English fail to generalize to Spanish; training on HISPASpoof substantially improves detection.** The closest published competitor to HABLA-Spoof, but it targets full-synthesis (not partial spoof) and does not release a reproducible attack pipeline. Purdue VIPER Lab, CC-BY-SA 4.0 on HuggingFace.
+**Reference:** "HISPASpoof: A New Dataset for Spanish Speech Forensics," arXiv:2509.09155, 2025. [author list TBD]
 
-### SpeechFake-MD
+### SpeechFake / SpeechFake-MD (Huang, Gu et al., 2025)
 
-Multi-domain speech deepfake detection dataset. Covers multiple recording conditions and synthesis methods. Relevant for the generalization analysis.
+Large-scale multilingual speech deepfake dataset: 3M+ fake samples, 3,000+ hours, 30 generation models (TTS/VC/NV) across 46 languages. Split into a Bilingual Dataset (BD: en/zh) and a Multilingual Dataset (**MD**, 46 languages) -- the MD subset is the "SpeechFake-MD" referenced for the generalization analysis. Spanish is one of the 46 but without Latin American sub-dialect targeting.
+**Reference:** "SpeechFake: A Large-Scale Multilingual Speech Deepfake Dataset Incorporating Cutting-Edge Generation Methods," ACL 2025, arXiv:2507.21463.
 
-### HISPASpoof
+### LRLSpoof (2026)
 
-Spanish-language anti-spoofing dataset. Directly relevant to this thesis as one of the few datasets targeting Spanish voice anti-spoofing.
+Large-scale multilingual synthetic-speech corpus for cross-lingual spoof detection: 2,732 hours, 24 open-source TTS systems, 66 languages (45 low-resource). Benchmarks 11 public countermeasures under language mismatch via threshold transfer; finds language is an independent source of domain shift -- another data point for the cross-corpus benchmarking pillar.
+**Reference:** "When Spoof Detectors Travel: Evaluation Across 66 Languages in the Low-Resource Language Spoofing Corpus," arXiv:2603.02364, 2026. [author list TBD]
 
 ### ML-ITW (Multilingual In-The-Wild)
 
