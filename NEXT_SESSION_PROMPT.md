@@ -1,88 +1,88 @@
-# Next Session: Validate Partial Spoof Pipeline v2
+# Next Session Context — Data Augmentation Pipeline (handoff 2026-06-08)
 
-## Major Session Discoveries (April 25, 2026)
+Paste this (or say "read NEXT_SESSION_PROMPT.md") to resume. Role/conventions live in CLAUDE.md
+(Alfred style, two-machine workflow, Pydantic-not-@dataclass, wiki protocol). Branch: `feat/attacks`.
 
-### The Real Problem Was Not Crossfade
-We implemented 7 crossfade techniques (cut-paste, OLA Hanning, linear, cosine, half-sine, log, parabola) and discovered through listening tests that **all 7 sounded identical**. The audible problem was NOT the fade curve — it was:
+## What this session did
 
-1. **Blind word selection** — Step 4 picked words randomly. Words at fluid speech boundaries (where TTS generates continuous speech with no pause) sounded terrible when spliced.
-2. **No clone quality gate** — Bad TTS clones went through the full pipeline.
-3. **Duration mismatch** — Inserting a 480ms cloned word into a 640ms slot shifted everything by 160ms, destroying speech rhythm.
+### 1. FishGram health-probe hardening (start of session)
+- Root-caused the 12-job parallel run's lone failure (`fishgram/jittered`): NOT a dead Fish Speech
+  server — the `GET /` health probe in `app/pipeline/fishgram_attack/utils/cloner.py` had a 5 s
+  timeout, single attempt, required exactly 200, and lost a race against in-flight inference under
+  shared-server load.
+- Fix: retry with backoff, longer per-attempt timeout, accept ANY HTTP response as alive. New settings
+  `FISH_SPEECH_HEALTH_RETRIES/TIMEOUT/BACKOFF` in `fishgram_attack/settings.py`.
 
-### Three Fixes Implemented
+### 2. Data-augmentation audit + rebuild (the main work)
+Audited `app/augmenter/` (triggered by a student investigation `spoofing_DA.pdf` /
+`feedback_da_antispoofing.pdf`). Found and fixed:
 
-**Fix 1: Valley-Score Word Selection** (Step 4 rewrite)
-- For each word boundary, compute `score = min_rms / avg_rms` in ±100ms window of 5ms frames
-- Lower score = deeper energy valley = cleaner cut
-- Combined score = max(left, right) — both boundaries must be clean
-- Only select words below VALLEY_SCORE_THRESHOLD (0.65)
-- Filter: duration >= 200ms, stretch ratio within [0.75, 1.25]
-- File: `app/pipeline/partial_spoof/utils/valley_scorer.py` (NEW)
-- File: `app/pipeline/partial_spoof/steps/step_04_select_words.py` (REWRITTEN)
+- **Two label-leak shortcuts (CRITICAL):**
+  - Clean fraction coupled to class (balanced mode used different per-class factors → clean%=1/factor
+    diverged). Fixed with `AugmentationModeCalculator.calculate_equal_clean_blocks()` (equal clean
+    fraction both classes) + a `--mode {balanced,uniform}` switch in `augmentation_pipeline.py`.
+  - Loudness coupled to augmentation type. Fixed with one `utils.normalize_loudness()` applied to
+    EVERY clip in the orchestrator save path (`_save_audio_and_protocol`).
+- **"RawBoost" was not RawBoost** → vendored faithful reference `app/augmenter/rawboost_reference.py`
+  (LnL/ISD/SSI, Tak et al. 2022), wrapped in `rawboost_augmenter.py`.
+- **"Codec" was not a codec** → real codecs via `app/augmenter/codec_backend.py`
+  (`torchaudio.io.AudioEffector` + ffmpeg, availability probe + graceful skip), rewired
+  `codec_augmenter.py`.
+- **Correctness:** RIR `convolve_with_rir` now `mode='full'` aligned to the direct-path peak (was
+  `'same'`, smeared/shifted); codec packet-loss single-draw (applied==logged); deleted the dead
+  `_apply_random_gain` (RMS-normalize cancelled it).
+- **New Pydantic config** `app/augmenter/schemas/codec_rawboost_config.py`
+  (`RawBoostParams`, `RawBoostConfigV2`, `CodecConfigV2`, `CodecSpec`), wired into
+  `AugmentationStrategy` in `app/schema.py` (old `@dataclass` RawBoostConfig/CodecConfig now orphaned).
+- **Weighted selection** (added after initial uniform): `CodecConfigV2.codec_weights`
+  (g711_ulaw 25 / g711_alaw 15 / amr_nb 20 / ilbc 5 / opus 25 / aac 10 → ~65% NB / ~35% BB);
+  `RawBoostConfigV2.algo_weights` `{4:0.5, 5:0.3, 7:0.2}` (so SSI fires 50%).
 
-**Fix 2: Clone Similarity Gate** (between Steps 2 and 3)
-- ECAPA-TDNN cosine similarity between bonafide and clone
-- Reject clones with SIM < 0.60 before alignment/splicing
-- Saves compute on bad TTS outputs
-- File: `app/pipeline/partial_spoof/pipeline_facade.py` (method `_filter_clones_by_similarity`)
+### 3. Presentation
+- 5 new slides `presentation/slides/15a..15e_*.html`: augmentation overview, RIR+Noise, Codec,
+  RawBoost, leak-safe design. Each category slide shows subcategory **percentage breakdowns**
+  (RIR room/noise/SNR; codec per-codec table; RawBoost algo mix + component firing).
+- Demo generator `app/scripts/demo_augmentations.py` → isolated per-augmentation clips to
+  `data/demo_augmentations/<label>/{original,rir,noise,babble,codec_g711,codec_opus,rawboost}.wav`.
+- Rebuilt deck with `presentation/build.py` (canonical: header + sorted slides + footer, auto IDs +
+  count). Renamed `14_next_steps.html` → `16_next_steps.html` so augmentation (s47–s51) precedes the
+  finale (s52). 52 slides total.
 
-**Fix 3: Duration-Preserving Splice** (splice_engine.py rewrite)
-- Time-stretch cloned word to fit exact bonafide slot duration
-- Overwrite in place: `result[b_start:b_end] = fitted` (total length never changes)
-- Crossfade happens INSIDE the slot (first/last cf samples blend bonafide↔cloned)
-- The 7 SpliceMethod techniques still control the fade curve at boundaries
-- File: `app/pipeline/partial_spoof/utils/splice_engine.py` (REWRITTEN)
+### 4. Wiki
+- New `docs/thesis-wiki/methodology/data-augmentation.md`; decision-log entries 2026-06-06 (RIR
+  sourcing = openSLR RIRS_NOISES / Ko et al. 2017, kept small/med/large names, rejected ASVspoof a/b/c
+  rename) and 2026-06-08 (augmentation audit + Option B). NOTE: written pre-verification — revise after
+  the server run confirms behavior.
 
-## What To Do Next
+## PENDING / DO NEXT
 
-### 1. Validate on ml-server03 (5 speakers, 10+ audios each)
+1. **Verify on ml-server03** (nothing has been executed — local has no torch/ffmpeg):
+   - 4 unit tests: `python -m app.tests.test_{rawboost,rir,codec}_augmenter`, `..._augmentation_batch`.
+   - Codec probe: `python -c "from app.augmenter import codec_backend as cb; print(cb.probe_available_codecs())"`.
+   - Dry run: `run_augmentation --mode balanced --target_ratio 0.50 --min_factor 3x --output data/augmented_dryrun`.
+   - Acceptance: per-class clean% equal (leak #1), uniform ~-23 dBFS RMS (leak #2), real codec names in SYSTEM_IDs.
+2. **Run `python -m app.scripts.demo_augmentations`** to populate the slide audio.
+3. **Diff `rawboost_reference.py` vs upstream** TakHemlata/RawBoost-antispoofing before any production run.
+4. **Tier D (deferred):** migrate `app/schema.py` off `@dataclass` → Pydantic; remove import-time
+   `mp.set_start_method('spawn')`; DECOUPLE the augmentation import path from `transformers`/`datasets`
+   (today importing `app.augmenter` drags them in via `schema.py` → augmentation can't run on a lean
+   env); verify the "Sánchez 2024" citation in `augmentation_config.py`.
+5. **git:** PR `feat/attacks` → dev; new branch `feat/augmentation-presentation` for slides + demo.
+6. **Confirm which venv** built `data/augmented/` (needs torch+torchaudio+transformers+datasets+ffmpeg).
 
-```bash
-source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
-export CUDA_VISIBLE_DEVICES=1
-cd ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA
-git pull
-python -m app.pipeline.partial_spoof.pipeline_facade
-```
+## OPEN DECISIONS / CONSTRAINTS
+- Balancing = **Option B** (uniform augmentation, rebalance in trainer) is the eventual target, but the
+  detector/trainer is **months away and unselected** — so for now produce a self-contained leak-free
+  corpus. Revisit B vs C when the trainer exists.
+- **Do NOT train on the existing `data/augmented/`** — it has both leaks baked in. Regenerate.
+- Hard rule for augmentation aggression: must preserve the spoofing artifact (no artifact-destroying
+  codec/clip stacks).
 
-Validation speakers: `["arf_00295", "arf_00610", "arf_01523", "arm_00412", "arm_00780"]`
-
-Check:
-- All spliced WAVs have identical duration to bonafide source
-- `word_selection_metadata.json` contains `valley_score` per word
-- `clone_similarity_filter.json` exists with per-sample SIM scores
-- Listen to 10+ samples — rhythm should sound natural
-- Compare metrics against baseline: WER=3.9%, NISQA=4.72, SIM=0.789
-
-### 2. Check Production Runs
-- Chatterbox: was running on GPU 2 (~April 22)
-- OuteTTS: was running on GPU 2 (~April 22)
-
-### 3. Run Partial Spoof Production (after validation passes)
-All 1,567 speakers with each TTS system that completed production.
-
-## Files Changed This Session
-
-| File | Change |
-|------|--------|
-| `utils/valley_scorer.py` | NEW: ValleyScorer class |
-| `utils/splice_method.py` | NEW: SpliceMethod enum + weights |
-| `utils/crossfade.py` | 7 fade curves + _compute_fade_curves |
-| `utils/splice_engine.py` | REWRITTEN: duration-preserving overwrite |
-| `steps/step_04_select_words.py` | REWRITTEN: valley-score selection |
-| `steps/step_05_splice_audio.py` | Updated splice_words call + spoof_duration_ratio |
-| `pipeline_facade.py` | Added _filter_clones_by_similarity gate |
-| `settings.py` | 7 new fields (valley, similarity, stretch) + 5 validation speakers |
-| `schemas/valley_score.py` | NEW: Pydantic schema |
-| `schemas/similarity_filter_result.py` | NEW: Pydantic schema |
-| `schemas/spliced_word_info.py` | Extended with splice_method, effective_crossfade_ms |
-| `presentation/slides/13a-13l` | 12 new slides (visual, challenge, 7 techniques, summary, problem, solution) |
-
-## Presentation Status
-34 total slides: 20 original + 06b (Chatterbox) + 06c (OuteTTS) + 13a–13l (12 partial spoof slides).
-Run `python presentation/build.py` to rebuild.
-
-## Thesis Wiki
-Complete 17-page wiki at `docs/thesis-wiki/`. See `docs/thesis-wiki/index.md` for all pages.
-Covers: state-of-art (5), methodology (5), experiments (3), decisions (1), schema/index/log (3).
-Maintained per CLAUDE.md protocol — update whenever research decisions or results change.
+## KEY FILES
+- `app/augmenter/{base_augmenter,rawboost_augmenter,codec_augmenter,rir_augmenter,rawboost_reference,codec_backend}.py`
+- `app/augmenter/schemas/codec_rawboost_config.py`
+- `app/utils/{utils,augmentation_calculator}.py`, `app/scripts/{augmentation_pipeline,run_augmentation,run_augmentation_batch,demo_augmentations}.py`
+- `app/schema.py` (AugmentationStrategy wiring; Tier D target)
+- `presentation/slides/15a..15e_*.html`, `presentation/build.py`, `presentation.html`
+- Plan: `C:\Users\ASUS\.claude\plans\nooo-lets-fix-things-gleaming-cray.md`
+- Wiki: `docs/thesis-wiki/methodology/data-augmentation.md`, `docs/thesis-wiki/decisions/decision-log.md`
