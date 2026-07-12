@@ -15,12 +15,13 @@ then ToneColorConverter applies the target speaker's tone colour. Per-speaker
 state (target_se) is extracted once via se_extractor.get_se and cached on
 the Cloner instance keyed by reference audio path.
 
-OpenVoice-specific quirk (watermark bypass): ToneColorConverter is constructed
-with ``enable_watermark=False``. By default OpenVoice V2 embeds a WavMark
-steganographic watermark into every converted clip; for anti-spoofing research
-this must be suppressed so a detector cannot learn the watermark instead of the
-synthesis artifact. See ``load`` for the full rationale. This mirrors the
-Chatterbox NoOpWatermarker bypass.
+OpenVoice-specific quirk (watermark bypass): by default OpenVoice V2 embeds a
+WavMark steganographic watermark into every converted clip; for anti-spoofing
+research this must be suppressed so a detector cannot learn the watermark
+instead of the synthesis artifact. The installed version cannot be disabled via
+the constructor kwarg (it is buggy, see ``load``), so the watermark model is
+nulled after construction; the installed add_watermark() short-circuits on a
+null model. This mirrors the Chatterbox NoOpWatermarker bypass.
 
 Output audio is resampled to settings.SAMPLE_RATE (16 kHz) for consistency
 with downstream pipeline stages.
@@ -96,21 +97,22 @@ class Cloner(BaseCloner):
         )
 
         logger.info("OpenVoice Cloner: loading ToneColorConverter...")
-        # enable_watermark=False is mandatory for anti-spoofing research validity.
-        # OpenVoice V2 embeds a WavMark steganographic watermark directly in the
-        # waveform by default: ToneColorConverter defaults to enable_watermark=True,
-        # which loads the WavMark model, and convert() then calls add_watermark()
-        # unconditionally, encoding the `message` bits into every clip of >= 1 s.
-        # A watermark present in every OpenVoice sample (and in no other system's
-        # output) is a trivial label shortcut a detector can learn instead of the
-        # synthesis artifact, and WavMark is designed to survive resampling and
-        # re-encoding. With enable_watermark=False the WavMark model is not loaded
-        # and add_watermark() returns the audio untouched, so the message passed to
-        # convert() is inert. This mirrors the Chatterbox NoOpWatermarker bypass.
-        self.tone_color_converter = ToneColorConverter(
-            converter_config, device=device, enable_watermark=False
-        )
+        # WATERMARK DISABLE (verified against the installed openvoice/api.py):
+        # OpenVoice V2 embeds a WavMark steganographic watermark in the waveform by
+        # default. The documented bypass on GitHub main is
+        # ToneColorConverter(..., enable_watermark=False), but the installed version
+        # is buggy: its __init__ forwards **kwargs to super().__init__ BEFORE reading
+        # `enable_watermark`, so passing that kwarg raises
+        # "OpenVoiceBaseClass.__init__() got an unexpected keyword argument". It
+        # therefore cannot be disabled via the constructor here. The installed
+        # add_watermark() begins with `if self.watermark_model is None: return audio`,
+        # so nulling the watermark model AFTER construction cleanly disables
+        # watermarking: convert() -> add_watermark() returns the audio untouched and
+        # the `message` becomes inert. This mirrors the Chatterbox NoOpWatermarker
+        # bypass and keeps every OpenVoice sample watermark-free.
+        self.tone_color_converter = ToneColorConverter(converter_config, device=device)
         self.tone_color_converter.load_ckpt(converter_ckpt)
+        self.tone_color_converter.watermark_model = None
 
         logger.info("OpenVoice Cloner: loading MeloTTS (ES)...")
         self.tts_model = TTS(language=settings.MELO_LANGUAGE, device=device)

@@ -41,9 +41,9 @@
 Partial Voice Spoofing Attacks for Spanish Anti-spoofing Research}}
 
 \author{%
-\PENDING{Author One$^{1}$, Author Two$^{1}$, Rub\'en Manrique$^{1}$} \\[4pt]
-\small $^{1}$\PENDING{Universidad de los Andes, Bogot\'a, Colombia} \\
-\small Correspondence: \PENDING{corresponding.author@uniandes.edu.co}
+Tom\'as Acosta Bernal$^{1}$, Rub\'en Manrique$^{1}$ \\[4pt]
+\small $^{1}$Universidad de los Andes, Bogot\'a, Colombia \\
+\small Correspondence: \PENDING{corresponding-author email}
 }
 \date{}
 
@@ -265,8 +265,8 @@ corpus does not encode the artifacts of a single synthesis family; and
 practice. The six systems are Fish-Speech \citep{fishspeech}, Qwen3-TTS
 \citep{qwen3tts}, OpenVoice v2 \citep{openvoice}, Chatterbox
 \citep{chatterbox}, OuteTTS \citep{outetts}, and OmniVoice
-\citep{omnivoice}. They span autoregressive language-model,
-flow/diffusion, and tone-conversion architectures. CosyVoice
+\citep{omnivoice}. They span autoregressive language-model, diffusion
+language-model, and tone-conversion architectures. CosyVoice
 \citep{cosyvoice} was evaluated and excluded because it produced
 non-Spanish output for Spanish input text.
 
@@ -359,6 +359,31 @@ screen measures the RMS level of the interval before the first
 transcribed word and rejects any utterance whose pre-speech level
 exceeds a silence floor; rejected utterances are regenerated rather than
 trimmed, since trimming risks cutting a natural vowel onset.
+
+\paragraph{Watermark handling.} Two of the six systems embed a neural
+steganographic watermark in their output by default: Chatterbox with a
+Perth watermark, and OpenVoice with a WavMark payload carried in the
+waveform itself. Such a watermark is imperceptible but survives
+resampling and re-encoding, and if it were present in one system's
+output and absent from the others it would constitute a trivial
+class-label shortcut, letting a detector identify the watermark instead
+of the synthesis artifact. Both watermarkers were therefore disabled at
+generation time, so that no released MARSA sample carries a
+synthesis-system watermark. This makes watermark presence uninformative
+about the class and forces detection onto genuine synthesis cues.
+
+\paragraph{System-specific pre- and post-processing.} Beyond the common
+pipeline, a few systems require bespoke handling that shapes their
+artifacts. FishGram applies text normalization to the input before
+synthesis. OpenVoice extracts its tone-colour speaker embedding from the
+reference with a voice-activity detector, falling back to
+detector-free extraction when a reference is too short after silence
+removal. Chatterbox trims trailing generation noise from each clip using
+a voice-activity margin. OuteTTS builds a per-speaker profile (tempo,
+energy, pitch, and spectral centroid) from the reference audio, cached
+across that speaker's utterances. These steps are recorded here for
+reproducibility; none alters the linguistic content of the generated
+speech.
 
 \begin{table}[t]
 \centering
@@ -703,11 +728,13 @@ variants of the same source utterances.
 \paragraph{Ethical use.} MARSA is released to support the development of
 \emph{defensive} anti-spoofing systems. The synthetic audio it contains
 is generated from open TTS systems applied to a consenting-speaker
-research corpus and is watermarked or otherwise attributable where the
-generating system provides it. It must not be used to impersonate real
-individuals. \PENDING{Confirm the licensing terms of each constituent TTS
-system permit redistribution of generated audio, and state the corpus
-licence.}
+research corpus. It must not be used to impersonate real individuals.
+Note that the released audio is deliberately \emph{not} watermarked (see
+Methods): the two systems that watermark by default were reverted to
+watermark-free generation so that the corpus tests synthesis-artifact
+detection rather than watermark detection. \PENDING{Confirm the licensing
+terms of each constituent TTS system permit redistribution of generated
+audio, and state the corpus licence.}
 
 % =====================================================================
 \section*{Code Availability}
