@@ -281,7 +281,7 @@ This is intentional, not a deficiency. Manipulating the interior of a word (e.g.
 
 ## Corpus Composition Plan (2026-05-20)
 
-The HABLA-Spoof corpus is constructed as a single dispatch over the six TTS attacks and two partitions, weighted so the strongest attacks dominate the corpus and the weaker attacks still contribute a meaningful minority.
+The MARSA corpus is constructed as a single dispatch over the six TTS attacks and two partitions, weighted so the strongest attacks dominate the corpus and the weaker attacks still contribute a meaningful minority.
 
 ### Target distribution
 

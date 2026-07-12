@@ -33,9 +33,11 @@ AUGMENTATION STRATEGY:
      nothing about augmentation type or class.
 
 4. AUGMENTATION TYPES (Applied to train only):
-   - RIR + Noise (60%): Room acoustics + background noise
-   - Codec Degradation (30%): Telephone/VoIP artifacts
-   - RawBoost (10%): Signal-dependent distortions
+   - RIR + Noise (60%): Room acoustics + background noise (single) or first pass in stacked
+   - Codec Degradation (40%): Telephone/VoIP artifacts (single) or second pass in stacked
+   - Stacking gate (40% of aug clips): RIR_NOISE then CODEC applied in sequence;
+     SYSTEM_ID uses "|" separator (e.g. "RIR_SMALL_NOI_SNR15|CODEC_8K_OPUS")
+   - RawBoost: training-time on-the-fly only — NOT pre-baked in this offline corpus
 
 OUTPUT STRUCTURE (ASVspoof2019 LA Format):
 ------------------------------------------
@@ -115,7 +117,6 @@ from tqdm import tqdm
 # Import augmenters
 from app.augmenter.rir_augmenter import RIRAugmenter
 from app.augmenter.codec_augmenter import CodecAugmenter
-from app.augmenter.rawboost_augmenter import RawBoostAugmenter
 
 # Import utilities
 from app.utils.augmentation_calculator import AugmentationModeCalculator
@@ -244,9 +245,7 @@ class AugmentationPipeline:
             config=self.strategy.codec_config
         )
 
-        self.rawboost_augmenter = RawBoostAugmenter(
-            config=self.strategy.rawboost_config
-        )
+        # RawBoost is not instantiated here — it runs training-time on-the-fly.
 
         # Statistics
         self.stats = {
@@ -264,19 +263,40 @@ class AugmentationPipeline:
         # Protocol entries
         self.protocol_entries = {'train': [], 'dev': [], 'eval': []}
     
-    def _select_augmentation_type(self) -> AugmentationType:
-        """Select augmentation type based on strategy distribution."""
+    def _select_augmentation_mode(self) -> List[AugmentationType]:
+        """Select augmentation mode for one clip.
+
+        With probability ``stacking_probability`` the clip receives both
+        RIR_NOISE and CODEC in sequence (stacked); otherwise exactly one
+        type is drawn according to ``type_distribution``.
+
+        Returns:
+            A list of AugmentationType values to apply in order.
+        """
+        if random.random() < self.strategy.stacking_probability:
+            return [AugmentationType.RIR_NOISE, AugmentationType.CODEC]
+
         types = list(self.strategy.type_distribution.keys())
         probabilities = [self.strategy.type_distribution[t] for t in types]
-        return random.choices(types, weights=probabilities, k=1)[0]
-    
-    def _apply_augmentation(
+        chosen = random.choices(types, weights=probabilities, k=1)[0]
+        return [chosen]
+
+    def _apply_single_augmentation(
         self,
         audio: np.ndarray,
         sr: int,
-        aug_type: AugmentationType
+        aug_type: AugmentationType,
     ) -> Tuple[np.ndarray, str]:
-        """Apply specific augmentation to audio."""
+        """Apply one augmentation type to audio.
+
+        Args:
+            audio: Input waveform as a numpy array.
+            sr: Sample rate in Hz.
+            aug_type: The augmentation to apply.
+
+        Returns:
+            Tuple of (augmented waveform, system_id string).
+        """
         if aug_type == AugmentationType.RIR_NOISE:
             augmented, metadata = self.rir_augmenter.augment(audio, sr, return_metadata=True)
             system_id = self.rir_augmenter.get_augmentation_label(
@@ -289,14 +309,41 @@ class AugmentationPipeline:
                 metadata['bandpass'], metadata['quantization_bits'],
                 metadata.get('codec')
             )
-        elif aug_type == AugmentationType.RAWBOOST:
-            augmented, metadata = self.rawboost_augmenter.augment(audio, sr, return_metadata=True)
-            system_id = self.rawboost_augmenter.get_augmentation_label(metadata['operations'])
         else:
             augmented = audio
             system_id = "-"
-        
+
         return augmented, system_id
+
+    def _apply_augmentation(
+        self,
+        audio: np.ndarray,
+        sr: int,
+        aug_types: List[AugmentationType],
+    ) -> Tuple[np.ndarray, str]:
+        """Apply a sequence of augmentation types and join their labels.
+
+        Each type in ``aug_types`` is applied in order so that stacked clips
+        accumulate both transformations. System IDs are joined with ``|``.
+
+        Args:
+            audio: Input waveform as a numpy array.
+            sr: Sample rate in Hz.
+            aug_types: Ordered list of augmentation types to apply.
+
+        Returns:
+            Tuple of (augmented waveform, composite system_id string).
+        """
+        system_ids: List[str] = []
+        current = audio
+
+        for aug_type in aug_types:
+            current, part_id = self._apply_single_augmentation(current, sr, aug_type)
+            if part_id and part_id != "-":
+                system_ids.append(part_id)
+
+        composite_id = "|".join(system_ids) if system_ids else "-"
+        return current, composite_id
     
     def _generate_audio_id(self, split: str) -> str:
         """Generate ASVspoof-style audio ID."""
@@ -379,8 +426,8 @@ class AugmentationPipeline:
 
         for i in tqdm(range(aug_count), desc=f"  {split} {key} aug"):
             speaker_id, audio, sr = _load(i)
-            aug_type = self._select_augmentation_type()
-            augmented, system_id = self._apply_augmentation(audio, sr, aug_type)
+            aug_types = self._select_augmentation_mode()
+            augmented, system_id = self._apply_augmentation(audio, sr, aug_types)
             self._save_audio_and_protocol(augmented, sr, split, speaker_id, system_id, key)
 
     def _process_split(self, split: str, counts: Dict[str, Tuple]):

@@ -330,3 +330,72 @@
   pages   = {21--29},
   year    = {2001}
 }  % [VERIFIED] HNM
+
+% ---------------------------------------------------------------------
+% Spanish dialect acoustic variation (added 2026-07-09 for MARSA
+% Background: grounds the "Spanish is not one language" argument)
+% ---------------------------------------------------------------------
+@inproceedings{kantharuban2023dialectgap,
+  author    = {Kantharuban, Anjali and Vuli{\'c}, Ivan and Korhonen, Anna},
+  title     = {Quantifying the Dialect Gap and Its Correlates Across Languages},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP},
+  year      = {2023},
+  eprint    = {2310.15135}
+}  % [VERIFIED] arXiv:2310.15135. WER gap of 5+ points across 8 Spanish
+   % varieties on Common Voice with Whisper (same source as HABLA/MARSA bonafide).
+
+@inproceedings{zuluaga2023commonaccent,
+  author    = {Zuluaga-Gomez, Juan and Ahmed, Sara and Visockas, Danielius and Subakan, Cem},
+  title     = {{CommonAccent}: Exploring Large Acoustic Pretrained Models for Accent Classification Based on Common Voice},
+  booktitle = {Proc. Interspeech},
+  pages     = {5291--5295},
+  year      = {2023},
+  doi       = {10.21437/Interspeech.2023-2419}
+}  % [VERIFIED] Spanish separable into 6 dialect macrozones at 68.5% acc.
+   % from raw acoustics -- inter-dialect signal is measurable.
+
+@article{nacimiento2024biases,
+  author  = {Nacimiento-Garc{\'i}a, Eduardo and D{\'i}az-Kaas-Nielsen, Hendrik Sebastian and Gonz{\'a}lez-Gonz{\'a}lez, Carina Soledad},
+  title   = {Gender and Accent Biases in {AI}-Based Tools for {Spanish}: A Comparative Study Between {Alexa} and {Whisper}},
+  journal = {Applied Sciences},
+  volume  = {14},
+  number  = {11},
+  pages   = {4734},
+  year    = {2024},
+  doi     = {10.3390/app14114734}
+}  % [VERIFIED] Statistically significant WER differences across Spanish
+   % accent groups on Common Voice. Peer-reviewed journal (Scopus/WoS).
+
+% ---------------------------------------------------------------------
+% Baseline anti-spoofing detectors for Tesis 2 (added 2026-07-09)
+% Three modern (2025-2026) pretrained detectors to fine-tune on MARSA.
+% ---------------------------------------------------------------------
+@article{nes2net,
+  author  = {Liu, Tianchi and Truong, Duc-Tuan and Das, Rohan Kumar and Lee, Kong Aik and Li, Haizhou},
+  title   = {{Nes2Net}: A Lightweight Nested Architecture for Foundation Model Driven Speech Anti-spoofing},
+  journal = {arXiv preprint},
+  year    = {2025},
+  eprint  = {2504.05657}
+}  % [VERIFIED] Nested Res2Net over SSL foundation-model features (WavLM
+   % variant = WavLM_Nes2Net_X_SeLU). Evaluated on CtrSVDD, ASVspoof2021,
+   % ASVspoof5, PartialSpoof, In-the-Wild. Lightweight -> easiest to fine-tune.
+
+@misc{dfarena,
+  author       = {Kulkarni, Ajinkya and Dowerah, Sandipana and Kulkarni, Atharva and Alum{\"a}e, Tanel and Magimai-Doss, Mathew},
+  title        = {Do Compact {SSL} Backbones Matter for Audio Deepfake Detection? A Controlled Study with {RAPTOR}},
+  howpublished = {arXiv preprint; model \url{https://huggingface.co/Speech-Arena-2025/DF_Arena_1B_V_1}},
+  year         = {2026},
+  eprint       = {2603.06164}
+}  % [VERIFIED] RAPTOR system; SSL (mHuBERT/WavLM) + pairwise-gated
+   % transformer. NON-COMMERCIAL license. NOTE: "1B" is the checkpoint
+   % identifier, NOT a verified param count (paper argues for ~100M backbones).
+
+@misc{holiantispoof,
+  author       = {{HoliAntiSpoof authors}},
+  title        = {{HoliAntiSpoof}: Audio {LLM} for Holistic Speech Anti-Spoofing},
+  howpublished = {arXiv preprint; model \url{https://huggingface.co/wsntxxn/HoliAntiSpoof}},
+  year         = {2026},
+  eprint       = {2602.04535}
+}  % [TODO-AUTH] Audio-LLM (Qwen2.5-Omni-7B Thinker + LoRA); emits spoof /
+   % method / region / semantic-impact as text. 7B base -> heaviest to
+   % fine-tune. License unverified. Full author list to be pulled.

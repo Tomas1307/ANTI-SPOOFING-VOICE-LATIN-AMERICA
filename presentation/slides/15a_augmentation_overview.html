@@ -13,13 +13,13 @@
       </div>
       <div class="card-sm">
         <div style="font-size:22px; font-weight:700; color:var(--white);">Codec</div>
-        <div style="font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace; margin-top:4px;">30%</div>
+        <div style="font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace; margin-top:4px;">40%</div>
         <div style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.5;">Real telephony / VoIP codecs (G.711, AMR-NB, iLBC, Opus, AAC) via ffmpeg. Simulates the transmission channel.</div>
       </div>
       <div class="card-sm">
         <div style="font-size:22px; font-weight:700; color:var(--white);">RawBoost</div>
-        <div style="font-size:11px; color:var(--blue); font-family:'JetBrains Mono',monospace; margin-top:4px;">10%</div>
-        <div style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.5;">Convolutive + impulsive + stationary noise (Tak et al., 2022). Non-physical regularizer that breaks device fingerprints.</div>
+        <div style="font-size:11px; color:var(--blue); font-family:'JetBrains Mono',monospace; margin-top:4px;">training-time only</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:8px; line-height:1.5;">Convolutive + impulsive + stationary noise (Tak et al., 2022). Applied on-the-fly in the trainer — not pre-baked in the offline corpus.</div>
       </div>
     </div>
 
@@ -42,7 +42,7 @@
     </div>
 
     <div class="callout hi">
-      <strong style="color:var(--white);">Why not "realistic only"?</strong> A detector trained on a single clean condition is brittle to distribution shift &mdash; new TTS, new phones, new codecs land outside its experience. Aggressive augmentation (including the deliberately non-physical RawBoost) forces the model to rely on the <em>synthesis artifact</em> rather than the recording condition. The one hard constraint: augmentation must never be so destructive that it erases the spoofing cue itself.
+      <strong style="color:var(--white);">Why not "realistic only"?</strong> A detector trained on a single clean condition is brittle to distribution shift &mdash; new TTS, new phones, new codecs land outside its experience. Offline augmentation (RIR+Noise + Codec) plus the deliberately non-physical RawBoost applied at training-time forces the model to rely on the <em>synthesis artifact</em> rather than the recording condition. The one hard constraint: augmentation must never be so destructive that it erases the spoofing cue itself.
     </div>
   </div>
 </section>

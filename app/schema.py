@@ -168,39 +168,55 @@ class AugmentationStrategy:
     augmentation_factor: int = 3
     type_distribution: Dict[AugmentationType, float] = field(default_factory=lambda: {
         AugmentationType.RIR_NOISE: 0.60,
-        AugmentationType.CODEC: 0.30,
-        AugmentationType.RAWBOOST: 0.10
+        AugmentationType.CODEC: 0.40,
     })
+    stacking_probability: float = 0.40
     rir_noise_config: RIRNoiseConfig = field(default_factory=RIRNoiseConfig)
     codec_config: CodecConfigV2 = field(default_factory=CodecConfigV2)
     rawboost_config: RawBoostConfigV2 = field(default_factory=RawBoostConfigV2)
     include_original: bool = True
-    
+
     def validate(self):
         """Validate strategy configuration."""
         type_prob_sum = sum(self.type_distribution.values())
         assert abs(type_prob_sum - 1.0) < 0.01, f"Type distribution must sum to 1.0, got {type_prob_sum}"
-        
+        assert AugmentationType.RAWBOOST not in self.type_distribution, (
+            "RAWBOOST must not appear in the offline type_distribution. "
+            "It is applied at training time only."
+        )
+        assert 0.0 <= self.stacking_probability <= 1.0, (
+            f"stacking_probability must be in [0,1], got {self.stacking_probability}"
+        )
         self.rir_noise_config.validate()
-    
+
     def get_augmentation_counts(self, n_originals: int) -> Dict[str, int]:
         """
-        Calculate number of samples for each augmentation type.
-        
+        Calculate expected sample counts per augmentation mode.
+
+        Stacked clips (stacking_probability) contribute one RIR_NOISE and one CODEC
+        pass each, so they are counted in both buckets.
+
         Args:
             n_originals: Number of original audio samples.
-            
+
         Returns:
-            Dictionary mapping augmentation types to sample counts.
+            Dictionary with sample counts per mode.
         """
         total_augmented = n_originals * self.augmentation_factor
-        
+        n_stacked = int(total_augmented * self.stacking_probability)
+        n_single = total_augmented - n_stacked
+        rir_w = self.type_distribution[AugmentationType.RIR_NOISE]
+        codec_w = self.type_distribution[AugmentationType.CODEC]
+        single_total = rir_w + codec_w
+        n_single_rir = int(n_single * (rir_w / single_total))
+        n_single_codec = n_single - n_single_rir
+
         return {
             "original": n_originals if self.include_original else 0,
-            "rir_noise": int(total_augmented * self.type_distribution[AugmentationType.RIR_NOISE]),
-            "codec": int(total_augmented * self.type_distribution[AugmentationType.CODEC]),
-            "rawboost": int(total_augmented * self.type_distribution[AugmentationType.RAWBOOST]),
-            "total": n_originals + total_augmented if self.include_original else total_augmented
+            "single_rir_noise": n_single_rir,
+            "single_codec": n_single_codec,
+            "stacked_rir_then_codec": n_stacked,
+            "total": n_originals + total_augmented if self.include_original else total_augmented,
         }
 
 @dataclass

@@ -1,8 +1,34 @@
 # Acoustic Augmentation Methodology
 
-**Status:** Active
-**Last updated:** 2026-06-01
+**Status:** Active (with superseded sections — see banner)
+**Last updated:** 2026-07-09 (scope banner added; content dated 2026-06-01)
 **Source:** Deep research 2026-06-01 (109 agents, 25 claims verified); codec table investigation; augmentation pipeline code review
+
+> **SCOPE / STATUS BANNER (added 2026-07-09).** This page is the original
+> *deep-research design plan*. Two parts have since been narrowed and are NOT
+> what the code runs:
+> - **Layer 3b (CODEC)** below describes an 11-codec set with Gilbert-Elliott
+>   burst packet loss, GSMA-weighted AMR modes, and per-codec PLC. The
+>   IMPLEMENTED version is a **6-codec** set (G.711 mu-law/A-law, AMR-NB,
+>   iLBC, Opus, AAC) with a real ffmpeg round-trip, **uniform** bitrate
+>   selection and **uniform** packet loss — no Gilbert-Elliott, no PLC
+>   modelling, and no AMR-WB/G.722/G.729/G.726/G.723.1. The 6 were chosen
+>   because they are the channels most representative of the target
+>   deployment (Latin American / Spanish consumer voice: Opus for OTT apps
+>   such as WhatsApp/Telegram/Zoom, G.711 for PSTN/landline, AMR-NB for
+>   2G/3G mobile, iLBC for legacy VoIP, AAC broadband); the dropped codecs
+>   (HD-voice / enterprise / legacy video-conferencing) are less
+>   representative of that traffic. See
+>   [data-augmentation.md](data-augmentation.md) decision row 4 (2026-06-08)
+>   and `app/augmenter/codec_backend.py` (`DEFAULT_CODEC_REGISTRY`).
+> - **Layer 3c (RawBoost):** the "current rawboost_augmenter.py is not the
+>   real algorithm" note is now stale — the official LnL/ISD/SSI implementation
+>   exists in `app/augmenter/rawboost_reference.py` and RawBoost is
+>   training-time only (removed from the offline corpus, 2026-06-09).
+>
+> Layer 2 (type distribution + stacking gate) and Layer 3a (RIR+Noise) on
+> this page DO match the current code. Treat the 11-codec / Gilbert-Elliott
+> content as an unbuilt extension, not as deposited-corpus methodology.
 
 ---
 
@@ -69,25 +95,39 @@ losing sensitivity to the original voice manifold.
 
 ---
 
-## LAYER 2 — Augmentation type
+## LAYER 2 — Augmentation type (updated 2026-06-09)
 
-For each augmented copy (not the original), sample exactly one type:
+**RawBoost is no longer part of the offline corpus.** It moves to training-time on-the-fly augmentation (applied per batch in the training loop). It is a fast CPU operation with no disk I/O or GPU requirement; pre-baking it adds corpus size with no benefit and complicates clean-fraction accounting.
 
+**Offline type distribution:**
 ```
 RIR_NOISE   60%
-CODEC       30%
-RAWBOOST    10%
+CODEC       40%
+RAWBOOST     0%  (training-time only — see Layer 3c)
 ```
 
-Types do not compose at this level. One copy = one type.
+**Stacking gate** — per augmented clip, a single probability draw determines whether one or two augmentations are applied:
 
-### Rationale for 60/30/10
+```
+roll p ~ U(0,1)
 
-- RIR_NOISE majority: room acoustics are ubiquitous; most voice recordings have some degree
-  of reverberation and ambient noise. MUSAN+RIR is the canonical ASVspoof augmentation recipe.
-- CODEC 30%: a substantial share of real LATAM voice traffic passes through a lossy codec
-  (VoLTE, WhatsApp/Opus, PSTN). Justified by GSMA Mobile Economy LATAM 2024 trend data.
-- RAWBOOST 10%: signal-level proxies for device and microphone distortion. Tak et al. (2022).
+p < 0.40  →  STACKED (40% of augmented clips)
+              apply RIR_NOISE, then CODEC on top of the result
+              SYSTEM_ID = "RIR_<params>|CODEC_<params>"
+
+p ≥ 0.40  →  SINGLE (60% of augmented clips)
+              pick one type from {RIR_NOISE, CODEC} with relative weights {60, 40}
+              SYSTEM_ID = "RIR_<params>"  or  "CODEC_<params>"
+```
+
+The `|` in SYSTEM_ID is the only encoding of stacked vs. single; no separate output directory is used. Output structure is identical to the pre-stacking design (flat FLAC folder + protocol file).
+
+### Rationale for 60/40/stacking
+
+- **RIR_NOISE 60%:** room acoustics are ubiquitous; MUSAN+RIR is the canonical ASVspoof augmentation recipe.
+- **CODEC 40%:** raised from 30% to absorb the freed RawBoost slot; a substantial share of real LATAM voice traffic passes through a lossy codec (VoLTE, WhatsApp/Opus, PSTN). Justified by GSMA Mobile Economy LATAM 2024 trend data.
+- **Stacking 40%:** models the common real-world condition of a phone call recorded in a reverberant room — both degradations co-occur. Increases training variety without requiring additional originals.
+- **Single 60%:** preserves clean ablation points where only one degradation type is active.
 
 ---
 
@@ -133,6 +173,15 @@ e.g. RIR_SMALL_NOI_SNR15
 ---
 
 ## LAYER 3b — CODEC (VoIP/Telephony)
+
+> **NOT IMPLEMENTED AS WRITTEN — superseded 2026-06-08.** The 11-codec set,
+> loss tiers, tier-eligibility filter, Gilbert-Elliott burst loss, and
+> per-codec PLC below were the deep-research *plan*. The team deliberately
+> narrowed this to a **6-codec real-ffmpeg round-trip** (G.711 mu-law/A-law,
+> AMR-NB, iLBC, Opus, AAC), keeping the codecs most representative of the
+> target Latin American / Spanish voice channels and dropping the HD-voice /
+> enterprise / legacy codecs (AMR-WB, G.722, G.729, G.726, G.723.1). The
+> design below is retained as a documented future extension.
 
 This layer was completely redesigned based on the deep research pass (2026-06-01).
 The previous implementation used independent Bernoulli gates (downsample + bandpass + packet
@@ -321,32 +370,29 @@ e.g.
 
 ---
 
-## LAYER 3c — RAWBOOST
+## LAYER 3c — RAWBOOST (training-time only — not in offline corpus)
 
-Based on Tak et al. (2022), ICASSP. Five INDEPENDENT Bernoulli gates — composable,
-multiple can fire on the same file.
+**Status (2026-06-09):** RawBoost is applied on-the-fly at training time, not pre-baked into the corpus. The offline pipeline does not call `RawBoostAugmenter`. The design below defines how it should be applied in the training loop.
 
+Target implementation: **official RawBoost reference code** (Tak et al. 2022, ICASSP) — LnL convolutive + ISD impulsive + SSI stationary components. The current `app/augmenter/rawboost_augmenter.py` is NOT the real algorithm (see `data-augmentation.md` Section 3.3 for the audit findings). It must be replaced with the official implementation before use.
+
+**Algorithm — three components (real RawBoost):**
 ```
-Linear filtering              P = 0.50
-  Random FIR, length ∈ U[5,25] samples, coeffs ~ N(0,1) normalized by sum(|coeff|)
+LnL (Linear + Non-Linear convolutive):
+  multiband notch FIR bank + Hammerstein polynomial nonlinearity
 
-Nonlinear distortion          P = 0.30
-  output = tanh(α × audio), α ∈ U[0.1, 0.5]; renormalize to 0.99 peak
+ISD (Impulsive Signal-Dependent additive):
+  impulses at P random points, amplitudes ~ -log(D_R{-1,1}) × local signal
 
-Additive noise                P = 0.60
-  noise_level ∈ U[0.001, 0.01]
-  signal-dependent: audio × N(0,1) × noise_level
-  independent:               N(0,1) × noise_level × 0.5
+SSI (Stationary Signal-Independent additive):
+  white noise colored by random FIR at a chosen SNR
+```
 
-Gain variation                P = 0.40
-  output = audio × U[0.7, 1.3]
-
-Clipping                      P = 0.20
-  hard clip to [-0.9, 0.9]
-
-Always applied:
-  normalize to -20 dBFS RMS
-  clip to [-0.99, 0.99]
+**Output label format (for training-time logging only — not in offline SYSTEM_ID):**
+```
+RAWBOOST_LNL_ISD_SSI   (all three components)
+RAWBOOST_LNL_ISD       (series, no SSI)
+RAWBOOST_LNL_ISD_PAR   (LnL + ISD in parallel)
 ```
 
 Expected effects per file = 2.0. P(zero effects) ≈ 6.7% → labeled RAWBOOST_NONE.

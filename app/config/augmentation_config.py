@@ -54,32 +54,38 @@ class AugmentationConfigManager:
         return cls._instance
     
     def _load_default_strategies(self):
-        """Load default augmentation strategies for 3x, 5x, and 10x."""
+        """Load default augmentation strategies for 3x, 5x, and 10x.
+
+        RawBoost is intentionally excluded — it is applied at training time
+        only (on-the-fly), not pre-baked into the offline corpus.
+        Stacking probability of 0.40 means 40% of augmented clips receive
+        both RIR_NOISE and CODEC in sequence.
+        """
         self._strategies["3x"] = AugmentationStrategy(
             augmentation_factor=3,
             type_distribution={
                 AugmentationType.RIR_NOISE: 0.60,
-                AugmentationType.CODEC: 0.30,
-                AugmentationType.RAWBOOST: 0.10
-            }
+                AugmentationType.CODEC: 0.40,
+            },
+            stacking_probability=0.40,
         )
-        
+
         self._strategies["5x"] = AugmentationStrategy(
             augmentation_factor=5,
             type_distribution={
                 AugmentationType.RIR_NOISE: 0.60,
-                AugmentationType.CODEC: 0.30,
-                AugmentationType.RAWBOOST: 0.10
-            }
+                AugmentationType.CODEC: 0.40,
+            },
+            stacking_probability=0.40,
         )
-        
+
         self._strategies["10x"] = AugmentationStrategy(
             augmentation_factor=10,
             type_distribution={
                 AugmentationType.RIR_NOISE: 0.60,
-                AugmentationType.CODEC: 0.30,
-                AugmentationType.RAWBOOST: 0.10
-            }
+                AugmentationType.CODEC: 0.40,
+            },
+            stacking_probability=0.40,
         )
     
     def get_strategy(self, factor: str = "3x") -> AugmentationStrategy:
@@ -109,9 +115,9 @@ class AugmentationConfigManager:
                     augmentation_factor=factor_num,
                     type_distribution={
                         AugmentationType.RIR_NOISE: 0.60,
-                        AugmentationType.CODEC: 0.30,
-                        AugmentationType.RAWBOOST: 0.10
-                    }
+                        AugmentationType.CODEC: 0.40,
+                    },
+                    stacking_probability=0.40,
                 )
                 return custom_strategy
             except ValueError:
@@ -154,10 +160,12 @@ class AugmentationConfigManager:
         
         print(f"\nAugmentation Factor: {strategy.augmentation_factor}x")
         print(f"Include Original: {strategy.include_original}")
-        
-        print(f"\nType Distribution:")
+        print(f"Stacking Probability: {strategy.stacking_probability*100:.1f}%")
+
+        print(f"\nType Distribution (single-mode weights):")
         for aug_type, prob in strategy.type_distribution.items():
             print(f"  - {aug_type.value}: {prob*100:.1f}%")
+        print(f"  - RawBoost: offline=0% (training-time only)")
         
         print(f"\nRIR + Noise Configuration:")
         print(f"  SNR Distribution:")
@@ -181,10 +189,8 @@ class AugmentationConfigManager:
         print(f"  Packet Loss Prob: {strategy.codec_config.apply_packet_loss_prob*100:.1f}%")
         print(f"  Packet Loss Range: {strategy.codec_config.packet_loss_range[0]*100:.1f}%-{strategy.codec_config.packet_loss_range[1]*100:.1f}%")
 
-        print(f"\nRawBoost Configuration:")
-        print(f"  Algo: {strategy.rawboost_config.algo} (0 = random per clip)")
-        print(f"  Algo Choices: {strategy.rawboost_config.algo_choices}")
-        
+        print(f"\nRawBoost: training-time on-the-fly (not pre-baked in corpus)")
+
         print(f"\n{'='*70}\n")
     
     def calculate_dataset_sizes(self, n_train: int, factor: str = "3x") -> Dict[str, int]:

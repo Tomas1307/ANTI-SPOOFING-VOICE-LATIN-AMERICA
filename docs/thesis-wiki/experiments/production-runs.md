@@ -1,25 +1,39 @@
 # Production Runs
 
 **Status:** Active
-**Last updated:** 2026-05-06
-**Source:** ml-server03 logs, pipeline output metadata
+**Last updated:** 2026-07-09
+**Source:** ml-server03 logs, pipeline output metadata, on-server file counts (2026-07-09)
 
 ---
 
-## Summary Table
+## Summary Table — Full-Spoof Production (MARSA corpus)
 
-| Pipeline | Status | Samples | Passed | Pass Rate | WER | NISQA | SIM | RTF |
-|----------|--------|---------|--------|-----------|-----|-------|-----|-----|
-| FishGram | DONE | 35,927 | 34,197 | 95.2% | 2.17% | 4.57 | 0.602 | 2-3x |
-| Qwen3-TTS | DONE | 35,927 | 31,568 | 87.9% | 1.46% | 4.37 | 0.720 | 3-5x |
-| OpenVoice | DONE | 35,544 | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
-| Chatterbox | RUNNING | ~14,818 | TBD | TBD | TBD | TBD | TBD | 31-45x |
-| OuteTTS | RUNNING | ~23,561 | TBD | TBD | TBD | TBD | TBD | ~5.6x |
-| OmniVoice | VALIDATED (post-fix) | 6 | 6 | 100.0% | 1.85% | 4.59 | 0.696 | TBD |
-| CosyVoice | DROPPED | - | - | - | - | - | - | - |
+Full-spoof FLAC counts verified on ml-server03 2026-07-09 by `find <attack>_output -name "*.flac" | wc -l`.
+
+| Pipeline | Status | Passed FLAC | Pass Rate | WER | NISQA | SIM | RTF |
+|----------|--------|-------------|-----------|-----|-------|-----|-----|
+| FishGram | DONE | 34,197 | 95.2% | 2.17% | 4.57 | 0.602 | 2-3x |
+| Qwen3-TTS | DONE | 31,568 | 87.9% | 1.46% | 4.37 | 0.720 | 3-5x |
+| OpenVoice | DONE | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
+| Chatterbox | DONE | 31,701 | ~88.2% | TBD | TBD | TBD | 31-45x |
+| OuteTTS | DONE | 25,642 | ~71.4% | TBD | TBD | TBD | ~5.6x |
+| OmniVoice | DONE | 33,743 | ~93.9% | 1.85% | 4.59 | 0.696 | ~0.025x |
+| CosyVoice | DROPPED | - | - | - | - | - | - |
+| **Total full spoof** | | **~186,477** | | | | | |
+
+**Partial-spoof production:** 86,766 spliced FLAC across all 6 attacks (verified 2026-07-09,
+`data/partial_spoof_output/{chatterbox,fishgram,omnivoice,openvoice,outetts,qwen}`).
+A separate validation set of 292 samples lives in `data/partial_spoof_output_validation_292/`.
+
+**Corpus grand total (pre-augmentation):** ~35,927 bonafide + ~186,477 full spoof
++ 86,766 partial spoof = **~309,170 utterances**.
+Augmentation factors already generated on-server: `augmented/augmented_{2x,3x,5x,10x}_balanced_5050/`.
+
+All six TTS pipelines are COMPLETE. The 2026-05-06 wiki state that listed Chatterbox/OuteTTS
+as RUNNING and OmniVoice as validation-only is superseded.
 
 **Hardware:** ml-server03, NVIDIA A40 (46GB VRAM), CUDA 12.6
-**Bonafide corpus:** HABLA v2, 1,567 speakers, 7 Latin American accents, ~35,927 samples
+**Bonafide corpus:** HABLA v2, 1,567 speakers, 7 accents (cross-continental: Spain + LatAm), ~35,927 samples
 
 ## Per-Pipeline Notes
 
@@ -236,7 +250,7 @@ Use this as the bookmark when picking up later. Items struck through are done.
 
 ---
 
-## HABLA-Spoof Production Sweep Runbook (2026-05-20)
+## MARSA Production Sweep Runbook (2026-05-20)
 
 Twelve jobs total: six attacks (OmniVoice 40%, Qwen 20%, FishGram 10%, OpenVoice 10%, Chatterbox 10%, OuteTTS 10%) crossed with two partitions (`not_jittered`, `jittered`). Driven by the dispatch manifest at `data/manifests/partial_spoof_plan.csv` so every job processes a disjoint slice of bonafide files.
 

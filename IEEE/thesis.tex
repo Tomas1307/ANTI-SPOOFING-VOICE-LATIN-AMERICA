@@ -1,0 +1,563 @@
+% =====================================================================
+% Tesis 2 -- Propuesta de proyecto
+% Deteccion de anti-spoofing de voz para espanol multi-acento:
+% aumentacion del corpus MARSA y entrenamiento de detectores de linea base
+%
+% Documento AUTOCONTENIDO (bibliografia embebida). Compila en Overleaf
+% con pdflatex directamente. Idioma: espanol.
+%
+% Estructura solicitada:
+%   1. Objetivo general del proyecto
+%   2. Antecedentes
+%   3. Justificacion
+%   4. Objetivos especificos del proyecto
+%   5. Ambiente de implementacion y restricciones consideradas
+%   6. Etapas de desarrollo
+%   7. Cronograma de actividades
+%   8. Resultados esperados
+%   9. Bibliografia
+%
+% Marcado en rojo con \PENDIENTE{...} lo que aun no esta definido.
+% =====================================================================
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noquoting]{babel}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+
+\newcommand{\PENDIENTE}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
+
+\title{\textbf{Detecci\'on de \emph{anti-spoofing} de voz para espa\~nol
+multi-acento: aumentaci\'on del corpus MARSA y entrenamiento de
+detectores de l\'inea base con evaluaci\'on de generalizaci\'on
+\emph{cross-corpus}}\\[6pt]
+\large Propuesta de Tesis 2 (continuaci\'on)}
+
+\author{%
+Tom\'as Acosta Bernal \\
+\small Asesor: Rub\'en Manrique \\
+\small Universidad de los Andes, Bogot\'a, Colombia
+}
+\date{}
+
+\begin{document}
+\maketitle
+
+% =====================================================================
+\section{Objetivo general del proyecto}
+
+Dise\~nar, entrenar y evaluar un sistema de detecci\'on de
+\emph{anti-spoofing} de voz para espa\~nol multi-acento que sea robusto a
+condiciones reales de canal y a manipulaciones parciales de la se\~nal,
+utilizando el corpus \textbf{MARSA} (\emph{Multi-accent Audio Recordings
+for Spanish Anti-spoofing}) construido en la Tesis~1. El proyecto
+extiende el corpus con una capa de aumentaci\'on ac\'ustica y una capa de
+aumentaci\'on aplicada al \emph{partial spoofing}, entrena tres
+detectores de \emph{anti-spoofing} del estado del arte sobre el corpus
+resultante, y cuantifica su capacidad de generalizaci\'on evaluando en un
+corpus de espa\~nol independiente (HISPASpoof). El objetivo \'ultimo es
+producir la evidencia de validaci\'on t\'ecnica (\emph{baseline} de EER)
+que permita completar y someter el art\'iculo de datos (\emph{Data
+Descriptor}) de MARSA a la revista \emph{Scientific Data}.
+
+% =====================================================================
+\section{Antecedentes}
+
+\subsection{El problema del \emph{anti-spoofing} de voz}
+
+Los sistemas de verificaci\'on autom\'atica de locutor (ASV) se despliegan
+a gran escala en banca, telefon\'ia y control de acceso. Su principal
+amenaza de seguridad es el \emph{spoofing} de voz: un atacante sintetiza
+o clona la voz de un objetivo para enga\~nar al verificador. La serie de
+retos ASVspoof estableci\'o los conjuntos de datos y protocolos de
+evaluaci\'on est\'andar para este problema
+\citep{asvspoof2019,asvspoof2021}, y desde entonces se han desarrollado
+numerosas contramedidas neuronales \citep{rawnet2,aasist,tak2022ssl}. Un
+hallazgo recurrente y bien documentado es que estas contramedidas
+generalizan mal: un detector casi perfecto sobre su distribuci\'on de
+entrenamiento se degrada de forma severa ante sistemas de s\'intesis,
+condiciones de grabaci\'on o corpus no vistos
+\citep{muller2022generalize,muller2024harder}.
+
+\subsection{La ausencia del espa\~nol y el rol de la Tesis 1}
+
+Los conjuntos de datos que anclan esta investigaci\'on son casi
+exclusivamente en ingl\'es o mandar\'in. El espa\~nol (la segunda lengua
+materna m\'as hablada del mundo, distribuida en dos continentes y en
+variedades ac\'usticamente distintas) ha carecido de un corpus de
+\emph{anti-spoofing} a gran escala. Adem\'as, la variaci\'on
+inter-dialectal del espa\~nol es suficientemente grande como para
+degradar de forma no uniforme el desempe\~no de modelos de voz de \'ultima
+generaci\'on
+\citep{kantharuban2023dialectgap,nacimiento2024biases,zuluaga2023commonaccent},
+por lo que un detector no puede asumirse transferible entre variedades.
+
+La \textbf{Tesis 1} atac\'o esta ausencia construyendo el corpus MARSA. A
+partir de 35\,927 grabaciones aut\'enticas (\emph{bonafide}) de 1\,567
+locutores en siete acentos (peninsular m\'as seis variedades
+latinoamericanas), se generaron:
+\begin{itemize}[nosep]
+  \item \textbf{186\,477 ataques de \emph{full spoof}} mediante seis
+  sistemas de clonaci\'on de voz TTS de c\'odigo abierto (Fish-Speech
+  \citep{fishspeech}, Qwen3-TTS \citep{qwen3tts}, OpenVoice
+  \citep{openvoice}, Chatterbox \citep{chatterbox}, OuteTTS
+  \citep{outetts} y OmniVoice \citep{omnivoice});
+  \item \textbf{86\,766 ataques de \emph{partial spoof}}, en los que se
+  reemplaza de una a tres palabras de una grabaci\'on aut\'entica por
+  habla clonada, mediante un motor de \emph{splicing} sensible a la
+  energ\'ia con siete t\'ecnicas de fundido y una variante de
+  homogeneizaci\'on de fronteras (\emph{boundary jitter}) que elimina un
+  atajo conocido de los detectores \citep{negroni2024splicing}.
+\end{itemize}
+El total base del corpus es de aproximadamente 309\,170 enunciados. El
+\emph{partial spoofing} es la amenaza m\'as dif\'icil de detectar, pues la
+mayor parte de la se\~nal es aut\'entica \citep{zhang2023partialspoof}; el
+\'unico recurso multiling\"ue previo que incluye espa\~nol, HQ-MPSD
+\citep{li2025hqmpsd}, aporta del orden de $1.3\times10^{4}$ muestras de un
+solo sistema TTS y un solo acento, sin aumentaci\'on. MARSA supera ese
+recurso en escala, diversidad de sistemas, cobertura de acentos y capas
+de aumentaci\'on.
+
+\subsection{Lo que falta: entrenar y evaluar detectores sobre MARSA}
+
+La Tesis 1 entreg\'o el \emph{corpus}, pero no un \emph{detector}
+entrenado ni evaluado sobre \'el. Sin un resultado de detecci\'on
+(\emph{baseline} de EER) el corpus no est\'a validado como recurso \'util,
+y la secci\'on de \emph{Technical Validation} del art\'iculo de datos
+queda incompleta. Adem\'as, existen recursos de espa\~nol independientes
+(en particular HISPASpoof \citep{hispaspoof}, un corpus de forensia de
+habla en espa\~nol con seis acentos) que permiten medir la
+generalizaci\'on \emph{cross-corpus} de un detector entrenado en MARSA.
+Finalmente, han aparecido detectores de \emph{anti-spoofing} recientes y
+potentes que a\'un no se han evaluado sobre habla en espa\~nol:
+Nes2Net \citep{nes2net}, una arquitectura anidada ligera sobre
+representaciones de modelos fundacionales (WavLM); el sistema RAPTOR /
+DF\_Arena \citep{dfarena}, basado en \emph{backbones} auto-supervisados
+compactos; y HoliAntiSpoof \citep{holiantispoof}, un modelo de lenguaje
+de audio (Audio-LLM) que reformula el an\'alisis de \emph{spoofing} como
+una tarea de generaci\'on de texto (detecci\'on, m\'etodo, regi\'on e
+impacto sem\'antico). La Tesis 2 se ocupa precisamente de este vac\'io.
+
+% =====================================================================
+\section{Justificaci\'on}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Relevancia de seguridad.} El fraude por voz sint\'etica
+  sobre canales telef\'onicos es una amenaza creciente en Am\'erica
+  Latina. Un detector robusto y espec\'ifico para espa\~nol multi-acento
+  atiende una necesidad de despliegue real que los detectores entrenados
+  en ingl\'es no cubren.
+
+  \item \textbf{Robustez de canal.} Los ataques reales llegan a trav\'es
+  de micr\'ofonos, salas reverberantes y c\'odecs de telefon\'ia/VoIP. La
+  aumentaci\'on ac\'ustica (reverberaci\'on, ruido y c\'odecs reales,
+  aplicados de forma simple y apilada) es necesaria para que el detector
+  no colapse fuera del laboratorio.
+
+  \item \textbf{La frontera dif\'icil.} No existe un corpus aumentado de
+  \emph{partial spoofing} en espa\~nol. Aumentar el \emph{partial spoof}
+  de MARSA y medir su efecto sobre la detecci\'on es una contribuci\'on
+  original y directamente pertinente a la amenaza m\'as evasiva.
+
+  \item \textbf{Generalizaci\'on como problema central.} El problema
+  abierto del \emph{anti-spoofing} es la generalizaci\'on. Entrenar en
+  MARSA y evaluar en HISPASpoof cuantifica de forma honesta cu\'anto
+  transfiere un detector de espa\~nol entre corpus, acentos y sistemas de
+  s\'intesis.
+
+  \item \textbf{Cierre del art\'iculo de datos.} El \emph{baseline} de EER
+  es la \'unica pieza que falta para someter el \emph{Data Descriptor} de
+  MARSA a \emph{Scientific Data}; la Tesis 2 la produce.
+\end{itemize}
+
+% =====================================================================
+\section{Objetivos espec\'ificos del proyecto}
+
+\begin{enumerate}[label=\textbf{OE\arabic*.},leftmargin=2.6em]
+  \item \textbf{Consolidar la aumentaci\'on ac\'ustica de MARSA a escala
+  de corpus.} Ejecutar y verificar la capa de aumentaci\'on
+  (reverberaci\'on + ruido, c\'odecs reales, y el \emph{gate} de apilado
+  60/40) sobre el corpus completo, en los factores de multiplicaci\'on
+  previstos ($\times$2, $\times$3, $\times$5, $\times$10), con la
+  pol\'itica de \emph{loudness} uniforme y el separador de identificador
+  de sistema con ``\texttt{|}'' para muestras apiladas.
+
+  \item \textbf{Dise\~nar y aplicar aumentaci\'on al corpus de
+  \emph{partial spoofing}.} Extender la capa de aumentaci\'on a las
+  muestras de \emph{partial spoof} (incluida la variante \emph{jittered}),
+  preservando las etiquetas a nivel de trama, y documentar el efecto
+  sobre las m\'etricas de calidad.
+
+  \item \textbf{Preparar el protocolo de entrenamiento y evaluaci\'on.}
+  Definir particiones disjuntas por locutor (\emph{train}/\emph{dev}/%
+  \emph{eval}), \emph{data loaders} en formato ASVspoof2019 LA, y el mapeo
+  de etiquetas necesario para evaluar sobre HISPASpoof.
+
+  \item \textbf{Ajustar (\emph{fine-tuning}) tres detectores del estado
+  del arte sobre MARSA.} Nes2Net \citep{nes2net}, RAPTOR/DF\_Arena
+  \citep{dfarena} y HoliAntiSpoof \citep{holiantispoof} (este \'ultimo
+  v\'ia adaptador LoRA sobre su base de 7B par\'ametros).
+
+  \item \textbf{Evaluar el desempe\~no \emph{in-corpus} de forma
+  estratificada.} Reportar EER global y desagregado por (i)~sistema de
+  ataque, (ii)~\emph{tier} de \emph{partial spoof} (W1/W2/W3), (iii)~grupo
+  de acento, y (iv)~condici\'on de aumentaci\'on.
+
+  \item \textbf{Evaluar la generalizaci\'on \emph{cross-corpus}.} Entrenar
+  en MARSA y evaluar en HISPASpoof (y, de ser viable, en direcci\'on
+  inversa) para medir la transferencia entre corpus de espa\~nol.
+
+  \item \textbf{Completar y someter el \emph{Data Descriptor} de MARSA.}
+  Integrar los resultados de \emph{baseline} en la secci\'on de
+  \emph{Technical Validation} y preparar el dep\'osito p\'ublico del
+  corpus (Zenodo) para el env\'io a \emph{Scientific Data}.
+\end{enumerate}
+
+% =====================================================================
+\section{Ambiente de implementaci\'on y restricciones consideradas}
+
+\subsection{Ambiente de implementaci\'on}
+
+\begin{itemize}[nosep]
+  \item \textbf{Servidor de c\'omputo:} un servidor con 4$\times$
+  NVIDIA A40 (46\,GB de VRAM cada una). Es una m\'aquina
+  \emph{compartida} con otros investigadores.
+  \item \textbf{Flujo de dos m\'aquinas:} edici\'on de c\'odigo y control
+  de versiones en una m\'aquina local; ejecuci\'on, entrenamiento
+  e inferencia en el servidor de c\'omputo.
+  \item \textbf{Aislamiento de entornos:} cada sistema de ataque y cada
+  detector se ejecuta en su propio entorno virtual aislado, para no
+  afectar los entornos de otros investigadores.
+  \item \textbf{Recursos externos de aumentaci\'on:} conjunto de respuestas
+  al impulso RIRS\_NOISES \citep{ko2017rir} y ruido MUSAN \citep{musan};
+  c\'odecs reales de telefon\'ia y VoIP.
+  \item \textbf{M\'etricas y herramientas:} EER como m\'etrica primaria;
+  NISQA \citep{nisqa} y ECAPA-TDNN \citep{ecapa} para calidad y similitud
+  de locutor; Parakeet-TDT \citep{tdt,parakeet} para transcripci\'on y
+  alineamiento.
+\end{itemize}
+
+\subsection{Restricciones consideradas}
+
+\begin{itemize}[leftmargin=1.2em]
+  \item \textbf{Tiempo:} el proyecto dispone de un \'unico semestre
+  (aproximadamente 16 semanas). El alcance se prioriza en consecuencia.
+  \item \textbf{GPU compartida:} se usa \emph{una sola} GPU a la vez, lo
+  que limita el paralelismo de entrenamiento.
+  \item \textbf{HoliAntiSpoof es un modelo de 7B par\'ametros.} A\'un con
+  LoRA, su \emph{fine-tuning} e inferencia son costosos en una A40
+  compartida. Se contempla como objetivo de mayor riesgo; si el tiempo o
+  el c\'omputo no alcanzan, se degrada a evaluaci\'on \emph{zero-shot}
+  (sin \emph{fine-tuning}) y se prioriza Nes2Net y RAPTOR/DF\_Arena.
+  \item \textbf{Madurez de los modelos.} Los tres detectores son
+  publicaciones muy recientes (\emph{preprints} 2025--2026); existe riesgo
+  de reproducibilidad (c\'odigo, pesos, dependencias). Se reserva tiempo
+  de integraci\'on por modelo.
+  \item \textbf{Licencias.} DF\_Arena/RAPTOR se distribuye bajo licencia
+  \emph{no comercial}; su uso es acad\'emico. \PENDIENTE{Verificar la
+  licencia exacta de HoliAntiSpoof antes de redistribuir salidas.}
+  \item \textbf{Alineaci\'on con HISPASpoof.} La evaluaci\'on
+  \emph{cross-corpus} requiere mapear el formato y las etiquetas de
+  HISPASpoof al protocolo de MARSA; se considera una etapa expl\'icita.
+  \item \textbf{Desbalance de acentos.} Los tres acentos m\'as peque\~nos
+  (argentino, peruano, venezolano) suman 6.6\% del corpus; el EER por
+  acento para esos grupos tendr\'a mayor varianza y se reporta con esa
+  salvedad.
+  \item \textbf{Dep\'osito de datos.} El env\'io a \emph{Scientific Data}
+  exige dep\'osito p\'ublico del corpus (Zenodo/Figshare); se reserva
+  tiempo para la preparaci\'on del dep\'osito.
+\end{itemize}
+
+% =====================================================================
+\section{Etapas de desarrollo}
+
+\begin{description}[leftmargin=0em,style=nextline]
+  \item[Etapa 1. Aumentaci\'on ac\'ustica a escala (OE1).]
+  Ejecuci\'on y verificaci\'on de la capa de reverberaci\'on+ruido y de
+  c\'odecs reales, con el \emph{gate} de apilado, en los cuatro factores.
+  Validaci\'on de que la aumentaci\'on no introduce atajos de etiqueta
+  (\emph{loudness} uniforme, fracci\'on limpia por clase).
+
+  \item[Etapa 2. Aumentaci\'on del \emph{partial spoof} (OE2).]
+  Extensi\'on de la capa de aumentaci\'on al corpus de \emph{partial
+  spoof} preservando etiquetas a nivel de trama; auditor\'ia de calidad.
+
+  \item[Etapa 3. Protocolo de datos (OE3).]
+  Particiones disjuntas por locutor; \emph{data loaders} en formato
+  ASVspoof2019 LA; mapeo de HISPASpoof al protocolo de MARSA.
+
+  \item[Etapa 4. Integraci\'on de los detectores (OE4).]
+  Puesta en marcha de los tres modelos en el servidor (entornos,
+  pesos, dependencias); pruebas de humo de inferencia.
+
+  \item[Etapa 5. \emph{Fine-tuning} sobre MARSA (OE4).]
+  Ajuste de Nes2Net y RAPTOR/DF\_Arena; ajuste de HoliAntiSpoof v\'ia LoRA
+  (o \emph{zero-shot} como contingencia).
+
+  \item[Etapa 6. Evaluaci\'on \emph{in-corpus} estratificada (OE5).]
+  C\'alculo de EER global y desagregado por sistema de ataque, \emph{tier},
+  acento y condici\'on de aumentaci\'on.
+
+  \item[Etapa 7. Evaluaci\'on \emph{cross-corpus} (OE6).]
+  Entrenamiento en MARSA y evaluaci\'on en HISPASpoof; an\'alisis de la
+  brecha de generalizaci\'on.
+
+  \item[Etapa 8. Consolidaci\'on y art\'iculo de datos (OE7).]
+  Integraci\'on de resultados en \emph{Technical Validation}; preparaci\'on
+  del dep\'osito Zenodo; escritura final y env\'io a \emph{Scientific
+  Data}; redacci\'on del documento de tesis.
+\end{description}
+
+% =====================================================================
+\section{Cronograma de actividades}
+
+El cronograma cubre 16 semanas (un semestre). La marca ``$\bullet$''
+indica actividad principal en la semana correspondiente.
+
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{p{5.2cm}*{16}{c}}
+\toprule
+\textbf{Actividad / Semana} &
+1&2&3&4&5&6&7&8&9&10&11&12&13&14&15&16 \\
+\midrule
+\endhead
+E1 Aumentaci\'on ac\'ustica a escala
+ &$\bullet$&$\bullet$& & & & & & & & & & & & & & \\
+E2 Aumentaci\'on \emph{partial spoof}
+ & &$\bullet$&$\bullet$& & & & & & & & & & & & & \\
+E3 Protocolo y particiones + mapeo HISPASpoof
+ & & &$\bullet$&$\bullet$& & & & & & & & & & & & \\
+E4 Integraci\'on de los 3 detectores
+ & & & &$\bullet$&$\bullet$& & & & & & & & & & & \\
+E5 \emph{Fine-tuning} Nes2Net + RAPTOR/DF\_Arena
+ & & & & &$\bullet$&$\bullet$&$\bullet$& & & & & & & & & \\
+E5 \emph{Fine-tuning} HoliAntiSpoof (LoRA)
+ & & & & & & &$\bullet$&$\bullet$&$\bullet$& & & & & & & \\
+E6 Evaluaci\'on \emph{in-corpus} estratificada
+ & & & & & & & & &$\bullet$&$\bullet$&$\bullet$& & & & & \\
+E7 Evaluaci\'on \emph{cross-corpus} (HISPASpoof)
+ & & & & & & & & & & &$\bullet$&$\bullet$& & & & \\
+E8 Technical Validation + dep\'osito Zenodo
+ & & & & & & & & & & & &$\bullet$&$\bullet$&$\bullet$& & \\
+E8 Escritura y env\'io (Scientific Data + tesis)
+ & & & & & & & & & & & & & &$\bullet$&$\bullet$&$\bullet$ \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\noindent\textbf{Contingencia.} Si en la semana~9 el \emph{fine-tuning} de
+HoliAntiSpoof no es viable en la GPU compartida, se sustituye por
+evaluaci\'on \emph{zero-shot} de ese modelo y se reasigna el tiempo a un
+an\'alisis m\'as profundo de los dos detectores restantes. El camino
+cr\'itico para el \emph{Data Descriptor} (E6--E8) queda protegido.
+
+% =====================================================================
+\section{Resultados esperados}
+
+\begin{enumerate}[label=\textbf{RE\arabic*.},leftmargin=2.6em]
+  \item \textbf{Corpus MARSA aumentado} en sus dos capas (ac\'ustica y de
+  \emph{partial spoof}), con etiquetas preservadas y documentaci\'on de
+  calidad.
+  \item \textbf{Tres detectores ajustados} (o, en el peor caso, dos
+  ajustados y uno evaluado \emph{zero-shot}) sobre MARSA.
+  \item \textbf{Tabla de EER \emph{in-corpus} estratificada} por sistema
+  de ataque, \emph{tier} de \emph{partial spoof}, acento y condici\'on de
+  aumentaci\'on.
+  \item \textbf{Resultados de generalizaci\'on \emph{cross-corpus}}
+  (entrenar en MARSA, evaluar en HISPASpoof), con an\'alisis de la brecha
+  espa\~nol-vs-espa\~nol entre corpus.
+  \item \textbf{Art\'iculo de datos completo} de MARSA, con la secci\'on de
+  \emph{Technical Validation} llena, y su \textbf{dep\'osito p\'ublico}
+  preparado, sometido a \emph{Scientific Data}.
+  \item \textbf{Documento de tesis} que integra la construcci\'on
+  (Tesis~1) y la evaluaci\'on (Tesis~2) del corpus.
+\end{enumerate}
+
+\noindent\emph{Nota de alcance.} Esta propuesta enumera el conjunto
+completo de actividades previstas; la priorizaci\'on por tiempo y por
+c\'omputo compartido implica que el n\'ucleo garantizado son OE1--OE6 con
+al menos dos detectores, y que OE7 (tercer detector, direcci\'on inversa
+de \emph{cross-corpus}) se persigue en la medida en que los recursos lo
+permitan.
+
+% =====================================================================
+% Bibliografia embebida (autocontenida; no requiere .bib externo).
+% =====================================================================
+\begin{thebibliography}{99}
+
+\bibitem{asvspoof2019}
+M.~Todisco \emph{et al.},
+``ASVspoof 2019: Future horizons in spoofed and fake audio detection,''
+en \emph{Proc. Interspeech}, 2019, pp.~1008--1012.
+
+\bibitem{asvspoof2021}
+J.~Yamagishi \emph{et al.},
+``ASVspoof 2021: Accelerating progress in spoofed and deepfake speech
+detection,'' en \emph{Proc. ASVspoof 2021 Workshop}, 2021.
+
+\bibitem{rawnet2}
+H.~Tak \emph{et al.},
+``End-to-end anti-spoofing with RawNet2,'' en \emph{Proc. ICASSP}, 2021.
+
+\bibitem{aasist}
+J.-w.~Jung \emph{et al.},
+``AASIST: Audio anti-spoofing using integrated spectro-temporal graph
+attention networks,'' en \emph{Proc. ICASSP}, 2022.
+
+\bibitem{tak2022ssl}
+H.~Tak \emph{et al.},
+``Automatic speaker verification spoofing and deepfake detection using
+wav2vec 2.0 and data augmentation,'' en \emph{Proc. Odyssey}, 2022,
+pp.~112--119.
+
+\bibitem{muller2022generalize}
+N.~M.~M\"uller \emph{et al.},
+``Does audio deepfake detection generalize?'' en \emph{Proc.
+Interspeech}, 2022, pp.~2783--2787.
+
+\bibitem{muller2024harder}
+N.~M.~M\"uller \emph{et al.},
+``Harder or different? Understanding generalization of audio deepfake
+detection,'' en \emph{Proc. Interspeech}, 2024.
+
+\bibitem{habla}
+P.~A.~Tamayo-Fl\'orez, R.~Manrique, y B.~Pereira Nunes,
+``HABLA: A dataset of Latin American Spanish accents for voice
+anti-spoofing,'' en \emph{Proc. Interspeech}, 2023, pp.~1963--1967.
+
+\bibitem{fishspeech}
+S.~Liao \emph{et al.},
+``Fish-Speech: Leveraging large language models for advanced
+multilingual text-to-speech synthesis,'' \emph{arXiv:2411.01156}, 2024.
+
+\bibitem{qwen3tts}
+Qwen Team, Alibaba Group,
+``Qwen3-TTS technical report,'' \emph{arXiv:2601.15621}, 2026.
+
+\bibitem{openvoice}
+Z.~Qin, W.~Zhao, X.~Yu, y X.~Sun,
+``OpenVoice: Versatile instant voice cloning,'' \emph{arXiv:2312.01479},
+2024.
+
+\bibitem{chatterbox}
+Resemble AI,
+``Chatterbox: Open-source text-to-speech with neural watermarking,''
+publicaci\'on de software, 2025.
+\url{https://github.com/resemble-ai/chatterbox}
+
+\bibitem{outetts}
+OuteAI,
+``OuteTTS: LLM-based text-to-speech via discrete audio tokens,''
+publicaci\'on de software, 2025. \url{https://huggingface.co/OuteAI}
+
+\bibitem{omnivoice}
+H.~Zhu \emph{et al.},
+``OmniVoice: Towards omnilingual zero-shot text-to-speech with diffusion
+language models,'' \emph{arXiv:2604.00688}, 2026.
+
+\bibitem{zhang2023partialspoof}
+L.~Zhang, X.~Wang, E.~Cooper, N.~Evans, y J.~Yamagishi,
+``The PartialSpoof database and countermeasures for the detection of
+short fake speech segments embedded in an utterance,''
+\emph{IEEE/ACM Trans. Audio, Speech, Lang. Process.}, vol.~31,
+pp.~813--825, 2023.
+
+\bibitem{li2025hqmpsd}
+M.~Li \emph{et al.},
+``HQ-MPSD: A multilingual artifact-controlled benchmark for partial
+deepfake speech detection,'' \emph{arXiv:2512.13012}, 2025.
+
+\bibitem{negroni2024splicing}
+V.~Negroni, D.~Salvi, P.~Bestagini, y S.~Tubaro,
+``Analyzing the impact of splicing artifacts in partially fake speech
+signals,'' en \emph{Proc. ASVspoof 5 Workshop}, 2024.
+
+\bibitem{hispaspoof}
+Purdue VIPER Lab \emph{et al.},
+``HISPASpoof: A new dataset for Spanish speech forensics,''
+\emph{arXiv:2509.09155}, 2025.
+
+\bibitem{kantharuban2023dialectgap}
+A.~Kantharuban, I.~Vuli\'c, y A.~Korhonen,
+``Quantifying the dialect gap and its correlates across languages,''
+en \emph{Findings of EMNLP}, 2023.
+
+\bibitem{zuluaga2023commonaccent}
+J.~Zuluaga-Gomez, S.~Ahmed, D.~Visockas, y C.~Subakan,
+``CommonAccent: Exploring large acoustic pretrained models for accent
+classification based on Common Voice,''
+en \emph{Proc. Interspeech}, 2023, pp.~5291--5295.
+
+\bibitem{nacimiento2024biases}
+E.~Nacimiento-Garc\'ia, H.~S.~D\'iaz-Kaas-Nielsen, y
+C.~S.~Gonz\'alez-Gonz\'alez,
+``Gender and accent biases in AI-based tools for Spanish: A comparative
+study between Alexa and Whisper,''
+\emph{Applied Sciences}, vol.~14, no.~11, p.~4734, 2024.
+
+\bibitem{nes2net}
+T.~Liu, D.-T.~Truong, R.~K.~Das, K.~A.~Lee, y H.~Li,
+``Nes2Net: A lightweight nested architecture for foundation model driven
+speech anti-spoofing,'' \emph{arXiv:2504.05657}, 2025.
+
+\bibitem{dfarena}
+A.~Kulkarni, S.~Dowerah, A.~Kulkarni, T.~Alum\"ae, y M.~Magimai-Doss,
+``Do compact SSL backbones matter for audio deepfake detection? A
+controlled study with RAPTOR,'' \emph{arXiv:2603.06164}, 2026.
+Modelo: \url{https://huggingface.co/Speech-Arena-2025/DF_Arena_1B_V_1}
+
+\bibitem{holiantispoof}
+``HoliAntiSpoof: Audio LLM for holistic speech anti-spoofing,''
+\emph{arXiv:2602.04535}, 2026.
+Modelo: \url{https://huggingface.co/wsntxxn/HoliAntiSpoof}
+
+\bibitem{ecapa}
+B.~Desplanques, J.~Thienpondt, y K.~Demuynck,
+``ECAPA-TDNN: Emphasized channel attention, propagation and aggregation
+in TDNN based speaker verification,''
+en \emph{Proc. Interspeech}, 2020, pp.~3830--3834.
+
+\bibitem{nisqa}
+G.~Mittag, B.~Naderi, A.~Chehadi, y S.~M\"oller,
+``NISQA: A deep CNN-self-attention model for multidimensional speech
+quality prediction with crowdsourced datasets,''
+en \emph{Proc. Interspeech}, 2021, pp.~2127--2131.
+
+\bibitem{tdt}
+H.~Xu, F.~Jia, S.~Majumdar, S.~Watanabe, y B.~Ginsburg,
+``Efficient sequence transduction by jointly predicting tokens and
+durations,'' en \emph{Proc. ICML}, 2023.
+
+\bibitem{parakeet}
+NVIDIA NeMo Team,
+``Parakeet-TDT-0.6B-v3: Multilingual token-and-duration transducer ASR,''
+publicaci\'on de modelo, 2024.
+\url{https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3}
+
+\bibitem{musan}
+D.~Snyder, G.~Chen, y D.~Povey,
+``MUSAN: A music, speech, and noise corpus,'' \emph{arXiv:1510.08484},
+2015.
+
+\bibitem{ko2017rir}
+T.~Ko, V.~Peddinti, D.~Povey, M.~L.~Seltzer, y S.~Khudanpur,
+``A study on data augmentation of reverberant speech for robust speech
+recognition,'' en \emph{Proc. ICASSP}, 2017.
+
+\end{thebibliography}
+
+\end{document}

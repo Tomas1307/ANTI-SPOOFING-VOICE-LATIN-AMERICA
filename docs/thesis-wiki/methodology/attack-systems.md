@@ -98,6 +98,37 @@ The same `audio[:needed_samples]` mid-file slicing bug exists in **all 7 other a
 
 **Decision (2026-05-06): not retrofitting now.** FishGram, Qwen, and OpenVoice production runs are complete; retrofitting would either invalidate ~100k existing samples or be a no-op. Chatterbox and OuteTTS are mid-run (41% and 66% per 2026-04-25 wiki state); interrupting them risks part-old / part-new reference distributions. **Track this as future work**: if any of those pipelines is ever re-run, port the audio_concatenation fix first. Code change is the same ~50-line rewrite already done for OmniVoice.
 
+## Per-system pre/post-processing and watermarking (code-verified 2026-07-09)
+
+Audit of the six `app/pipeline/<attack>_attack/utils/cloner.py` files surfaced
+per-system pre/post steps that were previously undocumented, and a watermark
+contamination bug.
+
+### Watermarking (CRITICAL)
+
+| System | Watermark | Status |
+|---|---|---|
+| **Chatterbox** | Perth (neural steganography), on by default | **Removed** — `NoOpWatermarker` + `perth_patcher`. Clean. |
+| **OpenVoice** | WavMark (`@MyShell`), on by default | **Was present in all ~29,626 samples** until 2026-07-09; now fixed with `enable_watermark=False`. NEEDS REGENERATION. |
+| Others | none | clean |
+
+The old belief that OpenVoice's watermark was "unremovable" was wrong — it is
+removable via `ToneColorConverter(..., enable_watermark=False)`. The
+"cannot be disabled" notes in `investigation.md` refer to Chatterbox's Perth
+watermark (and even that was overcome). See decision-log 2026-07-09 and memory
+[[openvoice-watermark-contamination]].
+
+### Other per-system pre/post (not the common resample/screen/retry)
+
+| System | Pre-processing | Post-processing |
+|---|---|---|
+| FishGram | text normalization (`normalize=True`), base64 reference over HTTP | alignment-based hallucinated-prefix trim |
+| Qwen3-TTS | per-speaker `voice_clone_prompt` (`x_vector_only_mode`); subtalker sampling params | alignment-based hallucinated-prefix trim |
+| OpenVoice | VAD-based tone-embedding extraction (`se_extractor.get_se(vad=True)`, falls back to `vad=False` if reference < 4 s) | (watermark now disabled) |
+| Chatterbox | — | **trailing-noise VAD trim** (`trim_trailing_noise`); SDPA-to-eager patch (compat) |
+| OuteTTS | **speaker profile** (tempo/energy/pitch/spectral-centroid via `create_speaker`), cached per speaker | resample DAC native -> 16 kHz |
+| OmniVoice | ref-text precomputed with Parakeet; reference stop-at-whole-file + trailing silence | RMS non-verbal-prefix reject + retry (5 rounds) |
+
 ## Virtual Environment Paths
 
 All venvs are INSIDE the project: `~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/<name>/`

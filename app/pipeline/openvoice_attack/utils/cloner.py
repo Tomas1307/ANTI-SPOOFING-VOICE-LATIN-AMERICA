@@ -15,6 +15,13 @@ then ToneColorConverter applies the target speaker's tone colour. Per-speaker
 state (target_se) is extracted once via se_extractor.get_se and cached on
 the Cloner instance keyed by reference audio path.
 
+OpenVoice-specific quirk (watermark bypass): ToneColorConverter is constructed
+with ``enable_watermark=False``. By default OpenVoice V2 embeds a WavMark
+steganographic watermark into every converted clip; for anti-spoofing research
+this must be suppressed so a detector cannot learn the watermark instead of the
+synthesis artifact. See ``load`` for the full rationale. This mirrors the
+Chatterbox NoOpWatermarker bypass.
+
 Output audio is resampled to settings.SAMPLE_RATE (16 kHz) for consistency
 with downstream pipeline stages.
 """
@@ -89,7 +96,20 @@ class Cloner(BaseCloner):
         )
 
         logger.info("OpenVoice Cloner: loading ToneColorConverter...")
-        self.tone_color_converter = ToneColorConverter(converter_config, device=device)
+        # enable_watermark=False is mandatory for anti-spoofing research validity.
+        # OpenVoice V2 embeds a WavMark steganographic watermark directly in the
+        # waveform by default: ToneColorConverter defaults to enable_watermark=True,
+        # which loads the WavMark model, and convert() then calls add_watermark()
+        # unconditionally, encoding the `message` bits into every clip of >= 1 s.
+        # A watermark present in every OpenVoice sample (and in no other system's
+        # output) is a trivial label shortcut a detector can learn instead of the
+        # synthesis artifact, and WavMark is designed to survive resampling and
+        # re-encoding. With enable_watermark=False the WavMark model is not loaded
+        # and add_watermark() returns the audio untouched, so the message passed to
+        # convert() is inert. This mirrors the Chatterbox NoOpWatermarker bypass.
+        self.tone_color_converter = ToneColorConverter(
+            converter_config, device=device, enable_watermark=False
+        )
         self.tone_color_converter.load_ckpt(converter_ckpt)
 
         logger.info("OpenVoice Cloner: loading MeloTTS (ES)...")
@@ -229,7 +249,7 @@ class Cloner(BaseCloner):
                 tgt_se=target_se,
                 output_path=tmp_converted_path,
                 tau=settings.CONVERSION_TAU,
-                message="@MyShell",
+                message="@MyShell",  # inert: watermarking disabled at load (enable_watermark=False)
             )
 
             audio, _ = librosa.load(tmp_converted_path, sr=settings.SAMPLE_RATE)

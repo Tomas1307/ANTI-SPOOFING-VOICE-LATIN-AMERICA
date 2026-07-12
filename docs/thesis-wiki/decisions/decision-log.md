@@ -1,11 +1,7 @@
 # Decision Log
 
 **Status:** Active
-<<<<<<< Updated upstream
-**Last updated:** 2026-06-06
-=======
-**Last updated:** 2026-05-25
->>>>>>> Stashed changes
+**Last updated:** 2026-06-09
 
 Chronological record of architectural, methodological, and research decisions.
 
@@ -175,68 +171,6 @@ Nueva arquitectura registrada en `memory/splice_engine_lessons.md`. Settings fin
 
 **Refinamiento 2026-05-30 (overshoot +2.4 dB):** primera validacion en ml-server03 (qwen/not_jittered, 14 samples via `scripts/check_loudness_match.py`) dio spoof-vs-bonafide delta mean +2.37 dB / median +2.15 / p90 4.27, solo 36% dentro de +/-1.5 dB (peak 0.990, sin clipping -> el ceiling funciono). Causa: asimetria de medicion. El ancla bonafide es voiced-RMS (silence-gated) pero el clon se escalaba por su PLAIN RMS (`scale_to_reference_rms`, full-segment). Plain RMS < voiced RMS por el silencio intra-palabra, asi que para llevar el plain del clon al ancla voiced, su contenido voiced sobrepasaba el ancla -> spoof ~2.4 dB mas fuerte. El unit test sintetico no lo detecto porque un tono puro no tiene silencio intra-palabra (plain == voiced). Fix: nueva `voiced_match_gain` mide el clon con el MISMO voiced-RMS gated que el ancla (apples-to-apples); `scale_to_reference_rms` eliminada (dead). Ambas ramas del engine y el unit test (clon con gap de silencio intra-palabra) actualizados. **Resuelto 2026-05-30:** re-splice (12 cells, parallel) + re-check qwen/not_jittered (14 samples): delta mean -0.06 dB / median -0.08 / abs-p90 0.74, 100% dentro de +/-1.5 dB, peak 0.824 (ceiling no necesario). Offset sistematico +2.37 -> -0.06 dB. Pendiente: check across-cells (todos los ataques) + audit auditiva, luego re-run completo del corpus.
 
-<<<<<<< Updated upstream
-### 2026-06-06: RIR augmentation sourcing -- keep small/medium/large, cite Ko et al. 2017, do not adopt ASVspoof a/b/c
-**Context:** A student reviewing the data-augmentation pipeline asked, under "Layer 3A - RIR / Room Size", what the source of the room-size ranges was ("Fuente del ASVspoof pipeline?") and proposed renaming the `small/medium/large` room classes to the ASVspoof2019 `a/b/c` scheme, which parameterizes each condition by a triplet `(room size, T60, talker-to-mic distance Ds)`. The RIR corpus on ml-server03 is at `data/noise_dataset/RIR/` with the directory signature `pointsource_noises / real_rirs_isotropic_noises / simulated_rirs / README` -- the unmistakable layout of openSLR `RIRS_NOISES` (SLR28). The `small/medium/large` stratification comes from the `simulated_rirs/` (image-method) portion. We only consume the room-size class; T60 and Ds were sampled internally at generation time and are NOT exposed as per-RIR metadata.
-**Decision:** (1) Keep the `small/medium/large` class names -- they are the canonical, citeable labels from the originating work. (2) Cite the source explicitly: Ko, Peddinti, Povey, Seltzer, Khudanpur, "A study on data augmentation of reverberant speech for robust speech recognition," ICASSP 2017 (= openSLR SLR28, `RIRS_NOISES`). This is, notably, the student's own reference [3]. (3) State the metadata limitation honestly in the methodology: we stratify only by the room-size class the corpus provides; finer acoustic parameters (T60, Ds) are not exposed per-RIR and are therefore not individually controlled. The documented per-class T60/dimension sampling ranges from the Ko et al. paper can be cited as context without per-file labels.
-**Alternatives considered:** (a) Rename to ASVspoof2019 `a/b/c` (student's proposal) -- REJECTED on two grounds: we lack the T60/Ds values to populate the triplet, and the `a/b/c` scheme belongs to ASVspoof2019 *Physical Access* (replay), so adopting its labels would misattribute provenance (imply we used the PA room model, which we did not). (b) Measure T60 per-RIR ourselves to enable finer stratification -- deferred; possible future work but not required, and would not change the augmentation effect, only its labeling. (c) Switch to simulated RIRs (image-source, pyroomacoustics/gpuRIR) to gain full control over room size/T60/Ds -- noted as an option that would lift the metadata limit and allow a continuous T60 distribution (which fits the project's aggressive-augmentation philosophy), but out of scope for now since the pre-generated set is already in place.
-**Outcome:** Decided. Action is minimal: add the Ko et al. 2017 / SLR28 citation and one limitation sentence to the methodology; keep code/class names unchanged. Pending: pull exact per-class T60/dimension ranges from the README (`data/noise_dataset/RIR/README`) or the Ko et al. paper to include verbatim in the methodology paragraph. This row is pure provenance/reproducibility hygiene -- it does not touch the robustness-vs-realism design axis. Part of the broader data-augmentation feedback review (see log 2026-06-06).
-
-### 2026-06-08: Data-augmentation audit -- Option B (uniform augmentation + trainer-side balancing); proven libraries; all-threats codec
-**Context:** A full code audit of the channel/device data-augmentation pipeline (`app/augmenter/`, `app/config/augmentation_config.py`, `app/schema.py`, `app/utils/utils.py`, `app/utils/augmentation_calculator.py`, `app/scripts/augmentation_pipeline.py`), triggered by a student investigation (`spoofing_DA.pdf`, `feedback_da_antispoofing.pdf`), found: (1) two label-leak shortcuts -- clean fraction coupled to class via the balanced-mode differential factor, and per-augmentation-type loudness normalization; (2) "RawBoost" is not RawBoost (no LnL multiband+Hammerstein, no ISD impulsive -log noise, no SSI FIR-colored white; just a random short FIR + weak tanh alpha in [0.1,0.5] + low Gaussian noise + a mathematically-dead gain op + weak clipping); (3) "Codec" is not a codec (codec_types list never used; just resample 8k + bandpass + zeroed packets + linear quantization; no companding/AMR/Opus/PLC); (4) correctness bugs (RIR fftconvolve mode='same' smears reverb; packet-loss metadata drawn separately from applied rate; t60_range dead). The student's empirical observations were correct symptoms of a weak/incorrect implementation, not evidence for a realism prior. Full synthesis in methodology/data-augmentation.md.
-**Decision:** (1) **Option B** for class balance: augment both classes with the SAME factor (identical clean fraction / type mix / loudness -> no augmentation->class leak), keep natural imbalance in the corpus, rebalance to target in the TRAINER via class-weighted loss or a weighted/balanced sampler. (2) Uniform loudness policy across all output paths including clean. (3) Use PROVEN libraries -- official RawBoost reference code + torchaudio/ffmpeg real codecs -- no hand-rolled DSP. (4) Codec coverage = ALL THREATS (narrowband G.711 mu-law/A-law, AMR-NB, iLBC, 8 kHz + broadband Opus full-band, AAC). (5) Detector front-end deferred -> corpus stays waveform-level; do NOT bake polarity inversion or SpecAugment into the corpus (training-time choices). Remediation tiers: A (mandatory first) = Option B + uniform loudness + quick correctness fixes; B = real RawBoost + real codecs; C = correctness folded into B; D = Pydantic migration of schema.py + remove import-time mp.set_start_method + verify citations.
-**Alternatives considered:** (a) Option C (self-contained balanced corpus via equal clean fraction + minority oversampling) -- viable fallback if the trainer cannot reweight, NOT chosen because it duplicates minority clean and/or subsamples majority clean and lowers bonafide source diversity; Option B is ML-cleaner and keeps full spoof diversity. (b) A minimum augmentation factor for the minority class -- REJECTED as a fix: the leak is on the clean-fraction lever, not the factor lever; raising the minority factor lowers its clean fraction and widens the gap. (c) Hand-rolling faithful RawBoost/codec DSP -- rejected, hand-rolling is exactly why the current pipeline is broken. (d) Realism-prior redesign (smooth device-like filters, discard "unrealistic" augmentations) per the student -- rejected as the primary axis; the robustness prior (aggressive, non-physical augmentation regularizes and expands distribution support) is better supported, including by the student's own RawBoost/SpecAugment citations. Realism retained only as targeted telephony coverage within the all-threats codec set.
-**Outcome:** Decided; implementation pending. Hard constraint recorded: augmentation must preserve the spoofing artifact (label preservation) -- aggressive is fine, artifact-destroying is not. Do NOT train on existing `data/augmented/` until Tier A lands. Open: confirm the trainer supports class weighting (assumed yes for Option B); confirm the pipeline's venv (candidate repo-root `venv`) and ffmpeg availability for Tier B; MUSAN intelligible-speech keep-vs-exclude decision (threat-model dependent).
-=======
-### 2026-06-01: Acoustic augmentation pipeline design — CODEC layer redesign
-
-**Context:** The existing codec_augmenter.py used four independent Bernoulli gates
-(downsample, bandpass, packet loss, quantization) with no real codec applied. Labels said
-"CODEC_8K_LOSS3PCT" but no actual codec round-trip was performed. Deep research pass
-(109 agents, 25 claims adversarially verified) identified the correct structure and
-which weights have primary-source backing.
-
-**Decision:**
-1. Replace Bernoulli soup with three-step hierarchical categorical: tier → codec → mode.
-2. Use real ffmpeg codec round-trip (not naive DSP).
-3. AMR-NB mode set narrowed to the GSMA IR.92 mandatory {12.2, 7.4, 5.9, 4.75 kbps}
-   with a 10% fringe tail covering the 4 non-IMS modes.
-4. AMR-WB mode set narrowed to GSMA IR.36 mandatory {6.6, 8.85, 12.65, 15.85, 23.85 kbps}
-   with a 15% fringe tail.
-5. OPUS bitrates: {12, 16, 24, 32} kbps per RFC 7587 speech sweet-spots. 48k/64k excluded
-   (music regime).
-6. Packet loss changed from Bernoulli to Gilbert-Elliott burst model (Bolot 1993).
-7. PLC strategy made codec-specific (inband_fec for OPUS, pitch_cycle for G.729/G.723.1,
-   repetition for G.711, frame_independent for iLBC, application for AAC-LD).
-8. G.711 mu-law/A-law both included without per-country assignment (no primary source found
-   for LATAM per-country split).
-9. AMR-NB weight reduced from 15% to ~8% reflecting 2G sunset data (GSMA LATAM 2024).
-
-**Alternatives considered:**
-- Drop non-IMS AMR modes entirely — rejected. Coverage-over-precision: fringe modes
-  appear in direct SIP / enterprise deployments and HABLA includes ES speakers (European
-  operator profiles differ from LATAM). 10% fringe tail preserves coverage at low cost.
-- Keep all 9 AMR-WB modes at uniform weight — rejected. GSMA IR.36 makes the 5-mode set
-  a citable primary source; weighting by it is stronger than uniform sampling.
-- Keep Bernoulli packet loss — rejected. Bolot 1993 (3-0 verification vote) proves burst
-  loss materially changes perceptual quality vs i.i.d. at the same average rate.
-
-**Outcome:** Design finalized. Codec weights disclosed as engineering priors in thesis
-methodology. AMR-NB/WB mode sets and OPUS bitrates are citable from primary sources.
-Sensitivity analysis planned (±25% weight perturbation) as methodological insurance.
-Full design documented in methodology/augmentation.md.
-
-**Sources:**
-- GSMA IR.92 v12.0 (AMR-NB mandatory 4-mode set)
-- GSMA IR.36 v4.0 (AMR-WB mandatory 5-mode set)
-- IETF RFC 7587 §3.1.1 (OPUS speech bitrate sweet-spots)
-- Chen et al. 2021 arxiv:2107.12018 (landline/cellular/VoIP taxonomy)
-- Cohen et al. 2022 Speech Communication (50% EER reduction from codec augmentation)
-- Bolot 1993 SIGCOMM; Sun & Ifeachor 2005 IET Comm. (burst loss model)
-- GSMA Mobile Economy LATAM 2024 (2G sunset trend data)
-
----
-
 ### 2026-05-25: Paper from scratch, TASLP target, verified bibliography
 **Context:** El draft IEEE del 2026-05-10 (`IEEE/_archive/conference_101719_pre_skills.tex`) fue scaffolded por Claude en una sola sesion, nunca editado por Master Tomas, y su metodologia es pre-splice-rewrite (outdated). Decision de escribir el paper de nuevo usando el plugin academic-research-skills (v3.9.4.2) con la thesis-wiki como source of truth.
 **Decision:**
@@ -244,15 +178,55 @@ Full design documented in methodology/augmentation.md.
 2. **Escribir from scratch** via `/ars-plan` (Socratic chapter-by-chapter), NO partir del draft archivado. El archive queda solo como cantera de referencias.
 3. **Bibliografia verificada** en `IEEE/references.bib` (33 entradas, pass 2026-05-25). Cada entrada chequeada contra arXiv/DOI/ISCA.
 **Alternatives considered:** (a) Venue corto (Interspeech/ICASSP, 4-5 pp) -- rejected, obligaria a recortar a 2 pilares; un journal deja escribir los 4 y podar. (b) Reusar el draft archivado y editarlo -- rejected, metodologia outdated + nunca fue del autor. (c) Empezar bibliografia de cero (sin verificar el archive) -- rejected, las 22 refs del archive tenian valor curado; verificarlas fue barato.
-**Outcome (verificacion del archive):** Ninguna de las 23 refs era 100% fabricada, pero 9 necesitaron correccion. Errores corregidos en `references.bib`:
-  - **Titulos inventados:** `fishspeech` (era "OpenAudio-S1 technical report" -> "Fish-Speech: Leveraging LLMs..."), `qwen3tts` (subtitulo inventado + ano 2025->2026, arXiv:2601.15621), `cosyvoice` ("conditional flow matching" -> "CosyVoice 3: Towards In-the-wild...", arXiv:2505.17589), `parakeet` (FABRICADO "Parakeet TDT technical report" -> reemplazado por el paper TDT real Xu et al. ICML 2023 arXiv:2304.06795 + model card como software).
-  - **Autores erroneos:** `huang2024detectable` (W.->S.-F. Huang), `omnivoice` (K.->H. Zhu, arXiv:2604.00688), `li2025hqmpsd` (J.->M. Li; "spoof"->"Deepfake" en titulo).
-  - **Incompletos:** `luong2024llama` (titulo truncado; venue confirmado ICASSP 2025), `muller2024harder` (era single-author -> 5 autores, Interspeech 2024 arXiv:2406.03512).
-  - **6 huerfanas** en el archive (ecapa, nisqa, parakeet, hunt1996, moulines1990, stylianou2001) -- estaban en la lista pero nunca citadas en el cuerpo; en el paper nuevo se citan en su punto natural.
-  **Nuevas refs anadidas (verificadas):** `habla` (Tamayo-Florez/Manrique/Nunes Interspeech 2023 -- el corpus base, faltaba), `hispaspoof`, `speechfake`, `lrlspoof` (corpus es/multilingual), `aasist`/`rawnet2`/`tak2022ssl` (deteccion baselines), `musan`/`ko2017rir` (augmentation), `mfa` (forced alignment).
-**Positioning (HABLA v1 -> HABLA-Spoof):** HABLA-Spoof ES una extension deliberada del HABLA original (Tamayo-Florez/Manrique/Nunes, Interspeech 2023). El v1 publicado describe 5 naciones/~22k bonafide; este trabajo expande el pool bonafide a 7 acentos/1,567 speakers ("v2") y agrega los ataques full-synthesis, el corpus partial-spoof multi-sistema, y el boundary jitter. NO es inconsistencia -- es la narrativa de contribucion: se cita v1 (`habla`) como prior work y se posiciona v2 + ataques como la extension novel. Methodology debe hacer explicito el linaje "construimos sobre HABLA expandiendolo y mejorandolo".
+**Outcome:** 9 refs corregidas; 11 nuevas verificadas; `IEEE/references.bib` (33 entradas). TASLP journal LaTeX (`\documentclass[journal]{IEEEtran}`). Paper en ingles unicamente. Posicionamiento: HABLA-Spoof como extension deliberada del HABLA original (Tamayo-Florez et al., Interspeech 2023).
 
-**Idioma del paper: INGLES UNICAMENTE** (main text Y abstract). El skill academic-paper genera abstract bilingue (EN + zh-TW) por defecto -- en el intake (`/ars-plan` Phase 0) hay que fijar language=English y SUPRIMIR el abstract bilingue (solo abstract en ingles, sin zh-TW ni espanol). Master Tomas fue explicito: "solo lo quiero en ingles".
+### 2026-06-01: Acoustic augmentation pipeline design — CODEC layer redesign
+**Context:** The existing codec_augmenter.py used four independent Bernoulli gates (downsample, bandpass, packet loss, quantization) with no real codec applied. Deep research pass (109 agents, 25 claims adversarially verified) identified the correct structure and which weights have primary-source backing.
+**Decision:** (1) Replace Bernoulli soup with three-step hierarchical categorical: tier → codec → mode. (2) Use real ffmpeg codec round-trip. (3) AMR-NB mandatory {12.2, 7.4, 5.9, 4.75 kbps} + 10% fringe tail (GSMA IR.92). (4) AMR-WB mandatory {6.6, 8.85, 12.65, 15.85, 23.85 kbps} + 15% fringe tail (GSMA IR.36). (5) OPUS {12, 16, 24, 32} kbps per RFC 7587 speech sweet-spots. (6) Packet loss: Gilbert-Elliott burst model, not Bernoulli (Bolot 1993). (7) PLC strategy per codec. (8) G.711 mu-law/A-law both included, no per-country assignment. (9) AMR-NB weight ~8% (2G sunset, GSMA LATAM 2024).
+**Alternatives considered:** Drop non-IMS AMR modes -- rejected (fringe coverage). Uniform AMR-WB weights -- rejected (IR.36 is a primary source). Keep Bernoulli loss -- rejected (Bolot 1993 proves burst matters perceptually).
+**Outcome:** Design finalized. Full design documented in `methodology/augmentation.md`. Codec weights disclosed as engineering priors; sensitivity analysis (±25%) planned.
 
-**LaTeX template: `\documentclass[journal]{IEEEtran}`** (Opcion A). TASLP es revista, NO conferencia: dos columnas, autores en linea unica con afiliaciones como nota al pie -- NO los `\IEEEauthorblockN` apilados del estilo conference. (Se descarto explicitamente el `[conference]` del draft archivado: ese formato con bloques de autores arriba es de conferencia 5-6 pp, incompatible con el journal largo de 4 pilares.) Citas formato IEEE numerado, consistente con `IEEE/references.bib`.
->>>>>>> Stashed changes
+### 2026-06-06: RIR augmentation sourcing -- keep small/medium/large, cite Ko et al. 2017, do not adopt ASVspoof a/b/c
+**Context:** A student reviewing the data-augmentation pipeline proposed renaming the `small/medium/large` room classes to the ASVspoof2019 `a/b/c` scheme. RIR corpus confirmed as openSLR RIRS_NOISES (SLR28), Ko et al. ICASSP 2017. Only room-size class is exposed; T60/Ds are not per-RIR metadata.
+**Decision:** (1) Keep `small/medium/large` -- canonical, citeable labels. (2) Cite Ko et al. 2017 / SLR28. (3) State T60/Ds metadata limitation in methodology. (4) Reject `a/b/c` rename -- cannot populate the triplet; `a/b/c` is ASVspoof2019 Physical Access (replay), adopting it would misattribute provenance.
+**Alternatives considered:** Measure T60 per-RIR -- deferred as future work. Switch to simulated RIRs (pyroomacoustics/gpuRIR) for full T60/Ds control -- out of scope.
+**Outcome:** Decided. Add Ko et al. 2017 / SLR28 citation and one limitation sentence to methodology; keep code/class names unchanged.
+
+### 2026-06-08: Data-augmentation audit -- Option B (uniform augmentation + trainer-side balancing); proven libraries; all-threats codec
+**Context:** Full code audit of `app/augmenter/`, `app/config/augmentation_config.py`, `app/schema.py`, `app/utils/augmentation_calculator.py`, `app/scripts/augmentation_pipeline.py`. Found: (1) two label-leak shortcuts; (2) "RawBoost" not RawBoost; (3) "Codec" not a codec; (4) four correctness bugs.
+**Decision:** (1) **Option B** -- uniform augmentation factor for both classes; class balancing in the trainer. (2) Uniform loudness policy across all paths including clean. (3) Proven libraries -- official RawBoost + torchaudio/ffmpeg real codecs. (4) Codec coverage = all threats (G.711/AMR/iLBC narrowband + Opus/AAC broadband). (5) Detector front-end deferred; corpus stays waveform-level.
+**Alternatives considered:** Option C (minority oversampling) -- rejected, lower bonafide diversity. Minimum factor for minority -- rejected, does not fix the clean-fraction lever. Hand-rolled DSP -- rejected, that is exactly why the pipeline was broken.
+**Outcome:** Decided; implementation pending. Do NOT train on `data/augmented/` until Tier A lands. Remediation roadmap: Tier A (Option B + uniform loudness + correctness fixes) → Tier B (real RawBoost + real codecs) → Tier D (Pydantic migration).
+
+### 2026-06-09: RawBoost moved to training-time; CODEC raised to 40%; augmentation stacking (60/40 gate)
+**Context:** Post-presentation discussion 2026-06-09. Three refinements to the offline augmentation design decided after reviewing the pipeline structure and output format.
+**Decision:**
+1. **RawBoost removed from offline corpus.** Moves to on-the-fly augmentation at training time (applied per batch in the training loop, not pre-computed to disk). Fast CPU op — no pre-baking needed.
+2. **CODEC raised from 30% → 40%** (absorbs the freed 10%). New offline type distribution: `RIR_NOISE 60% / CODEC 40% / RAWBOOST 0%`.
+3. **Augmentation stacking via 3-way probability gate.** Per augmented clip: 60% → single augmentation (pick one from {RIR_NOISE, CODEC} with relative weights 60/40); 40% → stacked (apply RIR_NOISE first, then CODEC on top of the result). SYSTEM_ID uses `|` separator for stacked clips (e.g. `RIR_MEDIUM_NOI_SNR12|CODEC_OPUS_BR16K_LOSS3PCT`). No directory restructuring — flat FLAC folder preserved; protocol SYSTEM_ID encodes all information.
+**Alternatives considered:** (a) Separate output folder for stacked clips -- rejected; trainers read the protocol file, not the directory tree; `|` in SYSTEM_ID is sufficient and avoids data-loader complexity. (b) Keep RawBoost offline at 10% and add stacking -- rejected; would inflate augmented-per-clip count and complicate clean-fraction accounting. (c) Always stack (100%) -- rejected; single-augmentation clips serve as clean ablation points.
+**Outcome:** Decided. Implementation pending after Tier A prerequisite. Wiki updated: `methodology/data-augmentation.md` Layer 2 revised; `methodology/augmentation.md` Layer 2 revised.
+
+### 2026-07-09: Corpus named MARSA; venue changed to Scientific Data (Data Descriptor)
+**Context:** Paper-planning session. Two decisions that supersede prior entries. First, the corpus needed a citeable name (previously referred to informally as "HABLA-Spoof"). Second, the 2026-05-25 decision to target IEEE/ACM TASLP was revisited: Master Tomas selected Nature's **Scientific Data** (https://www.nature.com/sdata/) as the target venue.
+**Decision:**
+1. **Corpus name = MARSA** — Multi-accent Audio Recordings for Spanish Anti-spoofing. Chosen over finalist FARSA (Forged Audio Recordings of Spanish Accents). "mar" (sea) alludes to the Atlantic bridging the two continents in the corpus. Use "the MARSA corpus" everywhere; retire "HABLA-Spoof".
+2. **Venue = Scientific Data (Data Descriptor format)**, superseding the 2026-05-25 TASLP decision. Structure is now Background / Methods / Data Records / Technical Validation / Usage Notes / Code & Data Availability — NOT IMRaD. Citation style = Nature numbered.
+3. **Mandatory consequence:** the corpus MUST be publicly deposited (Zenodo/Figshare) before/concurrent with submission — confirmed acceptable by Master Tomas. A baseline anti-spoofing EER (Technical Validation) is still OUTSTANDING and is the one remaining blocker; baseline model not yet chosen.
+4. **Scope:** full-spoof (6 systems, ~186,477) + partial-spoof (86,766, with W1/W2/W3 tiers, 7 splice methods, valley-score selection, boundary-jitter variant) + augmentation (2x/3x/5x/10x). Partial spoof is IN (not deferred), contrary to an earlier planning assumption.
+**Alternatives considered:** (a) TASLP (prior decision) — superseded; Scientific Data better fits a dataset-centric contribution and mandates the open deposit that maximizes corpus impact. (b) FARSA name — runner-up, lost to MARSA. (c) Full-spoof-only scope — rejected; partial-spoof production (86,766 samples verified on-server 2026-07-09) is at corpus scale and is the strongest differentiator vs HQ-MPSD.
+**Outcome:** Decided. Literature grounding gathered this session: Spanish dialect acoustic variation (Kantharuban et al. 2023 EMNLP Findings; Zuluaga-Gomez et al. 2023 Interspeech CommonAccent; Nacimiento-Garcia et al. 2024 Applied Sciences); prior Spanish partial spoof HQ-MPSD (Li et al. 2025, ~13k Spanish partial-spoof samples, single TTS/accent, no augmentation) — MARSA exceeds it on every axis. Four bibliography entries to add. See memory [project-marsa-naming].
+
+### 2026-07-09: OpenVoice WavMark watermark removed; all OpenVoice to be regenerated
+**Context:** Code audit of the six cloners found that OpenVoice V2 embeds a WavMark steganographic watermark in the waveform by default. `ToneColorConverter` defaults to `enable_watermark=True` and `convert()` calls `add_watermark(audio, message)` unconditionally, so the old cloner (constructed with defaults, `message="@MyShell"`) stamped a `@MyShell` WavMark into all ~29,626 OpenVoice full-spoof samples. WavMark survives resampling/re-encoding. No other system carries a watermark (Chatterbox's Perth watermark was already removed via `NoOpWatermarker`). This is a label-leak shortcut: a detector could learn the watermark instead of the synthesis artifact. Master Tomas's recollection had the two systems inverted; verified against OpenVoice source (`openvoice/api.py`).
+**Decision:** (1) Set `enable_watermark=False` when constructing `ToneColorConverter` in `app/pipeline/openvoice_attack/utils/cloner.py` (one line; mirrors the Chatterbox bypass). With it, the WavMark model is not loaded and `add_watermark()` returns audio untouched, so the `message` is inert. (2) **Regenerate ALL OpenVoice, both full-spoof and partial-spoof**, with the fixed cloner. The same Cloner is shared by partial-spoof via the dispatcher, so the fix propagates automatically.
+**Alternatives considered:** (a) Disclose the watermark as a limitation instead of regenerating — rejected; OpenVoice is the fastest system (RTF 0.07-0.10) so regeneration is cheap (hours), and a clean corpus is strictly better than a disclosed contaminant. (b) Drop OpenVoice entirely — rejected; it is the deliberate low-fidelity cloner (SIM 0.394) that widens the quality spread. (c) Post-hoc watermark stripping — rejected; regenerating clean is simpler and guaranteed.
+**Outcome:** Code fixed 2026-07-09. Regeneration pending on ml-server03. Watermark removal does not change ECAPA SIM (imperceptible), so full-spoof yield should stay ~29,626, clean. Partial-spoof OpenVoice yield remains ~0 (intrinsic ECAPA SIM 0.60 gate) but is reprocessed for consistency. See memory [openvoice-watermark-contamination].
+
+### 2026-07-09: Tesis 2 scope defined (evaluation project)
+**Context:** The thesis splits into two documents. Tesis 1 = MARSA corpus construction (done). Tesis 2 = the continuation: evaluation. Scoped in a planning session; proposal written to `IEEE/thesis.tex` (Spanish, 9-section Uniandes format: objetivo general / antecedentes / justificacion / objetivos especificos / ambiente y restricciones / etapas / cronograma / resultados esperados / bibliografia).
+**Decision:** One-semester (~16 week) scope with these objectives: (OE1) consolidate acoustic augmentation of MARSA at full scale; (OE2) design + apply augmentation to the partial-spoof corpus incl. jittered variant, preserving frame-level labels; (OE3) speaker-disjoint splits + HISPASpoof label mapping; (OE4) fine-tune THREE modern 2025-26 pretrained detectors on MARSA; (OE5) stratified in-corpus EER by attack / partial-spoof tier / accent / augmentation; (OE6) cross-corpus generalization = TRAIN on MARSA, EVALUATE on HISPASpoof; (OE7) complete Technical Validation + Zenodo deposit + submit the Data Descriptor.
+- **The three baseline detectors:** Nes2Net (WavLM_Nes2Net_X_SeLU, arXiv:2504.05657, lightweight nested Res2Net over WavLM — easiest); DF_Arena_1B / RAPTOR (arXiv:2603.06164, SSL + pairwise-gated transformer, NON-COMMERCIAL license, "1B" is an identifier not a verified param count); HoliAntiSpoof (arXiv:2602.04535, 7B Audio-LLM = Qwen2.5-Omni + LoRA — heaviest, contingency = zero-shot if GPU/time short).
+- **Deliverable:** benchmark + submit the MARSA Scientific Data Data Descriptor. The baseline EER is the one blocker for that submission; Tesis 2 produces it.
+**Alternatives considered:** (a) Classic AASIST/RawNet2 baselines — the student chose the three modern 2025-26 detectors instead for a stronger, current benchmark. (b) In-corpus eval only — rejected; cross-corpus (MARSA->HISPASpoof) is the core generalization story. (c) Two-semester scope — a leaner one-semester plan was chosen; HoliAntiSpoof fine-tuning and reverse cross-corpus are stretch goals.
+**Outcome:** Proposal drafted. Guaranteed core = OE1-OE6 with >=2 detectors. Manuscripts created this session: `IEEE/main.tex` (Scientific Data Data Descriptor, English, self-contained, embedded bib, baseline-EER section marked PENDING) and `IEEE/thesis.tex` (Tesis 2 proposal, Spanish). Both title lines still pending Master Tomas's choice (wants partial-spoof + augmentation framing). Bib grew to 39 entries (`IEEE/references.bib`): +3 dialect, +3 detector models. See memory [project-tesis2-scope].

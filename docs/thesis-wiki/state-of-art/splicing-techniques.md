@@ -134,19 +134,35 @@ where t ranges from 0 to 1 over the overlap duration.
 
 ---
 
-## Our 7-Technique Implementation for HABLA 2.0
+## Our 7-Technique Implementation for MARSA
 
-Seven techniques in varied proportions, informed by the literature review:
+Seven techniques in varied proportions, informed by the literature review.
+**Code-verified against `app/pipeline/partial_spoof/utils/splice_method.py`
+(`SPLICE_METHOD_WEIGHTS`) and `utils/crossfade.py` (`_compute_fade_curves`),
+2026-07-09.** The fade-curve column gives the exact fade-in envelope for
+`t in [0, 1]`; fade-out = fade-in(1 - t).
 
-| # | Technique | Proportion | Overlap Duration | Implementation |
-|---|-----------|-----------|------------------|----------------|
-| 1 | Direct cut-paste | 10% | None | Hard concat at zero-crossing |
-| 2 | OLA Hanning | 20% | Random 32-128 ms | Hanning window overlap-add |
-| 3 | Crossfade linear | 15% | Random 30-80 ms | Linear fade-out/fade-in |
-| 4 | Crossfade cosine | 20% | Random 30-80 ms | Raised cosine (Hann) window |
-| 5 | Crossfade half-sine | 15% | Random 30-80 ms | Half sine wave fade |
-| 6 | Crossfade logarithmic | 10% | Random 30-80 ms | Log fade curve |
-| 7 | Crossfade inverted parabola | 10% | Random 30-80 ms | Quadratic fade curve |
+| # | Enum member | Proportion | Fade-in curve | Class |
+|---|-------------|-----------|---------------|-------|
+| 1 | `CUT_PASTE` | 10% | none (hard concat) | maximum discontinuity |
+| 2 | `OLA_HANNING` | 20% | `0.5(1 - cos pi*t)` | equal-gain S-curve |
+| 3 | `LINEAR` | 15% | `t` | equal-gain |
+| 4 | `COSINE` | 20% | `sin(pi*t/2)` | equal-power |
+| 5 | `HALF_SINE` | 15% | `sqrt(t)` | equal-power (square-root law) |
+| 6 | `LOGARITHMIC` | 10% | `log(1 + 9t)/log 10` | aggressive initial rise |
+| 7 | `PARABOLA` | 10% | `1 - (1 - t)^2` | equal-gain concave |
+
+Weights sum to 1.00. A single overlap duration is drawn per splice, uniformly
+from `[CROSSFADE_MIN_MS, CROSSFADE_MAX_MS]` (one range for ALL methods, not
+per-method ranges as an earlier draft of this table implied). The effective
+crossfade is then bounded by the available silent run on each side of the
+cloned word so the fade never bleeds a neighbouring word into the seam.
+
+**NAMING CAVEAT FOR THE PAPER.** The enum member `HALF_SINE` is a misnomer:
+its curve is the square-root law `sqrt(t)` (equal-power), NOT a half-sine.
+In paper prose, describe method 5 by its mathematical form (`sqrt(t)`,
+equal-power) — never copy the enum name, or a reviewer checking the code
+will flag the inconsistency.
 
 ### Design rationale
 

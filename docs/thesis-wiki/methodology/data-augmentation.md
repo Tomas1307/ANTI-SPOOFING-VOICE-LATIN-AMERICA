@@ -23,14 +23,35 @@ The robustness prior is the better-supported one for anti-spoofing generalizatio
 
 ---
 
-## 2. Architecture (as built)
+## 2. Architecture (as built → pending redesign)
 
 - `BaseAugmenter` (ABC) with `augment()`, plus helpers `_normalize_audio` (RMS to -20 dB), `_ensure_sample_rate`, `_clip_audio`.
 - Three concrete augmenters: `RIRAugmenter`, `CodecAugmenter`, `RawBoostAugmenter`.
-- `AugmentationConfigManager` (singleton) holds strategies `3x/5x/10x`, all with type distribution **RIR_NOISE 60% / CODEC 30% / RAWBOOST 10%**.
+- `AugmentationConfigManager` (singleton) holds strategies `3x/5x/10x`, all with type distribution **RIR_NOISE 60% / CODEC 30% / RAWBOOST 10%** (pre-2026-06-09 design — see Section 2a for the locked new design).
 - `AugmentationPipeline` orchestrator: balanced-mode factor computation (`AugmentationModeCalculator`), speaker-disjoint train/dev/eval, **dev/eval are 100% clean**, originals always preserved, ASVspoof LA protocol emitted with per-clip SYSTEM_ID labels.
 
 Augmentation type is selected per clip by a label-blind draw (same distribution for both classes).
+
+### 2a. Locked redesign (2026-06-09) — replaces the above when implemented
+
+**Offline type distribution (new):** `RIR_NOISE 60% / CODEC 40% / RAWBOOST 0%`
+
+RawBoost moves entirely to **training-time on-the-fly augmentation** (applied per batch in the training loop, never pre-baked to disk). It is a fast CPU operation with no GPU or disk I/O requirement; pre-computing it adds corpus size with no benefit.
+
+**Stacking gate — applied per augmented clip:**
+
+```
+roll p ~ U(0,1)
+if p < 0.40:   # stacked (40%)
+    apply RIR_NOISE → then CODEC on top
+    SYSTEM_ID = "RIR_<params>|CODEC_<params>"
+else:           # single (60%)
+    pick type from {RIR_NOISE, CODEC} with relative weights {60, 40}
+    apply that type alone
+    SYSTEM_ID = "RIR_<params>"  or  "CODEC_<params>"
+```
+
+Output structure is **unchanged** — all FLAC files in one flat folder. The `|` character in SYSTEM_ID is the only encoding of stacked vs. single; no separate directory is needed. Trainers read the protocol file, not the directory tree, so single vs. stacked can be filtered at any time by checking for `|` in SYSTEM_ID.
 
 ---
 
@@ -120,16 +141,19 @@ Loudness therefore correlates with augmentation type and (via #1) with class —
 
 ---
 
-## 8. Locked decisions (2026-06-08)
+## 8. Locked decisions
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| 1 | **Option B** — uniform augmentation factor for both classes; class balancing moved to the trainer (weighted loss / sampler) | Kills shortcut #1 at the source; keeps augmentation label-blind; preserves full spoof diversity; no duplicated bonafide |
-| 2 | Uniform loudness policy across all paths incl. clean | Kills shortcut #2 |
-| 3 | **Proven libraries**, no hand-rolled DSP — official RawBoost + torchaudio/ffmpeg codecs | The hand-rolled imitations are exactly why the pipeline is broken |
-| 4 | Codec coverage = **all threats** (narrowband G.711/AMR/iLBC + broadband Opus/AAC) | Maximum channel coverage; aligns with robustness prior; covers LatAm phone fraud as a subset |
-| 5 | Detector front-end **deferred / out of scope** -> corpus stays **waveform-level**, no polarity inversion or SpecAugment baked in | Those are model/training-time choices; nothing now commits the front-end |
-| 6 | RIR: keep small/medium/large, cite Ko et al. 2017 / SLR28, state T60/Ds metadata limitation; reject the a/b/c rename | Canonical provenance; can't populate the triplet; a/b/c is ASVspoof PA (misattribution) |
+| # | Decision | Date | Rationale |
+|---|----------|------|-----------|
+| 1 | **Option B** — uniform augmentation factor for both classes; class balancing in the trainer (weighted loss / sampler) | 2026-06-08 | Kills shortcut #1 at the source; keeps augmentation label-blind; preserves full spoof diversity |
+| 2 | Uniform loudness policy across all paths incl. clean | 2026-06-08 | Kills shortcut #2 |
+| 3 | **Proven libraries**, no hand-rolled DSP — official RawBoost + torchaudio/ffmpeg codecs | 2026-06-08 | Hand-rolled imitations are exactly why the pipeline is broken |
+| 4 | Codec coverage = **all threats** (narrowband G.711/AMR/iLBC + broadband Opus/AAC) | 2026-06-08 | Maximum channel coverage; aligns with robustness prior |
+| 5 | Detector front-end **deferred** — corpus stays **waveform-level**, no polarity inversion or SpecAugment baked in | 2026-06-08 | Those are model/training-time choices |
+| 6 | RIR: keep small/medium/large, cite Ko et al. 2017 / SLR28, state T60/Ds metadata limitation; reject a/b/c rename | 2026-06-06 | Canonical provenance; can't populate the triplet; a/b/c is ASVspoof PA |
+| 7 | **RawBoost removed from offline corpus** — moved to training-time on-the-fly augmentation | 2026-06-09 | Fast CPU op; no pre-baking benefit; frees 10% offline weight |
+| 8 | **CODEC raised 30% → 40%** (absorbs freed RawBoost slot) — offline distribution: RIR_NOISE 60% / CODEC 40% | 2026-06-09 | Stronger channel coverage in offline corpus |
+| 9 | **Stacking gate**: 60% single augmentation / 40% RIR_NOISE+CODEC stacked; SYSTEM_ID uses `\|` separator; flat folder preserved | 2026-06-09 | Models real-world reverb+telephony degradation; no directory restructuring needed |
 
 ## 9. Remediation roadmap
 

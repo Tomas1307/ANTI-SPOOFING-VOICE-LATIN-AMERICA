@@ -1,0 +1,100 @@
+<section class="slide tall">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Augmentation &mdash; Stacking Gate: Audio Demo</div>
+    <h2>What does RIR+Noise &rarr; Codec actually sound like?</h2>
+    <p style="margin-bottom:18px; max-width:860px; font-size:13px; color:var(--muted);">
+      Each clip below is the same recording passed through an increasing degradation chain.
+      Listen left-to-right: the spoofing cue must survive all the way to the rightmost column
+      for the detector to catch it. These are real outputs of the stacking gate.
+    </p>
+
+    <!-- Bonafide row -->
+    <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">
+      Bonafide &mdash; HABLA v2 (real speech)
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px;">
+      <div style="background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:5px;">Original</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/bonafide/original.wav"></audio>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); margin-bottom:5px;">RIR + Noise</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/bonafide/rir.wav"></audio>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; G.711</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/bonafide/stacked_rir_g711.wav"></audio>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; Opus</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/bonafide/stacked_rir_opus.wav"></audio>
+      </div>
+      <div style="background:#0d0d0d; border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; AMR-NB</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/bonafide/stacked_rir_amr.wav"></audio>
+      </div>
+    </div>
+
+    <!-- FishGram row -->
+    <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">
+      FishGram &mdash; Fish Speech + Whisper resynth (spoof)
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px;">
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.2); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:5px;">Original</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/fishgram/original.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); margin-bottom:5px;">RIR + Noise</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/fishgram/rir.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; G.711</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/fishgram/stacked_rir_g711.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; Opus</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/fishgram/stacked_rir_opus.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; AMR-NB</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/fishgram/stacked_rir_amr.wav"></audio>
+      </div>
+    </div>
+
+    <!-- Qwen row -->
+    <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">
+      Qwen3-TTS &mdash; Alibaba (spoof)
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px;">
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(245,166,35,0.2); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted2); margin-bottom:5px;">Original</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/qwen/original.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(62,255,139,0.25); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--green); margin-bottom:5px;">RIR + Noise</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/qwen/rir.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; G.711</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/qwen/stacked_rir_g711.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; Opus</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/qwen/stacked_rir_opus.wav"></audio>
+      </div>
+      <div style="background:rgba(245,166,35,0.04); border:1px solid rgba(77,159,255,0.35); border-radius:6px; padding:8px;">
+        <div style="font-size:9px; letter-spacing:1.5px; text-transform:uppercase; color:var(--blue); margin-bottom:5px;">RIR &rarr; AMR-NB</div>
+        <audio controls preload="none" style="width:100%;" src="data/demo_augmentations/qwen/stacked_rir_amr.wav"></audio>
+      </div>
+    </div>
+
+    <div class="callout hi" style="margin-top:4px;">
+      <strong style="color:var(--white);">What to listen for.</strong>
+      The G.711 column sounds like a landline call from a reverberant room. Opus sounds like a noisy VoIP call.
+      AMR-NB is the most aggressive &mdash; 8 kHz mobile codec on top of reverb.
+      If the <em>synthetic</em> character is still audible through the rightmost column, the stacking budget is correct.
+      If it completely disappears, 40% stacking is too aggressive.
+    </div>
+  </div>
+</section>
