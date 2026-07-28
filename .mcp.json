@@ -3,6 +3,10 @@
     "engram": {
       "command": "C:/Users/acost/tools/engram.exe",
       "args": ["mcp", "--tools=agent"]
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
     }
   }
 }

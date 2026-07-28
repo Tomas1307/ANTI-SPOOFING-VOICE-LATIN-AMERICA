@@ -197,8 +197,11 @@ class AugmentationPipeline:
         # Parse factor
         self.factor_num = int(min_factor.replace('x', ''))
 
-        # Create output directory name (mode tag kept in the path)
-        ratio_str = f"{int(target_ratio*100)}{int((1-target_ratio)*100)}"
+        # Create output directory name (mode tag kept in the path). In uniform
+        # mode target_ratio is inert (same factor for both classes, natural
+        # ratio preserved), so encode "natural" rather than a misleading
+        # 50/50-style ratio suffix.
+        ratio_str = "natural" if mode == "uniform" else f"{int(target_ratio*100)}{int((1-target_ratio)*100)}"
         self.output_dir = self.output_root / f"augmented_{min_factor}_{mode}_{ratio_str}"
         
         # Initialize components

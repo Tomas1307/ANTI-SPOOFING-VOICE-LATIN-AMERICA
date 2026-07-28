@@ -8,26 +8,43 @@
 
 ## Summary Table — Full-Spoof Production (MARSA corpus)
 
-Full-spoof FLAC counts verified on ml-server03 2026-07-09 by `find <attack>_output -name "*.flac" | wc -l`.
+Counts AUTHORITATIVE per `LA/` FLAC + metrics CSV `status==passed` (verified 2026-07-14).
+Supersedes the 2026-07-09 raw `find` counts. Metrics are means over passed samples.
 
-| Pipeline | Status | Passed FLAC | Pass Rate | WER | NISQA | SIM | RTF |
-|----------|--------|-------------|-----------|-----|-------|-----|-----|
+| Pipeline | Status | Passed | Pass Rate | WER | NISQA | SIM | RTF |
+|----------|--------|--------|-----------|-----|-------|-----|-----|
 | FishGram | DONE | 34,197 | 95.2% | 2.17% | 4.57 | 0.602 | 2-3x |
 | Qwen3-TTS | DONE | 31,568 | 87.9% | 1.46% | 4.37 | 0.720 | 3-5x |
-| OpenVoice | DONE | 29,626 | 83.4% | 1.50% | 4.41 | 0.394 | 0.07-0.10x |
-| Chatterbox | DONE | 31,701 | ~88.2% | TBD | TBD | TBD | 31-45x |
-| OuteTTS | DONE | 25,642 | ~71.4% | TBD | TBD | TBD | ~5.6x |
-| OmniVoice | DONE | 33,743 | ~93.9% | 1.85% | 4.59 | 0.696 | ~0.025x |
+| OpenVoice | DONE (watermark-free re-run 2026-07-14) | 29,796 | 83.1% | 1.50% | 4.38 | 0.388 | 0.07-0.10x |
+| Chatterbox | DONE | 31,701 | ~88.2% | 1.20% | 4.39 | 0.714 | 31-45x |
+| OuteTTS | DONE | 25,642 | ~71.4% | 2.36% | 4.45 | 0.462 | ~5.6x |
+| OmniVoice | DONE | 33,743 | ~93.9% | 1.06% | 4.28 | 0.686 | ~0.025x |
 | CosyVoice | DROPPED | - | - | - | - | - | - |
-| **Total full spoof** | | **~186,477** | | | | | |
+| **Total full spoof** | | **186,647** | | | | | |
 
-**Partial-spoof production:** 86,766 spliced FLAC across all 6 attacks (verified 2026-07-09,
-`data/partial_spoof_output/{chatterbox,fishgram,omnivoice,openvoice,outetts,qwen}`).
-A separate validation set of 292 samples lives in `data/partial_spoof_output_validation_292/`.
+**CORRECTION 2026-07-14:** OmniVoice metrics were previously logged from the 6-sample validation
+run (NISQA 4.59 / SIM 0.696 / WER 1.85%); the full production means are NISQA **4.28** / SIM 0.686 /
+WER 1.06% -- OmniVoice is the LOWEST NISQA of the suite, not the highest. FishGram (4.57) is highest.
+Chatterbox SIM 0.714 is second only to Qwen (0.720). OpenVoice re-run clean: 29,796 (was 29,626),
+metrics unchanged within noise -> confirms watermark removal is quality-neutral.
 
-**Corpus grand total (pre-augmentation):** ~35,927 bonafide + ~186,477 full spoof
-+ 86,766 partial spoof = **~309,170 utterances**.
-Augmentation factors already generated on-server: `augmented/augmented_{2x,3x,5x,10x}_balanced_5050/`.
+**Partial-spoof production (AUTHORITATIVE, `corpus_samples.csv`, 2026-07-14):** **18,421 spliced
+samples** (28,720 spoofed words). The earlier "86,766" was a raw file miscount (counted intermediates:
+`cloned/` + `spliced/` + `references/` + `LA/flac/` ~= 4.7x the sample count). Breakdown -- by attack:
+omnivoice 10,990 / chatterbox 3,423 / qwen 1,565 / fishgram 1,317 / outetts 1,073 / **openvoice 53**
+(ECAPA 0.60 gate nearly excludes it, SIM 0.388). By tier: W1 10,276 / W2 5,991 / W3 2,154.
+By partition: jittered 9,965 / not_jittered 8,456. By quality_flag: high 4,875 / medium 13,072 / low 474.
+
+**Recommended clean partial-spoof subset (created 2026-07-14):** applying the full-spoof intelligibility
+gate (WER<=0.15 & CER<=0.10) to the 18,421 keeps **15,641** (84.9%); losses ~9-18% per system so
+composition is preserved. Copied to `data/partial_spoof_clean/` (audio + `corpus_samples_clean.csv` +
+`corpus_spoofed_words_clean.csv`); the full 18,421 in `data/partial_spoof_output/` is left intact.
+Paper reports 18,421 total with 15,641 as the recommended clean partition (deposit all, train on clean).
+
+**Corpus grand total (pre-augmentation):** 35,927 bonafide + 186,647 full spoof
++ 18,421 partial spoof = **240,995 utterances**.
+Augmentation `augmented_*_balanced_5050/` folders are the OLD pre-Option-B approach and must be
+re-run uniform (Tesis 2 OE1) before deposit.
 
 All six TTS pipelines are COMPLETE. The 2026-05-06 wiki state that listed Chatterbox/OuteTTS
 as RUNNING and OmniVoice as validation-only is superseded.

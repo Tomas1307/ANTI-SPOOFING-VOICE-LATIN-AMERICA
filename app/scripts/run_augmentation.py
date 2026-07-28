@@ -160,11 +160,14 @@ Strategy:
         spoof_pct = 100 - bonafide_pct
 
         logger.info("\n" + "="*70)
-        logger.info("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
+        logger.info(f"ANTI-SPOOFING DATA AUGMENTATION - {args.mode.upper()} MODE")
         logger.info("="*70)
         logger.info(f"\nRun Configuration:")
         logger.info(f"  Mode:         {args.mode}")
-        logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
+        if args.mode == "uniform":
+            logger.info(f"  Class ratio:  natural (preserved; target_ratio not applied in uniform mode)")
+        else:
+            logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
         logger.info(f"  Min factor:   {args.min_factor}")
         logger.info(f"  Clean frac:   {args.clean_fraction:.0%}")
         logger.info(f"  Loudness:     {args.loudness_dbfs} dBFS")

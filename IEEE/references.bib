@@ -45,6 +45,14 @@
   eprint    = {2109.00537}
 }  % [VERIFIED] arXiv:2109.00537
 
+@inproceedings{asvspoof5,
+  author    = {Wang, Xin and Delgado, H{\'e}ctor and Tak, Hemlata and others},
+  title     = {{ASVspoof} 5: Crowdsourced Speech Data, Deepfakes, and Adversarial Attacks at Scale},
+  booktitle = {Proc. ASVspoof Workshop},
+  year      = {2024},
+  eprint    = {2408.08739}
+}  % [VERIFIED 2026-07-13] Current ASVspoof flagship; journal version arXiv:2502.08857.
+
 % ---------------------------------------------------------------------
 % Generalization crisis
 % ---------------------------------------------------------------------
@@ -94,6 +102,14 @@
   year      = {2021},
   eprint    = {2104.03617}
 }  % [VERIFIED] arXiv:2104.03617
+
+@inproceedings{add2022,
+  author    = {Yi, Jiangyan and Fu, Ruibo and Tao, Jianhua and others},
+  title     = {{ADD} 2022: The First Audio Deep Synthesis Detection Challenge},
+  booktitle = {Proc. ICASSP},
+  year      = {2022},
+  eprint    = {2202.08433}
+}  % [VERIFIED 2026-07-13] First challenge-scale partial-fake (PF) track; MARSA partial-spoof antecedent.
 
 @article{li2025hqmpsd,
   author  = {Li, Menglu and others},
@@ -211,29 +227,41 @@
 % ---------------------------------------------------------------------
 % Spanish / multilingual spoofing datasets (related work)
 % ---------------------------------------------------------------------
-@misc{hispaspoof,
-  author       = {{Purdue VIPER Lab} and others},
-  title        = {{HISPASpoof}: A New Dataset for Spanish Speech Forensics},
-  howpublished = {arXiv preprint},
-  year         = {2025},
-  eprint       = {2509.09155}
-}  % [TODO-AUTH] 6 accents, 6 zero-shot TTS; full author list to be pulled
+@inproceedings{hispaspoof,
+  author    = {Risques, Maria and Bhagtani, Kratika and Yadav, Amit Kumar Singh and Delp, Edward J.},
+  title     = {{HISPASpoof}: A New Dataset for Spanish Speech Forensics},
+  booktitle = {Proc. ICASSP},
+  year      = {2026},
+  eprint    = {2509.09155}
+}  % [VERIFIED 2026-07-13] Purdue VIPER; accepted ICASSP 2026 (upgraded from bare
+   % arXiv). 6 accents, 6 zero-shot TTS. Author list confirmed via citation-check.
 
 @inproceedings{speechfake,
-  author    = {Huang, Yi and Gu, Jiarui and others},
+  author    = {Huang, Wen and Gu, Yanmei and Wang, Zhiming and Zhu, Huijia and Qian, Yanmin},
   title     = {{SpeechFake}: A Large-Scale Multilingual Speech Deepfake Dataset Incorporating Cutting-Edge Generation Methods},
   booktitle = {Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
   year      = {2025},
   eprint    = {2507.21463}
-}  % [TODO-AUTH] 46 languages; the MD subset = "SpeechFake-MD"
+}  % [VERIFIED 2026-07-13] Author initials corrected: W. Huang / Y. Gu (were wrongly
+   % "Y. Huang / J. Gu"). 46 languages; the MD subset = "SpeechFake-MD".
 
-@misc{lrlspoof,
-  author       = {Anonymous and others},
-  title        = {When Spoof Detectors Travel: Evaluation Across 66 Languages in the Low-Resource Language Spoofing Corpus},
-  howpublished = {arXiv preprint},
-  year         = {2026},
-  eprint       = {2603.02364}
-}  % [TODO-AUTH] 66 languages, 24 TTS; full author list to be pulled
+@inproceedings{mlaad,
+  author    = {M{\"u}ller, Nicolas M. and Kawa, Piotr and Choong, Wei Herng and others},
+  title     = {{MLAAD}: The Multi-Language Audio Anti-Spoofing Dataset},
+  booktitle = {Proc. International Joint Conference on Neural Networks (IJCNN)},
+  year      = {2024},
+  eprint    = {2401.09512}
+}  % [VERIFIED 2026-07-13] 51+ languages incl. Spanish (single accent/lang); broad-but-shallow
+   % multilingual corpus MARSA must acknowledge vs the "English/Mandarin only" framing.
+
+@inproceedings{lrlspoof,
+  author    = {Borodin, Kirill and Kudryavtsev, Vasiliy and Maslov, Maxim and Gorodnichev, Mikhail and Mkrtchian, Grach},
+  title     = {When Spoof Detectors Travel: Evaluation Across 66 Languages in the Low-Resource Language Spoofing Corpus},
+  booktitle = {Proc. Interspeech},
+  year      = {2026},
+  eprint    = {2603.02364}
+}  % [VERIFIED 2026-07-13] Author list confirmed (Moscow Tech. Univ. of
+   % Communications and Informatics); Interspeech 2026. 66 languages, 24 TTS.
 
 % ---------------------------------------------------------------------
 % Quality metrics, ASR, and forced alignment
