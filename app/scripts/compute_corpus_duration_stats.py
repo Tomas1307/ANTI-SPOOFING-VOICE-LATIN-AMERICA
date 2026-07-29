@@ -16,7 +16,17 @@ codec re-encoding) does not change utterance duration, so augmented-tier
 hours can be derived analytically as base-tier hours times the
 augmentation factor (x2, x3, x5, x10) rather than rescanned from disk.
 
-Usage on ml-server03 (CPU-only; soundfile header reads, no GPU):
+Deliberately imports nothing from app.pipeline.*: every attack pipeline's
+__init__.py eagerly imports its pipeline_facade, which cascades into its
+steps and cloners (e.g. Chatterbox's cloner unconditionally imports the
+`perth` watermarking package). Those dependencies live in each pipeline's
+own isolated venv and are not all present together in any single venv, so
+this script only ever touches plain files (JSON/CSV/audio headers) and
+uses the pipelines' documented default OUTPUT_DIR paths as string
+literals -- no pipeline package is imported.
+
+Usage on ml-server03 (CPU-only; soundfile header reads, no GPU; any venv
+with soundfile/loguru/tqdm/pydantic is sufficient, e.g. fishgram_env):
     source ~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/envs/fishgram_env/bin/activate
     python -m app.scripts.compute_corpus_duration_stats
     deactivate
@@ -31,28 +41,24 @@ import soundfile as sf
 from loguru import logger
 from tqdm import tqdm
 
-from app.pipeline.chatterbox_attack.settings import settings as chatterbox_settings
-from app.pipeline.fishgram_attack.settings import settings as fishgram_settings
-from app.pipeline.omnivoice_attack.settings import settings as omnivoice_settings
-from app.pipeline.openvoice_attack.settings import settings as openvoice_settings
-from app.pipeline.outetts_attack.settings import settings as outetts_settings
-from app.pipeline.partial_spoof.settings import settings as partial_spoof_settings
-from app.pipeline.qwen_attack.settings import settings as qwen_settings
 from app.schemas.corpus_duration_report import CorpusDurationReport
 from app.schemas.corpus_tier_duration_stat import TierDurationStat
 from app.schemas.fullspoof_system_description_stat import SystemDescriptionStat
 
 CACHED_TRANSCRIPTS_FILENAME = "bonafide_transcripts_full.json"
+DEFAULT_BONAFIDE_DIR = Path("data/bonafide_dataset_by_speaker_v2")
+DEFAULT_MANIFEST_DIR = Path("data/manifests")
+DEFAULT_PARTIAL_SPOOF_ROOT = Path("data/partial_spoof_output")
 
-# (attack pipeline settings singleton, display name matching the paper's
-# system tables)
-FULLSPOOF_SYSTEMS: List[Tuple[object, str]] = [
-    (fishgram_settings, "Fish-Speech (FishGram)"),
-    (qwen_settings, "Qwen3-TTS"),
-    (openvoice_settings, "OpenVoice v2"),
-    (chatterbox_settings, "Chatterbox"),
-    (outetts_settings, "OuteTTS"),
-    (omnivoice_settings, "OmniVoice"),
+# (OUTPUT_DIR default from each attack pipeline's settings.py, display name
+# matching the paper's system tables)
+FULLSPOOF_SYSTEMS: List[Tuple[Path, str]] = [
+    (Path("data/fishgram_output"), "Fish-Speech (FishGram)"),
+    (Path("data/qwen_output"), "Qwen3-TTS"),
+    (Path("data/openvoice_output"), "OpenVoice v2"),
+    (Path("data/chatterbox_output"), "Chatterbox"),
+    (Path("data/outetts_output"), "OuteTTS"),
+    (Path("data/omnivoice_output"), "OmniVoice"),
 ]
 
 PARTIAL_SPOOF_SAMPLES_GLOB = "*/*/samples.csv"
@@ -77,7 +83,7 @@ class CorpusDurationStatsComputer:
         partial_spoof_root: Optional[Path] = None,
         report_output_path: Optional[Path] = None,
     ) -> None:
-        """Initialize the computer, defaulting to the pipelines' own settings.
+        """Initialize the computer with sensible default paths.
 
         Args:
             bonafide_dir: Override for the bonafide speaker root.
@@ -86,15 +92,13 @@ class CorpusDurationStatsComputer:
                 under which samples.csv files are discovered.
             report_output_path: Override for the output report JSON location.
         """
-        self.bonafide_dir = bonafide_dir or partial_spoof_settings.BONAFIDE_DIR
+        self.bonafide_dir = bonafide_dir or DEFAULT_BONAFIDE_DIR
         self.cached_transcripts_path = (
-            cached_transcripts_path
-            or partial_spoof_settings.MANIFEST_PATH.parent / CACHED_TRANSCRIPTS_FILENAME
+            cached_transcripts_path or DEFAULT_MANIFEST_DIR / CACHED_TRANSCRIPTS_FILENAME
         )
-        self.partial_spoof_root = partial_spoof_root or Path("data/partial_spoof_output")
+        self.partial_spoof_root = partial_spoof_root or DEFAULT_PARTIAL_SPOOF_ROOT
         self.report_output_path = (
-            report_output_path
-            or partial_spoof_settings.MANIFEST_PATH.parent / "corpus_duration_report.json"
+            report_output_path or DEFAULT_MANIFEST_DIR / "corpus_duration_report.json"
         )
 
     def run(self) -> CorpusDurationReport:
@@ -185,9 +189,7 @@ class CorpusDurationStatsComputer:
         all_durations: List[float] = []
         all_word_counts: List[int] = []
 
-        for system_settings, display_name in FULLSPOOF_SYSTEMS:
-            output_dir = system_settings.OUTPUT_DIR
-
+        for output_dir, display_name in FULLSPOOF_SYSTEMS:
             samples = self._load_fullspoof_samples(output_dir)
             if samples is None:
                 logger.warning(f"{display_name}: no sample metadata found under {output_dir}, skipping.")
@@ -223,7 +225,7 @@ class CorpusDurationStatsComputer:
         """Load a full-spoof system's per-sample metadata dict.
 
         Args:
-            output_dir: The attack pipeline's OUTPUT_DIR.
+            output_dir: The attack pipeline's default OUTPUT_DIR.
 
         Returns:
             The sample_id -> sample_data dict, or None if neither file exists.
@@ -311,6 +313,13 @@ def _parse_args() -> argparse.Namespace:
         description="Compute corpus duration and text-length statistics."
     )
     parser.add_argument(
+        "--bonafide-dir",
+        type=Path,
+        default=None,
+        help="Override the bonafide speaker root (default: "
+             "data/bonafide_dataset_by_speaker_v2).",
+    )
+    parser.add_argument(
         "--partial-spoof-root",
         type=Path,
         default=None,
@@ -329,6 +338,7 @@ def _parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = _parse_args()
     computer = CorpusDurationStatsComputer(
+        bonafide_dir=args.bonafide_dir,
         partial_spoof_root=args.partial_spoof_root,
         report_output_path=args.output,
     )
