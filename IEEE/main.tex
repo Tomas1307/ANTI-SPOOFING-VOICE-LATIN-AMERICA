@@ -37,7 +37,7 @@
 % Flag for items that are genuinely not finished yet.
 \newcommand{\PENDING}[1]{\textcolor{red}{\textbf{[PENDING: #1]}}}
 
-\title{\textbf{MARSA: A Multi-accent, Multi-system Corpus of Full and
+\title{\textbf{MARSA: A Multi-accent Corpus of Full and
 Partial Voice Spoofing Attacks for Spanish Anti-spoofing Research}}
 
 \author{%
@@ -218,6 +218,17 @@ Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & RIR+noise / 
 
 The genuine-speech foundation of MARSA is HABLA~v2, an expanded release
 of the HABLA Latin American Spanish anti-spoofing dataset \citep{habla}.
+HABLA~v2 augments the original HABLA recordings with speakers drawn from
+Mozilla Common Voice \citep{commonvoice}: candidate Common Voice speakers
+were embedded with an ECAPA-TDNN speaker encoder \citep{ecapa}, any
+speaker whose cosine similarity to an existing HABLA speaker exceeded
+0.75 was excluded to avoid near-duplicate voices across the two sources,
+and the remainder were sampled per accent to fill the groups HABLA
+under-represents. Peninsular Spanish and Mexican speakers in HABLA~v2 are
+drawn entirely from this Common Voice extension; Colombian and Chilean
+speakers are a blend of both sources; Argentine and Peruvian speakers are
+unchanged from the original HABLA release (Table~\ref{tab:accents}).
+
 It contains 35{,}927 bonafide utterances from 1{,}567 speakers, each
 labelled with one of seven accent codes. The accent distribution is
 given in Table~\ref{tab:accents}. Two properties are important for
@@ -229,9 +240,14 @@ the distribution is markedly imbalanced: the three largest accents
 the three smallest (Argentine, Peruvian, Venezuelan) together account
 for 6.6\% (Table~\ref{tab:accents} reports speaker counts; per-accent
 utterance counts follow the same ordering and are provided with the
-deposited metadata). This imbalance is a property of the source data and
-is preserved, not corrected, in MARSA so that users can apply their own
-balancing strategy; we return to its implications in Usage Notes.
+deposited metadata). The Common Voice extension could not correct the
+Venezuelan group specifically: Common Voice's Spanish locale contains
+very few self-tagged Venezuelan-accent speakers, and only one passed the
+speaker-similarity filter, so the group's size (23 speakers) is almost
+entirely inherited from the original HABLA release (22 of 23). This
+imbalance is a property of the source data and is preserved, not
+corrected, in MARSA so that users can apply their own balancing strategy;
+we return to its implications in Usage Notes.
 
 \begin{table}[t]
 \centering
@@ -261,9 +277,18 @@ ve (Venezuelan)        & 23  & 1.5\% \\
 All audio is processed at \SI{16}{\kilo\hertz}, mono, 16-bit. Every
 bonafide utterance is transcribed with the Parakeet TDT multilingual
 transducer \citep{tdt,parakeet}, which emits word-level start and end
-timestamps natively through its token-and-duration architecture, so no
-separate forced-alignment stage (for example the Montreal Forced Aligner
-\citep{mfa}) is required. These word boundaries are consumed by both the
+timestamps natively through its token-and-duration architecture. A
+forced aligner (for example the Montreal Forced Aligner \citep{mfa}) is
+not a substitute here: forced alignment requires an independent
+ground-truth transcript to align against, and only the Common
+Voice-origin fraction of the bonafide corpus has one (Bonafide source
+corpus); the original HABLA recordings carry no transcript at all.
+Applying transcription-based timestamps uniformly to every bonafide
+utterance, rather than forced-aligning the Common Voice subset and
+transcribing the rest, keeps the timestamping method itself independent
+of bonafide origin, avoiding a spurious cue that a detector could
+otherwise exploit. The accuracy of this transcription stage is validated
+in Technical Validation. These word boundaries are consumed by both the
 partial-spoof selection stage and the intelligibility metric of the
 quality screen. Utterances shorter than four words are excluded from the
 partial-spoof tier, because four words is the minimum sentence length at
@@ -341,12 +366,18 @@ most systems, and \SI{10}{\second} for OmniVoice, whose documentation
 advises against longer references); the concatenation stops at the last
 recording that fits without overflowing the target rather than cutting a
 file mid-word, and always ends on a short trailing silence, so the
-reference terminates on a clean boundary. Second, the target text is
+reference terminates on a clean boundary. Second, the target text --
+sampled directly from the original Common Voice sentence pool
+(Bonafide source corpus), independent of the Parakeet transcription
+pipeline and of the specific bonafide utterance being cloned -- is
 synthesized in the cloned voice. Third, the output is resampled to
 \SI{16}{\kilo\hertz} and quality-screened: for every generated utterance
 we record word-error rate (WER) of a Parakeet re-transcription against
-the target text, a NISQA no-reference quality score \citep{nisqa}, and
-ECAPA-TDNN speaker-embedding cosine similarity to the target speaker
+the target text, the mean opinion score (MOS) predicted by the NISQA
+no-reference speech-quality model \citep{nisqa} -- NISQA outputs five
+quality dimensions (overall MOS, noisiness, discontinuity, coloration,
+loudness), of which only the overall MOS is used here -- and ECAPA-TDNN
+speaker-embedding cosine similarity to the target speaker
 \citep{ecapa}. The autoregressive systems occasionally hallucinate a
 spurious leading word or fragment before the intended text; the screen
 detects this by aligning the re-transcription against the target
@@ -355,13 +386,14 @@ matches, so the artifact does not enter the corpus. Utterances that fail
 the structural checks of the screen, or that exceed the intelligibility
 ceilings (word-error rate above 0.15 or character-error rate above
 0.10), are regenerated for up to five rounds before being abandoned. The
-NISQA quality score and the speaker similarity are recorded for every
+NISQA MOS and the speaker similarity are recorded for every
 surviving utterance but are \emph{not} used as rejection gates, which is
 why lower-similarity systems such as OpenVoice are retained in the
 full-spoof tier. To enforce
 a balanced bonafide-to-spoof ratio, each system generates as many
 attacks per speaker as that speaker has bonafide recordings. Per-system
-yields after screening are reported in Table~\ref{tab:fullspoof}.
+yields and the corresponding acoustic-quality metrics are reported in
+Technical Validation (Table~\ref{tab:fullspoof}).
 
 \paragraph{OmniVoice reference-bleed handling.} During validation,
 OmniVoice occasionally emitted a 200--\SI{600}{\milli\second} fragment of
@@ -406,40 +438,6 @@ across that speaker's utterances. These steps are recorded here for
 reproducibility; none alters the linguistic content of the generated
 speech.
 
-\begin{table}[t]
-\centering
-\caption{Full-spoof pipelines: post-screening utterance yields and mean
-acoustic-quality metrics. WER is word-error rate against the target
-text; NISQA is a no-reference mean-opinion-score predictor (1--5, higher
-better); SIM is ECAPA-TDNN cosine speaker similarity to the target
-(higher better).}
-\label{tab:fullspoof}
-\small
-\begin{tabular}{lrccc}
-\toprule
-\textbf{System} & \textbf{Utterances} & \textbf{WER (\%)} & \textbf{NISQA} & \textbf{SIM} \\
-\midrule
-Fish-Speech (FishGram) & 34{,}197 & 2.17 & 4.57 & 0.602 \\
-Qwen3-TTS              & 31{,}568 & 1.46 & 4.37 & 0.720 \\
-OpenVoice v2           & 29{,}796 & 1.50 & 4.38 & 0.388 \\
-Chatterbox             & 31{,}701 & 1.20 & 4.39 & 0.714 \\
-OuteTTS                & 25{,}642 & 2.36 & 4.45 & 0.462 \\
-OmniVoice              & 33{,}743 & 1.06 & 4.28 & 0.686 \\
-\midrule
-\textbf{Total}         & \textbf{186{,}647} & & & \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The systems differ deliberately in cloning fidelity. Speaker similarity
-spans a wide band, from 0.388 (OpenVoice, whose tone-conversion
-architecture lets the synthesis base voice bleed through) through 0.462
-(OuteTTS) and the high-fidelity cluster of Qwen3-TTS (0.720), Chatterbox
-(0.714), and OmniVoice (0.686); perceptual quality (NISQA) is uniformly
-high, from 4.28 to 4.57. This spread is a feature: a detector trained on
-MARSA sees both high-fidelity and low-fidelity attacks rather than a
-single narrow band of synthesis quality.
-
 \subsection*{Partial-spoof pipeline}
 
 The partial-spoof tier replaces one, two, or three words of a bonafide
@@ -471,20 +469,31 @@ that of the full-spoof tier; the realised counts are given in
 Table~\ref{tab:pscomp}.
 
 \paragraph{Energy-aware word selection.} Candidate replacement words are
-not chosen at random. Each word boundary is scored by the depth of the
-acoustic energy valley at that boundary in the cloned audio, defined as
-the ratio of the minimum to the average short-time RMS in a window
-around the boundary: a score near zero marks a boundary that sits in
-clear inter-word silence, and a score near one marks a boundary buried
-in continuous speech. Only words whose boundaries score below a
-configurable threshold, and whose duration exceeds a minimum, are
-eligible, because a cut placed in silence produces no audible
+not chosen at random: the goal is to place each splice seam where it is
+least audible, in silence rather than in the middle of connected speech.
+To find such seams, every word boundary $b$ in the cloned audio is given
+a \emph{valley score} $s(b)$, computed from the short-time RMS energy
+$\mathrm{RMS}(t)$ within a fixed-duration window $W_b$ centered on the
+boundary:
+\begin{equation}
+s(b) \;=\; \frac{\displaystyle\min_{t \in W_b} \mathrm{RMS}(t)}
+                 {\displaystyle\frac{1}{|W_b|}\sum_{t \in W_b} \mathrm{RMS}(t)}
+\label{eq:valleyscore}
+\end{equation}
+that is, the quietest instant in the window divided by the window's
+average loudness. A boundary that falls in clear inter-word silence has
+almost no energy at its quietest instant, so $s(b) \to 0$; a boundary
+buried in continuous speech never quiets down within the window, so
+$s(b) \to 1$. Only words whose boundary score falls below a configurable
+threshold, and whose duration exceeds a minimum, are eligible for
+replacement, because a cut placed in silence produces no audible
 discontinuity whereas a cut inside connected speech does. Eligible words
-are then selected greedily, best-boundary first, subject to a
-non-adjacency constraint (selected word indices differ by at least two)
-so that the spoofed content is distributed across the utterance rather
-than forming a single contiguous block that would resemble a
-segment-level rather than a word-level attack.
+are then selected greedily, lowest-$s(b)$ (quietest boundary) first,
+subject to a non-adjacency constraint (selected word indices differ by
+at least two) so that the spoofed content is distributed across the
+utterance rather than forming a single contiguous
+block that would resemble a segment-level rather than a word-level
+attack.
 
 \paragraph{Splicing engine.} For each replacement the engine (i) refines
 the Parakeet word boundaries by local energy analysis, correcting the
@@ -507,6 +516,29 @@ equal-gain and equal-power fade laws. Randomizing the seam prevents a
 detector from keying on a single fade signature. A single overlap
 duration is drawn per splice from a fixed range and then bounded by the
 available silence; there are no per-technique duration ranges.
+
+\begin{table}[t]
+\centering
+\caption{Partial-spoof tier composition (18{,}421 spliced utterances),
+by generating system, replacement tier, boundary-jitter partition, and
+quality flag.}
+\label{tab:pscomp}
+\small
+\begin{tabular}{lr@{\hskip 1.5em}lr}
+\toprule
+\textbf{System} & \textbf{Count} & \textbf{Breakdown} & \textbf{Count} \\
+\midrule
+OmniVoice   & 10{,}990 & W1 (1 word)       & 10{,}276 \\
+Qwen3-TTS   &  1{,}565 & W2 (2 words)      &  5{,}991 \\
+Chatterbox  &  3{,}423 & W3 (3 words)      &  2{,}154 \\
+FishGram    &  1{,}317 & \emph{canonical}  &  8{,}456 \\
+OuteTTS     &  1{,}073 & \emph{jittered}   &  9{,}965 \\
+OpenVoice   &     53   & flag high/med/low & 4{,}875 / 13{,}072 / 474 \\
+\midrule
+\textbf{Total} & \textbf{18{,}421} & & \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -557,7 +589,7 @@ evaluated on the canonical and homogenized distributions independently or
 jointly.
 
 \paragraph{Quality labelling without filtering.} The partial-spoof
-pipeline computes WER, character-error rate, NISQA, ECAPA similarity, and
+pipeline computes WER, character-error rate, NISQA MOS, ECAPA similarity, and
 boundary metrics for every sample but does \emph{not} discard
 low-quality samples. Each sample instead carries a categorical
 \texttt{quality\_flag} (high/medium/low); downstream users may stratify
@@ -673,7 +705,7 @@ Uniform$[a,b]$.}
 \midrule
 WER rejection ceiling & 0.15 (hard gate) \\
 CER rejection ceiling & 0.10 (hard gate) \\
-NISQA, speaker similarity & recorded, not used as a rejection gate \\
+NISQA MOS, speaker similarity & recorded, not used as a rejection gate \\
 Regeneration budget & up to 5 rounds on structural failure \\
 \midrule
 \multicolumn{2}{l}{\emph{Partial-spoof: word selection}} \\
@@ -713,7 +745,7 @@ Multiplication factors & $\times$2, $\times$3, $\times$5, $\times$10; same facto
 \midrule
 \multicolumn{2}{l}{\emph{Quality-flag thresholds (partial spoof)}} \\
 \midrule
-high & WER $\leq 0.10$ and NISQA $\geq 4.0$ and SIM $\geq 0.50$ \\
+high & WER $\leq 0.10$ and NISQA MOS $\geq 4.0$ and SIM $\geq 0.50$ \\
 medium & WER $\leq 0.30$ (and not high) \\
 low & otherwise \\
 \bottomrule
@@ -756,34 +788,10 @@ Table~\ref{tab:pscomp}. It reflects the corpus-construction weighting
 (OmniVoice is the majority attack) and the effect of the ECAPA clone
 gate (OpenVoice is nearly excluded), and it is dominated by the W1 tier
 because most eligible utterances are short enough to admit only a
-single replacement. All 18{,}421 samples are released; of these, 15{,}641
-(84.9\%) pass the same intelligibility gate used for the full-spoof tier
-(WER $\leq 0.15$, CER $\leq 0.10$) and constitute the recommended clean
-partition, identifiable from the released per-sample metrics (see Usage
+single replacement. All 18{,}421 samples are released, unfiltered by
+quality; the recommended clean partition is identifiable directly from
+the released per-sample metrics (Technical Validation; see also Usage
 Notes).
-
-\begin{table}[t]
-\centering
-\caption{Partial-spoof tier composition (18{,}421 spliced utterances),
-by generating system, replacement tier, boundary-jitter partition, and
-quality flag.}
-\label{tab:pscomp}
-\small
-\begin{tabular}{lr@{\hskip 1.5em}lr}
-\toprule
-\textbf{System} & \textbf{Count} & \textbf{Breakdown} & \textbf{Count} \\
-\midrule
-OmniVoice   & 10{,}990 & W1 (1 word)       & 10{,}276 \\
-Qwen3-TTS   &  1{,}565 & W2 (2 words)      &  5{,}991 \\
-Chatterbox  &  3{,}423 & W3 (3 words)      &  2{,}154 \\
-FishGram    &  1{,}317 & \emph{canonical}  &  8{,}456 \\
-OuteTTS     &  1{,}073 & \emph{jittered}   &  9{,}965 \\
-OpenVoice   &     53   & flag high/med/low & 4{,}875 / 13{,}072 / 474 \\
-\midrule
-\textbf{Total} & \textbf{18{,}421} & & \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The augmentation tiers reuse the same protocol convention, with the
 augmentation chain recorded in the system identifier field as described
@@ -802,15 +810,50 @@ training an anti-spoofing detector.
 \subsection*{Intrinsic quality of generated attacks}
 
 Every generated utterance was screened for intelligibility, perceptual
-quality, and speaker fidelity. Across the full-spoof tier, mean WER
-against the target transcript is at or below 2.4\% for every system,
-mean NISQA quality lies between 4.28 and 4.57 on the five-point scale,
-and speaker similarity ranges from 0.388 (OpenVoice, by design the
-weakest cloner) to 0.720 (Qwen3-TTS), as detailed in
-Table~\ref{tab:fullspoof}. These figures confirm that the attacks are
-intelligible, natural-sounding, and (for the stronger systems) close to
-the target speaker; that is, they are credible spoofing attempts rather
-than degenerate synthesis. For the partial-spoof tier, quality metrics
+quality, and speaker fidelity: word-error rate (WER) against the target
+text, the mean opinion score (MOS) predicted by the NISQA no-reference
+speech-quality model \citep{nisqa}, and ECAPA-TDNN speaker-embedding
+cosine similarity to the target speaker \citep{ecapa} (Methods).
+Per-system yields and mean values are reported in Table~\ref{tab:fullspoof}.
+
+\begin{table}[t]
+\centering
+\caption{Full-spoof pipelines: post-screening utterance yields and mean
+acoustic-quality metrics. WER is word-error rate against the target
+text; MOS is the overall mean opinion score predicted by the NISQA
+no-reference speech-quality model \citep{nisqa} (1--5, higher better;
+NISQA also predicts four other quality dimensions, not used here); SIM
+is ECAPA-TDNN cosine speaker similarity to the target (higher better).}
+\label{tab:fullspoof}
+\small
+\begin{tabular}{lrccc}
+\toprule
+\textbf{System} & \textbf{Utterances} & \textbf{WER (\%)} & \textbf{MOS} & \textbf{SIM} \\
+\midrule
+Fish-Speech (FishGram) & 34{,}197 & 2.17 & 4.57 & 0.602 \\
+Qwen3-TTS              & 31{,}568 & 1.46 & 4.37 & 0.720 \\
+OpenVoice v2           & 29{,}796 & 1.50 & 4.38 & 0.388 \\
+Chatterbox             & 31{,}701 & 1.20 & 4.39 & 0.714 \\
+OuteTTS                & 25{,}642 & 2.36 & 4.45 & 0.462 \\
+OmniVoice              & 33{,}743 & 1.06 & 4.28 & 0.686 \\
+\midrule
+\textbf{Total}         & \textbf{186{,}647} & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The systems differ deliberately in cloning fidelity. Speaker similarity
+spans a wide band, from 0.388 (OpenVoice, whose tone-conversion
+architecture lets the synthesis base voice bleed through) through 0.462
+(OuteTTS) and the high-fidelity cluster of Qwen3-TTS (0.720), Chatterbox
+(0.714), and OmniVoice (0.686); perceptual quality (NISQA MOS) is
+uniformly high, from 4.28 to 4.57, and WER against the target text is at or below
+2.4\% for every system. This spread is a feature: a detector trained on
+MARSA sees both high-fidelity and low-fidelity attacks rather than a
+single narrow band of synthesis quality, and these figures confirm that
+the attacks are intelligible, natural-sounding, and (for the stronger
+systems) close to the target speaker -- that is, credible spoofing
+attempts rather than degenerate synthesis. For the partial-spoof tier, quality metrics
 are computed per sample and released as labels rather than used as
 filters, so that the corpus spans the full realistic quality range;
 under the resulting \texttt{quality\_flag} the 18{,}421 spliced samples
@@ -819,6 +862,65 @@ divide into 4{,}875 high, 13{,}072 medium, and 474 low, and 15{,}641
 CER $\leq 0.10$) that defines the recommended clean partition.
 \PENDING{per-tier WER/NISQA/SIM/boundary-drift statistics to be
 tabulated here from the released per-sample metrics.}
+
+\subsection*{Bonafide transcription reliability}
+
+Parakeet TDT is used for two distinct purposes in the pipeline, and only
+one of them concerns the bonafide utterances directly. First, every
+individual bonafide utterance is transcribed once (Bonafide source
+corpus); this per-utterance transcript is not used by full-spoof at all,
+but it is load-bearing for partial-spoof, where it supplies both the
+text handed to the cloning system and the word-level timestamps used for
+splice alignment, because partial-spoof requires timing information tied
+to the exact bonafide recording being edited, which no external
+transcript can supply (Partial-spoof pipeline). Second, Parakeet is run
+again, separately, on each speaker's \emph{concatenated reference clip}
+-- a different audio object, built by joining several bonafide files
+together -- purely to give the full-spoof systems that use one a text
+hint describing what that reference clip says. The content a full-spoof
+system is actually asked to synthesize is independent of both of these
+transcription steps: it is drawn directly from the original Common Voice
+sentence, not from any ASR output (Full-spoof attack pipelines).
+
+We validated the accuracy of the first of these, the per-utterance
+transcription stage that partial-spoof depends on, against an
+independent ground truth: for the Common-Voice-origin bonafide subset,
+where Common Voice's own original sentence serves as that ground truth,
+we compared it to Parakeet's transcript of the same audio.
+Table~\ref{tab:parakeetwer} reports word error rate (WER) and character
+error rate (CER) overall and per accent. Overall WER is 3.02\% and CER
+is 0.87\%, consistent with Parakeet TDT's published Spanish performance
+\citep{parakeet}. These figures indicate that the word-level timestamps
+underlying the partial-spoof tier are anchored to a transcription stage
+with error rates in line with expectations for the ASR model, rather
+than to unvalidated output.
+
+\begin{table}[t]
+\centering
+\caption{Parakeet TDT transcription accuracy against original Common
+Voice ground-truth sentences, for the Common-Voice-origin bonafide
+subset (12{,}415 of 13{,}111 selected utterances matched a cached
+transcript; 696 fell below the four-word transcription minimum,
+Methods). Venezuelan is shown for completeness but excluded from the
+Overall row and from per-accent conclusions: only one Venezuelan speaker
+passed the Common Voice speaker-similarity filter (Bonafide source
+corpus), leaving $n=4$, too few for a reliable estimate.}
+\label{tab:parakeetwer}
+\small
+\begin{tabular}{lrcc}
+\toprule
+\textbf{Accent} & \textbf{n} & \textbf{WER (\%)} & \textbf{CER (\%)} \\
+\midrule
+Chilean       &  1{,}247 & 1.93 & 0.48 \\
+Peninsular    &  5{,}109 & 2.54 & 0.66 \\
+Colombian     &    791 & 3.02 & 0.84 \\
+Mexican       &  5{,}264 & 3.74 & 1.18 \\
+Venezuelan ($n{=}4$) &   4 & 8.33 & 1.61 \\
+\midrule
+\textbf{Overall} & \textbf{12{,}415} & \textbf{3.02} & \textbf{0.87} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection*{Baseline anti-spoofing detection}
 
@@ -995,6 +1097,12 @@ detection,'' in \emph{Proc. Interspeech}, 2024.
 P.~A.~Tamayo-Fl\'orez, R.~Manrique, and B.~Pereira Nunes,
 ``HABLA: A dataset of Latin American Spanish accents for voice
 anti-spoofing,'' in \emph{Proc. Interspeech}, 2023, pp.~1963--1967.
+
+\bibitem{commonvoice}
+R.~Ardila \emph{et al.},
+``Common Voice: A massively-multilingual speech corpus,''
+in \emph{Proc. 12th Language Resources and Evaluation Conf. (LREC)},
+2020, pp.~4218--4222.
 
 \bibitem{yi2021had}
 J.~Yi \emph{et al.},
