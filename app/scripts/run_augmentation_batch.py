@@ -2,12 +2,12 @@
 """
 Batch Augmentation Runner
 
-Runs the augmentation pipeline sequentially for multiple min_factor values.
-Each run produces its own output directory and log file ({min_factor}.txt).
+Runs the augmentation pipeline sequentially for multiple min_factor values,
+each applied uniformly to both classes (no corpus-side rebalancing). Each
+run produces its own output directory and log file ({min_factor}.txt).
 
 Usage:
     python -m app.scripts.run_augmentation_batch
-    python -m app.scripts.run_augmentation_batch --target_ratio 0.60
     python -m app.scripts.run_augmentation_batch --factors 2x 3x 5x
 """
 
@@ -21,13 +21,10 @@ DEFAULT_FACTORS = ["2x", "3x", "5x", "10x"]
 
 def run_batch(
     factors: list,
-    target_ratio: float = 0.50,
     voices: str = "data/partition_dataset_by_speaker",
     musan: str = "data/noise_dataset/musan",
     rir: str = "data/noise_dataset/RIR",
     output: str = "data/augmented",
-    mode: str = "balanced",
-    clean_fraction: float = 0.25,
     loudness_dbfs: float = -23.0,
     seed: int = 42,
 ):
@@ -35,12 +32,13 @@ def run_batch(
     Run augmentation pipeline for each factor sequentially.
 
     Args:
-        factors: List of augmentation factors (e.g. ["2x", "3x", "5x", "10x"]).
-        target_ratio: Target bonafide ratio.
+        factors: List of augmentation factors (e.g. ["2x", "3x", "5x", "10x"]),
+            each applied uniformly to both classes.
         voices: Path to speaker-partitioned dataset.
         musan: Path to MUSAN noise dataset.
         rir: Path to RIR files.
         output: Output root directory.
+        loudness_dbfs: Target RMS level (dBFS) applied uniformly to every clip.
         seed: Random seed for reproducibility.
 
     Returns:
@@ -52,7 +50,6 @@ def run_batch(
     print("BATCH AUGMENTATION RUNNER")
     print("=" * 70)
     print(f"  Factors to run: {factors}")
-    print(f"  Target ratio:   {target_ratio}")
     print(f"  Seed:           {seed}")
     print("=" * 70)
 
@@ -69,23 +66,17 @@ def run_batch(
                 musan_root=musan,
                 rir_root=rir,
                 output_root=output,
-                target_ratio=target_ratio,
                 min_factor=factor,
-                mode=mode,
-                clean_fraction=clean_fraction,
                 loudness_target_dbfs=loudness_dbfs,
                 seed=seed,
             )
 
             logger = pipeline.logger
-            bonafide_pct = int(target_ratio * 100)
-            spoof_pct = 100 - bonafide_pct
 
             logger.info("\n" + "=" * 70)
-            logger.info("ANTI-SPOOFING DATA AUGMENTATION - BALANCED MODE")
+            logger.info("ANTI-SPOOFING DATA AUGMENTATION - UNIFORM FACTOR")
             logger.info("=" * 70)
             logger.info(f"\nRun Configuration:")
-            logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
             logger.info(f"  Min factor:   {factor}")
             logger.info(f"  Voices:       {voices}")
             logger.info(f"  MUSAN:        {musan}")
@@ -129,7 +120,7 @@ def run_batch(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Batch augmentation runner for multiple min_factor values",
+        description="Batch augmentation runner for multiple min_factor values (uniform factor)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -138,9 +129,6 @@ Examples:
 
   Custom factors:
     python -m app.scripts.run_augmentation_batch --factors 2x 3x
-
-  With different ratio:
-    python -m app.scripts.run_augmentation_batch --target_ratio 0.60
         """,
     )
 
@@ -149,26 +137,6 @@ Examples:
         nargs="+",
         default=DEFAULT_FACTORS,
         help=f"List of min_factor values to run (default: {DEFAULT_FACTORS})",
-    )
-    parser.add_argument(
-        "--target_ratio",
-        type=float,
-        default=0.50,
-        help="Target bonafide ratio (0.0-1.0)",
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=["balanced", "uniform"],
-        default="balanced",
-        help="balanced (equal clean fraction, hits target_ratio) or uniform "
-             "(same factor both classes, natural ratio preserved)",
-    )
-    parser.add_argument(
-        "--clean_fraction",
-        type=float,
-        default=0.25,
-        help="Fraction of each class emitted as clean copies (balanced mode)",
     )
     parser.add_argument(
         "--loudness_dbfs",
@@ -209,10 +177,6 @@ Examples:
 
     args = parser.parse_args()
 
-    if not (0.0 < args.target_ratio < 1.0):
-        print(f"ERROR: target_ratio must be between 0.0 and 1.0, got {args.target_ratio}")
-        sys.exit(1)
-
     for f in args.factors:
         if not f.endswith("x"):
             print(f"ERROR: Invalid factor format '{f}'. Expected format: '2x', '3x', etc.")
@@ -225,19 +189,13 @@ Examples:
 
     results = run_batch(
         factors=args.factors,
-        target_ratio=args.target_ratio,
         voices=args.voices,
         musan=args.musan,
         rir=args.rir,
         output=args.output,
-        mode=args.mode,
-        clean_fraction=args.clean_fraction,
         loudness_dbfs=args.loudness_dbfs,
         seed=args.seed,
     )
-
-    if any(v != "success" for v in results.values()):
-        sys.exit(1)
 
 
 if __name__ == "__main__":

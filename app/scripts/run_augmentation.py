@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Run Augmentation Pipeline - Balanced Mode Only
+Run Augmentation Pipeline - Uniform Factor Only
 
 State-of-the-art augmentation for anti-spoofing with:
 - Speaker-independent splits
-- Balanced bonafide/spoof ratios
-- 25% clean data preservation in train
+- Uniform augmentation factor across bonafide/spoof (no corpus-side
+  rebalancing; class imbalance is corrected at training time)
 - Val/Test 100% clean (no augmentation)
 
 Usage:
-    # 50/50 balance with 3x minimum
-    python run_augmentation.py --target_ratio 0.50 --min_factor 3x
-    
-    # 60/40 balance (more bonafide) with 5x minimum
-    python run_augmentation.py --target_ratio 0.60 --min_factor 5x
+    # Uniform 3x factor
+    python run_augmentation.py --min_factor 3x
+
+    # Uniform 5x factor
+    python run_augmentation.py --min_factor 5x
 """
 
 import sys
@@ -22,69 +22,40 @@ from app.scripts.augmentation_pipeline import AugmentationPipeline
 
 
 def main():
-    """Execute balanced augmentation pipeline."""
+    """Execute the augmentation pipeline."""
     parser = argparse.ArgumentParser(
-        description="Anti-Spoofing Augmentation Pipeline (Balanced Mode)",
+        description="Anti-Spoofing Augmentation Pipeline (Uniform Factor)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  50/50 balance with 3x minimum:
-    python run_augmentation.py --target_ratio 0.50 --min_factor 3x
-  
-  60/40 balance (more bonafide) with 5x minimum:
-    python run_augmentation.py --target_ratio 0.60 --min_factor 5x
-  
-  70/30 balance with 3x minimum:
-    python run_augmentation.py --target_ratio 0.70 --min_factor 3x
-  
+  Uniform 3x factor:
+    python run_augmentation.py --min_factor 3x
+
+  Uniform 5x factor:
+    python run_augmentation.py --min_factor 5x
+
   Custom paths:
-    python run_augmentation.py --target_ratio 0.50 --min_factor 3x \\
+    python run_augmentation.py --min_factor 3x \\
         --voices data/my_partition \\
         --musan data/my_noise \\
         --rir data/my_rir \\
         --output data/my_output
 
 Strategy:
-  - Train: Augmented with calculated factors to achieve target ratio
+  - Train: one clean copy per original plus (factor - 1) augmented copies,
+    for both classes alike
   - Val:   100% clean (no augmentation) for pure evaluation
   - Test:  100% clean (no augmentation) for final testing
-  - Clean data in train: ~25-35% (all originals always included)
+  - Natural class ratio is preserved; rebalancing is left to training time
         """
     )
-    
-    # Target ratio
-    parser.add_argument(
-        "--target_ratio",
-        type=float,
-        default=0.50,
-        help="Target bonafide ratio (0.0-1.0). Examples: 0.50=50/50, 0.60=60/40, 0.70=70/30"
-    )
-    
-    # Minimum augmentation factor
+
+    # Augmentation factor
     parser.add_argument(
         "--min_factor",
         type=str,
         default="3x",
-        help="Minimum total augmentation factor (e.g., 3x, 5x, 10x)"
-    )
-
-    # Balancing mode
-    parser.add_argument(
-        "--mode",
-        type=str,
-        choices=["balanced", "uniform"],
-        default="balanced",
-        help="balanced: self-contained, hits target_ratio with equal clean "
-             "fraction. uniform: same factor both classes, natural ratio preserved."
-    )
-
-    # Clean fraction (equal across classes; the leak fix)
-    parser.add_argument(
-        "--clean_fraction",
-        type=float,
-        default=0.25,
-        help="Fraction of each class emitted as clean copies (identical across "
-             "classes). Balanced mode only."
+        help="Augmentation factor applied uniformly to both classes (e.g., 3x, 5x, 10x)"
     )
 
     # Uniform loudness target
@@ -102,28 +73,28 @@ Strategy:
         default="data/partition_dataset_by_speaker",
         help="Path to speaker-independent partitioned dataset"
     )
-    
+
     parser.add_argument(
         "--musan",
         type=str,
         default="data/noise_dataset/musan",
         help="Path to MUSAN noise dataset"
     )
-    
+
     parser.add_argument(
         "--rir",
         type=str,
         default="data/noise_dataset/RIR",
         help="Path to RIR files"
     )
-    
+
     parser.add_argument(
         "--output",
         type=str,
         default="data/augmented",
         help="Output root directory"
     )
-    
+
     # Random seed
     parser.add_argument(
         "--seed",
@@ -131,14 +102,9 @@ Strategy:
         default=42,
         help="Random seed for reproducibility"
     )
-    
+
     args = parser.parse_args()
-    
-    # Validate target_ratio
-    if not (0.0 < args.target_ratio < 1.0):
-        print(f"ERROR: target_ratio must be between 0.0 and 1.0, got {args.target_ratio}")
-        sys.exit(1)
-    
+
     try:
         # Create pipeline (logger is set up inside)
         pipeline = AugmentationPipeline(
@@ -146,30 +112,19 @@ Strategy:
             musan_root=args.musan,
             rir_root=args.rir,
             output_root=args.output,
-            target_ratio=args.target_ratio,
             min_factor=args.min_factor,
-            mode=args.mode,
-            clean_fraction=args.clean_fraction,
             loudness_target_dbfs=args.loudness_dbfs,
             seed=args.seed
         )
 
         # Log run configuration through the pipeline logger
         logger = pipeline.logger
-        bonafide_pct = int(args.target_ratio * 100)
-        spoof_pct = 100 - bonafide_pct
 
         logger.info("\n" + "="*70)
-        logger.info(f"ANTI-SPOOFING DATA AUGMENTATION - {args.mode.upper()} MODE")
+        logger.info("ANTI-SPOOFING DATA AUGMENTATION - UNIFORM FACTOR")
         logger.info("="*70)
         logger.info(f"\nRun Configuration:")
-        logger.info(f"  Mode:         {args.mode}")
-        if args.mode == "uniform":
-            logger.info(f"  Class ratio:  natural (preserved; target_ratio not applied in uniform mode)")
-        else:
-            logger.info(f"  Target ratio: {bonafide_pct}/{spoof_pct} (bonafide/spoof)")
         logger.info(f"  Min factor:   {args.min_factor}")
-        logger.info(f"  Clean frac:   {args.clean_fraction:.0%}")
         logger.info(f"  Loudness:     {args.loudness_dbfs} dBFS")
         logger.info(f"  Voices:       {args.voices}")
         logger.info(f"  MUSAN:        {args.musan}")
@@ -187,7 +142,7 @@ Strategy:
         logger.info(f"\nOutput directory: {pipeline.output_dir}")
         logger.info(f"Log saved to: {pipeline.log_path}")
         logger.info("")
-        
+
     except KeyboardInterrupt:
         print("\n\nAugmentation interrupted by user.")
         sys.exit(1)

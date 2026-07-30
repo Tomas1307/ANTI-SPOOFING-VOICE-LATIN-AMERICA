@@ -1,5 +1,5 @@
 % =====================================================================
-% MARSA -- Multi-accent Audio Recordings for Spanish Anti-spoofing
+% MARSA: Multi-accent Audio Recordings for Spanish Anti-spoofing
 % Data Descriptor manuscript. Target venue: Scientific Data (Nature).
 %
 % SELF-CONTAINED single file: the bibliography is embedded below as a
@@ -42,7 +42,7 @@ Partial Voice Spoofing Attacks for Spanish Anti-spoofing Research}}
 
 \author{%
 Tom\'as Acosta Bernal$^{1}$, Juan Camilo V\'asquez Correa$^{2}$,
-Mart\'in Daniel Calder\'on Acosta$^{1}$,
+Mart\'in Daniel Calder\'on Acosta$^{1}$,\\
 Rub\'en Francisco Manrique$^{1,\ast}$ \\[4pt]
 \small $^{1}$Universidad de los Andes, Bogot\'a, Colombia \\
 \small $^{2}$\PENDING{affiliation of J. C. V\'asquez Correa} \\
@@ -56,9 +56,13 @@ Rub\'en Francisco Manrique$^{1,\ast}$ \\[4pt]
 % =====================================================================
 \begin{abstract}
 \noindent
-Automatic speaker verification systems are increasingly exposed to
-attacks from neural text-to-speech (TTS) and voice-cloning technology,
-yet the datasets used to build and benchmark spoofing countermeasures
+Neural text-to-speech (TTS) and voice-cloning technology increasingly
+enable voice-based fraud, impersonation, and disinformation: beyond
+defeating automatic speaker verification (ASV) systems, the same
+technology drives identity theft, fraudulent phone calls that
+impersonate a trusted contact, fabricated audio misattributed to public
+figures, and cloned voice messages circulated on messaging platforms.
+Yet the datasets used to build and benchmark spoofing countermeasures
 are predominantly English or Mandarin. Spanish (the world's second
 most-spoken native language, distributed across two continents and
 numerous mutually intelligible but acoustically distinct varieties) has
@@ -77,24 +81,59 @@ a known detector shortcut; and (iii) an acoustic-augmentation layer
 (reverberation, additive noise, and telephony/VoIP codecs, applied
 singly and in stacked combination) at four multiplicative factors. All
 audio is released in the ASVspoof2019 Logical Access protocol format
-with frame-level spoof labels for the partial-spoof tier. MARSA enables
-training and cross-condition benchmarking of Spanish anti-spoofing
-detectors and, more broadly, the study of how language and dialect
+with frame-level spoof labels for the partial-spoof tier and
+system-level identifiers that trace every spoofed utterance to its
+specific generating algorithm (and, for partial spoof, its replacement
+tier and splice variant). MARSA therefore supports not only
+bonafide-versus-spoof detection but also multi-class attack-type
+attribution, cross-condition benchmarking of Spanish anti-spoofing
+detectors, and, more broadly, the study of how language and dialect
 affect the generalization of spoofing countermeasures.
 \end{abstract}
 
 % =====================================================================
 \section*{Background \& Summary}
 
-Automatic speaker verification (ASV) is deployed at scale for
-authentication in banking, telephony, and access control. Its principal
-security threat is voice spoofing: an attacker synthesizes or clones a
-target speaker's voice to defeat the verifier. The ASVspoof challenge
+Voice cloning is not solely a threat to biometric authentication.
+The same underlying synthesis technology enables identity theft and
+impersonation of private individuals, fabricated audio misattributed to
+public figures for disinformation and fake news, fraudulent phone calls
+that impersonate a trusted contact to extract money or information
+\citep{forbes2019ceofraud,destefano2023testimony,europol2022deepfakes},
+and cloned voice messages circulated on messaging platforms
+\citep{infobae2026whatsapp}, none of which require an automatic
+speaker verification (ASV) system to be present at all. These threats
+are especially well documented in Latin America, where official police
+statistics and journalistic reporting describe a rising pattern of
+voice-cloning extortion and family-impersonation scams
+\citep{infobae2025colombia,infobae2026whatsapp}. ASV bypass is
+nonetheless the best-studied instance of this threat, because it is the
+one setting with standardized, large-scale benchmarks; the underlying
+synthesis technology, and the countermeasures needed to detect it, are
+shared across all of these settings, so a corpus built for ASV-focused
+detection transfers directly to detecting synthetic or manipulated
+speech in these other, non-biometric contexts.
+
+Within this broader threat landscape, this Descriptor focuses on ASV,
+which is deployed at scale for authentication in banking, telephony, and
+access control. Its principal security threat is voice spoofing: an
+attacker synthesizes or clones a target speaker's voice to defeat the
+verifier. The ASVspoof challenge
 series established the standard datasets and evaluation protocols for
 this problem \citep{asvspoof2019,asvspoof2021,asvspoof5}, and a large body of work
 has since developed neural countermeasures such as RawNet2, wav2vec\,2.0
 front-ends, and graph-attention detectors
-\citep{rawnet2,tak2022ssl,aasist}.
+\citep{rawnet2,tak2022ssl,aasist}. This body of work almost universally
+casts the problem as binary detection (bonafide versus spoof), leaving a
+second, practically important question comparatively unaddressed: once a
+signal is flagged as spoofed, which generation algorithm produced it.
+Attack-type attribution matters for forensic response and for tracking
+which synthesis methods are actively being weaponized, but existing
+corpora rarely expose the generating system as a first-class,
+algorithm-specific label in their protocol files, which limits research
+on it. MARSA's protocol format encodes this information for every
+spoofed utterance (Data Records), so that multi-class attack-type
+classification can be studied alongside standard binary detection.
 
 A recurring and well-documented failure of these countermeasures is poor
 generalization: a detector that performs near-perfectly on its training
@@ -176,6 +215,13 @@ resource are:
   factors, so that channel robustness can be studied without regenerating
   attacks.
 
+  \item \textbf{Attack-type attribution labels.} Every spoofed
+  utterance's protocol entry identifies its specific generating system
+  (and, for partial spoof, its replacement tier and splice variant)
+  rather than a generic \texttt{spoof} label, so MARSA supports
+  multi-class attack-type classification and attribution research, not
+  only binary bonafide-versus-spoof detection.
+
   \item \textbf{Standardized release format.} All audio follows the
   ASVspoof2019 Logical Access protocol convention, and the partial-spoof
   tier ships frame-level spoof labels, so existing anti-spoofing training
@@ -192,21 +238,23 @@ practical guidance for reuse (Usage Notes).
 \centering
 \caption{MARSA corpus overview. Counts are utterances that passed each
 pipeline's structural and quality gates, verified from on-disk file
-counts. Augmentation multiplies the base corpus without generating new
-attacks.}
+counts. Hours are total audio duration: read directly from file headers
+for bonafide and partial spoof, and from generation metadata for full
+spoof. Augmentation multiplies both utterance count and duration by the
+same factor, without generating new attacks.}
 \label{tab:overview}
 \small
-\begin{tabular}{lrl}
+\begin{tabular}{lrrl}
 \toprule
-\textbf{Tier} & \textbf{Utterances} & \textbf{Description} \\
+\textbf{Tier} & \textbf{Utterances} & \textbf{Hours} & \textbf{Description} \\
 \midrule
-Bonafide            & 35{,}927  & HABLA v2 source, 7 accents, 1{,}567 speakers \\
-Full spoof          & 186{,}647 & 6 TTS voice-cloning systems \\
-Partial spoof       & 18{,}421  & 1--3 word replacements, energy-aware splice (15{,}641 clean) \\
+Bonafide            & 35{,}927  & 53.8  & HABLA v2 source, 7 accents, 1{,}567 speakers \\
+Full spoof          & 186{,}647 & 218.6 & 6 TTS voice-cloning systems \\
+Partial spoof       & 18{,}421  & 30.2  & 1--3 word replacements, energy-aware splice (15{,}641 clean) \\
 \midrule
-\textbf{Base total} & \textbf{240{,}995} & pre-augmentation \\
+\textbf{Base total} & \textbf{240{,}995} & \textbf{302.6} & pre-augmentation \\
 \midrule
-Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & RIR+noise / codec / stacked \\
+Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & (same factor) & RIR+noise / codec / stacked \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -366,19 +414,19 @@ most systems, and \SI{10}{\second} for OmniVoice, whose documentation
 advises against longer references); the concatenation stops at the last
 recording that fits without overflowing the target rather than cutting a
 file mid-word, and always ends on a short trailing silence, so the
-reference terminates on a clean boundary. Second, the target text --
-sampled directly from the original Common Voice sentence pool
-(Bonafide source corpus), independent of the Parakeet transcription
-pipeline and of the specific bonafide utterance being cloned -- is
-synthesized in the cloned voice. Third, the output is resampled to
+reference terminates on a clean boundary. Second, the target text is
+synthesized in the cloned voice; it is sampled directly from the
+original Common Voice sentence pool (Bonafide source corpus),
+independent of the Parakeet transcription pipeline and of the specific
+bonafide utterance being cloned. Third, the output is resampled to
 \SI{16}{\kilo\hertz} and quality-screened: for every generated utterance
 we record word-error rate (WER) of a Parakeet re-transcription against
 the target text, the mean opinion score (MOS) predicted by the NISQA
-no-reference speech-quality model \citep{nisqa} -- NISQA outputs five
-quality dimensions (overall MOS, noisiness, discontinuity, coloration,
-loudness), of which only the overall MOS is used here -- and ECAPA-TDNN
+no-reference speech-quality model \citep{nisqa}, and ECAPA-TDNN
 speaker-embedding cosine similarity to the target speaker
-\citep{ecapa}. The autoregressive systems occasionally hallucinate a
+\citep{ecapa}. NISQA outputs five quality dimensions (overall MOS,
+noisiness, discontinuity, coloration, loudness), of which only the
+overall MOS is used here. The autoregressive systems occasionally hallucinate a
 spurious leading word or fragment before the intended text; the screen
 detects this by aligning the re-transcription against the target
 transcript and trimming the leading region up to the first word that
@@ -391,9 +439,38 @@ surviving utterance but are \emph{not} used as rejection gates, which is
 why lower-similarity systems such as OpenVoice are retained in the
 full-spoof tier. To enforce
 a balanced bonafide-to-spoof ratio, each system generates as many
-attacks per speaker as that speaker has bonafide recordings. Per-system
-yields and the corresponding acoustic-quality metrics are reported in
-Technical Validation (Table~\ref{tab:fullspoof}).
+attacks per speaker as that speaker has bonafide recordings.
+Table~\ref{tab:fullspoofdesc} describes the resulting content by system
+(utterance count, duration, target-text length); the corresponding
+quality-validation metrics (WER, MOS, speaker similarity) are reported
+separately in Technical Validation (Table~\ref{tab:fullspoof}).
+
+\begin{table}[t]
+\centering
+\caption{Full-spoof pipelines: description of the generated content, by
+system. Utterances are post-screening counts, identical to
+Table~\ref{tab:fullspoof}. Avg.\ duration and avg.\ words describe the
+generated audio and its Common Voice target text, respectively; hours
+are total generated-audio duration. This table describes what was
+generated; Table~\ref{tab:fullspoof} (Technical Validation) reports how
+good it is.}
+\label{tab:fullspoofdesc}
+\small
+\begin{tabular}{lrccc}
+\toprule
+\textbf{System} & \textbf{Utterances} & \textbf{Avg.\ dur.\ (s)} & \textbf{Avg.\ words} & \textbf{Hours} \\
+\midrule
+Fish-Speech (FishGram) & 34{,}197 & 3.80 & 10.4 & 36.1 \\
+Qwen3-TTS              & 31{,}568 & 4.57 & 10.4 & 40.1 \\
+OpenVoice v2           & 29{,}796 & 4.52 & 10.4 & 37.5 \\
+Chatterbox             & 31{,}701 & 3.96 & 10.4 & 34.8 \\
+OuteTTS                & 25{,}642 & 4.33 & 10.4 & 30.9 \\
+OmniVoice              & 33{,}743 & 4.19 & 10.3 & 39.3 \\
+\midrule
+\textbf{Total}         & \textbf{186{,}647} & 4.22 & 10.4 & \textbf{218.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{OmniVoice reference-bleed handling.} During validation,
 OmniVoice occasionally emitted a 200--\SI{600}{\milli\second} fragment of
@@ -852,7 +929,7 @@ uniformly high, from 4.28 to 4.57, and WER against the target text is at or belo
 MARSA sees both high-fidelity and low-fidelity attacks rather than a
 single narrow band of synthesis quality, and these figures confirm that
 the attacks are intelligible, natural-sounding, and (for the stronger
-systems) close to the target speaker -- that is, credible spoofing
+systems) close to the target speaker, that is, credible spoofing
 attempts rather than degenerate synthesis. For the partial-spoof tier, quality metrics
 are computed per sample and released as labels rather than used as
 filters, so that the corpus spans the full realistic quality range;
@@ -875,8 +952,8 @@ splice alignment, because partial-spoof requires timing information tied
 to the exact bonafide recording being edited, which no external
 transcript can supply (Partial-spoof pipeline). Second, Parakeet is run
 again, separately, on each speaker's \emph{concatenated reference clip}
--- a different audio object, built by joining several bonafide files
-together -- purely to give the full-spoof systems that use one a text
+(a different audio object, built by joining several bonafide files
+together), purely to give the full-spoof systems that use one a text
 hint describing what that reference clip says. The content a full-spoof
 system is actually asked to synthesize is independent of both of these
 transcription steps: it is drawn directly from the original Common Voice
@@ -1103,6 +1180,39 @@ R.~Ardila \emph{et al.},
 ``Common Voice: A massively-multilingual speech corpus,''
 in \emph{Proc. 12th Language Resources and Evaluation Conf. (LREC)},
 2020, pp.~4218--4222.
+
+\bibitem{forbes2019ceofraud}
+J.~Damiani,
+``A voice deepfake was used to scam a CEO out of \$243,000,''
+\emph{Forbes}, Sep. 2019.
+\url{https://www.forbes.com/sites/jessedamiani/2019/09/03/a-voice-deepfake-was-used-to-scam-a-ceo-out-of-243000/}
+
+\bibitem{europol2022deepfakes}
+Europol Innovation Lab,
+``Facing reality? Law enforcement and the challenge of deepfakes,''
+Europol, 2022.
+\url{https://www.europol.europa.eu/cms/sites/default/files/documents/Europol_Innovation_Lab_Facing_Reality_Law_Enforcement_And_The_Challenge_Of_Deepfakes.pdf}
+
+\bibitem{destefano2023testimony}
+J.~DeStefano,
+``Written testimony,''
+U.S. Senate Judiciary Committee, Subcommittee on Human Rights and the
+Law, Jun. 2023.
+\url{https://www.judiciary.senate.gov/imo/media/doc/2023-06-13\%20PM\%20-\%20Testimony\%20-\%20DeStefano.pdf}
+
+\bibitem{infobae2026whatsapp}
+Infobae,
+``\,`Mam\'a, necesito ayuda': la nueva estafa con IA que clona la voz de
+tus hijos con solo 3 segundos de audio,''
+Mar. 2026.
+\url{https://www.infobae.com/tecno/2026/03/26/mama-necesito-ayuda-la-nueva-estafa-con-ia-que-clona-la-voz-de-tus-hijos-con-solo-3-segundos-de-audio/}
+
+\bibitem{infobae2025colombia}
+Infobae,
+``Incrementan las estafas con voces clonadas con inteligencia
+artificial en diciembre: cinco claves para detectarlas,''
+Dec. 2025.
+\url{https://www.infobae.com/colombia/2025/12/03/incrementan-las-estafas-con-voces-clonadas-con-inteligencia-artificial-en-diciembre-cinco-claves-para-detectarlas/}
 
 \bibitem{yi2021had}
 J.~Yi \emph{et al.},
