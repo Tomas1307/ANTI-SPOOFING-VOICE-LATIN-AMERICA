@@ -80,7 +80,15 @@ class SpeakerDisjointPartitionBuilder:
         seed: Random seed for the speaker-level split.
         dry_run: When True, index and count everything but create no
             directories or symlinks; logs example link names instead.
+        include_noisy_partial_spoof: When False (default), only the
+            paper's recommended clean partial-spoof subset (WER <= 0.15,
+            CER <= 0.10; 15,641 of 18,421 rows) is included, matching
+            Usage Notes' training recommendation. Set True to include the
+            full unfiltered partial-spoof tier instead.
     """
+
+    CLEAN_WER_MAX = 0.15
+    CLEAN_CER_MAX = 0.10
 
     def __init__(
         self,
@@ -90,6 +98,7 @@ class SpeakerDisjointPartitionBuilder:
         output_dir: Optional[Path] = None,
         seed: int = 42,
         dry_run: bool = False,
+        include_noisy_partial_spoof: bool = False,
     ) -> None:
         """Initialize the builder.
 
@@ -101,6 +110,8 @@ class SpeakerDisjointPartitionBuilder:
             seed: Random seed for the speaker-level train/dev/eval split.
             dry_run: If True, preview counts and example filenames without
                 writing anything to disk.
+            include_noisy_partial_spoof: If True, include all partial-spoof
+                rows regardless of WER/CER instead of just the clean subset.
         """
         self.bonafide_dir = bonafide_dir or DEFAULT_BONAFIDE_DIR
         self.partial_spoof_csv = partial_spoof_csv or DEFAULT_PARTIAL_SPOOF_CSV
@@ -108,6 +119,7 @@ class SpeakerDisjointPartitionBuilder:
         self.output_dir = output_dir or DEFAULT_OUTPUT_DIR
         self.seed = seed
         self.dry_run = dry_run
+        self.include_noisy_partial_spoof = include_noisy_partial_spoof
         self._preview_examples: List[str] = []
 
     def run(self) -> SpeakerPartitionReport:
@@ -237,18 +249,36 @@ class SpeakerDisjointPartitionBuilder:
     def _index_partialspoof_files(self) -> Dict[str, List[Tuple[str, str, Path]]]:
         """Parse the partial-spoof manifest into a speaker index.
 
+        By default, keeps only the "clean" subset the paper recommends for
+        training (WER <= 0.15, CER <= 0.10; 15,641 of 18,421 rows) -- set
+        include_noisy_partial_spoof=True on the builder to keep all rows.
+
         Returns:
             Mapping speaker_id -> list of (system_name, tier, spliced_audio_path).
         """
         index: Dict[str, List[Tuple[str, str, Path]]] = {}
+        total_rows = 0
+        kept_rows = 0
 
         with open(self.partial_spoof_csv, "r", encoding="utf-8") as f:
             for row in csv.DictReader(f):
+                total_rows += 1
+                if not self.include_noisy_partial_spoof:
+                    if float(row["wer"]) > self.CLEAN_WER_MAX or float(row["cer"]) > self.CLEAN_CER_MAX:
+                        continue
+                kept_rows += 1
+
                 speaker_id = row["speaker_id"]
                 system = row["attack"]
                 tier = row["tier"]
                 audio_path = Path(row["spliced_audio_path"])
                 index.setdefault(speaker_id, []).append((system, tier, audio_path))
+
+        if not self.include_noisy_partial_spoof:
+            logger.info(
+                f"Partial-spoof: kept clean subset {kept_rows}/{total_rows} rows "
+                f"(WER <= {self.CLEAN_WER_MAX}, CER <= {self.CLEAN_CER_MAX})."
+            )
 
         return index
 
@@ -418,12 +448,22 @@ def _parse_args() -> argparse.Namespace:
         help="Index and count everything, print example filenames, but "
              "write nothing to disk.",
     )
+    parser.add_argument(
+        "--include-noisy-partial-spoof",
+        action="store_true",
+        help="Include all 18,421 partial-spoof rows instead of just the "
+             "paper's recommended clean subset (WER<=0.15, CER<=0.10, "
+             "15,641 rows).",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
     builder = SpeakerDisjointPartitionBuilder(
-        output_dir=args.output, seed=args.seed, dry_run=args.dry_run
+        output_dir=args.output,
+        seed=args.seed,
+        dry_run=args.dry_run,
+        include_noisy_partial_spoof=args.include_noisy_partial_spoof,
     )
     builder.run()
