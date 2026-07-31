@@ -8,6 +8,8 @@ from app.schemas.cv_parakeet_accent_stat import AccentValidationStat
 from app.schemas.cv_parakeet_transcript_outlier import TranscriptOutlier
 from app.schemas.cv_parakeet_validation_report import CVParakeetValidationReport
 from app.schemas.fullspoof_system_description_stat import SystemDescriptionStat
+from app.schemas.partition_split_stat import PartitionSplitStat
+from app.schemas.speaker_partition_report import SpeakerPartitionReport
 
 __all__ = [
     "AccentValidationStat",
@@ -16,4 +18,6 @@ __all__ = [
     "CorpusDurationReport",
     "TierDurationStat",
     "SystemDescriptionStat",
+    "PartitionSplitStat",
+    "SpeakerPartitionReport",
 ]
