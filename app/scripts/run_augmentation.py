@@ -70,8 +70,8 @@ Strategy:
     parser.add_argument(
         "--voices",
         type=str,
-        default="data/partition_dataset_by_speaker",
-        help="Path to speaker-independent partitioned dataset"
+        default="data/marsa_speaker_disjoint_partition",
+        help="Path to speaker-disjoint partitioned dataset"
     )
 
     parser.add_argument(

@@ -21,7 +21,7 @@ DEFAULT_FACTORS = ["2x", "3x", "5x", "10x"]
 
 def run_batch(
     factors: list,
-    voices: str = "data/partition_dataset_by_speaker",
+    voices: str = "data/marsa_speaker_disjoint_partition",
     musan: str = "data/noise_dataset/musan",
     rir: str = "data/noise_dataset/RIR",
     output: str = "data/augmented",
@@ -147,8 +147,8 @@ Examples:
     parser.add_argument(
         "--voices",
         type=str,
-        default="data/partition_dataset_by_speaker",
-        help="Path to speaker-independent partitioned dataset",
+        default="data/marsa_speaker_disjoint_partition",
+        help="Path to speaker-disjoint partitioned dataset",
     )
     parser.add_argument(
         "--musan",

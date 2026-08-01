@@ -125,7 +125,7 @@ class AugmentationPipeline:
 
     def __init__(
         self,
-        voices_root: str = "data/partition_dataset_by_speaker",
+        voices_root: str = "data/marsa_speaker_disjoint_partition",
         musan_root: str = "data/noise_dataset/musan",
         rir_root: str = "data/noise_dataset/RIR",
         output_root: str = "data/augmented",
@@ -480,8 +480,122 @@ class AugmentationPipeline:
         self.logger.info("="*70 + "\n")
         self.logger.info(f"Log saved to: {self.log_path}")
 
+    def _preflight_check(self) -> Dict[str, Dict[str, int]]:
+        """Validate the input partition before any audio is written.
+
+        Runs in seconds and fails loudly rather than letting a multi-hour run
+        produce a silently incomplete corpus. Three conditions are enforced
+        for every split:
+
+        1. The split is non-empty.
+        2. No file present on disk was ignored during discovery, so the
+           released corpus cannot be missing audio that exists in the input.
+        3. One sample file of each distinct extension actually decodes, which
+           catches a missing codec backend before any work is done instead of
+           part-way through the run.
+
+        The full discovery report for each split is written to the pipeline
+        log so that any later discrepancy can be audited from the log alone.
+
+        Returns:
+            Per-split statistics mapping as returned by the loader.
+
+        Raises:
+            RuntimeError: If any split is empty, any file was ignored, or any
+                sampled file fails to decode.
+        """
+        self.logger.info("\n" + "="*70)
+        self.logger.info("PREFLIGHT CHECK")
+        self.logger.info("="*70)
+
+        statistics = self.loader.get_dataset_statistics()
+        split_loaders = {
+            'train': self.loader.load_train_files,
+            'dev': self.loader.load_dev_files,
+            'eval': self.loader.load_eval_files,
+        }
+        problems: List[str] = []
+
+        for split, load_files in split_loaders.items():
+            report = self.loader.reports[split]
+            self.logger.info(
+                f"\n  {split.upper()}: {report.audio_file_count:,} files from "
+                f"{report.speaker_count:,} speakers ({report.structure})"
+            )
+            self.logger.info(
+                f"    bonafide {report.bonafide_count:,} / "
+                f"spoof {report.spoof_count:,}"
+            )
+
+            if report.audio_file_count == 0:
+                problems.append(
+                    f"{split}: no audio files discovered under "
+                    f"{self.voices_root / split}"
+                )
+                continue
+
+            if report.skipped_total:
+                self.logger.info(
+                    f"    IGNORED: {report.skipped_by_extension}"
+                )
+                problems.append(
+                    f"{split}: {report.skipped_total} file(s) on disk were "
+                    f"ignored by extension {report.skipped_by_extension}; "
+                    f"they would be missing from the corpus"
+                )
+
+            if report.unknown_prefix_count:
+                problems.append(
+                    f"{split}: {report.unknown_prefix_count} file(s) match "
+                    f"neither the bonafide nor the spoof naming convention"
+                )
+
+            probes: Dict[str, str] = {}
+            for info in load_files():
+                extension = Path(info['filepath']).suffix.lower()
+                if extension not in probes:
+                    probes[extension] = info['filepath']
+
+            for extension, filepath in sorted(probes.items()):
+                try:
+                    audio, sample_rate = utils.load_audio(filepath)
+                except Exception as error:
+                    problems.append(
+                        f"{split}: cannot decode '{extension}' audio "
+                        f"({Path(filepath).name}): {error}"
+                    )
+                    continue
+
+                if audio.size == 0:
+                    problems.append(
+                        f"{split}: decoded '{extension}' sample "
+                        f"{Path(filepath).name} is empty"
+                    )
+                    continue
+
+                self.logger.info(
+                    f"    decode OK {extension}: {audio.size / sample_rate:.2f}s "
+                    f"at {sample_rate} Hz"
+                )
+
+        if problems:
+            self.logger.error("\nPREFLIGHT FAILED:")
+            for problem in problems:
+                self.logger.error(f"  - {problem}")
+            raise RuntimeError(
+                f"Preflight check failed with {len(problems)} problem(s); "
+                f"see the log above. No audio was written."
+            )
+
+        self.logger.info("\nPreflight check passed.")
+        return statistics
+
     def run(self):
-        """Execute the complete augmentation pipeline."""
+        """Execute the complete augmentation pipeline.
+
+        Raises:
+            RuntimeError: If the preflight check rejects the input partition.
+        """
         self.logger.info("\n" + "="*70)
         self.logger.info("ANTI-SPOOFING AUGMENTATION PIPELINE")
         self.logger.info("="*70)
@@ -492,9 +606,8 @@ class AugmentationPipeline:
         self.logger.info(f"  Loudness:     {self.loudness_target_dbfs} dBFS")
         self.logger.info(f"  Seed:         {self.seed}")
 
-        # Load dataset stats
-        self.logger.info("\nLoading dataset...")
-        stats = self.loader.get_dataset_statistics()
+        # Validate the whole partition before writing anything.
+        stats = self._preflight_check()
 
         n_bonafide = stats['train']['bonafide']
         n_spoof = stats['train']['spoof']
