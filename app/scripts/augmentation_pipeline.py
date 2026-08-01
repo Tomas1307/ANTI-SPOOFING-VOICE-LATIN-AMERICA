@@ -400,11 +400,11 @@ class AugmentationPipeline:
             bonafide_files = self.loader.load_bonafide_train_files()
             spoof_files = self.loader.load_spoof_train_files()
         elif split == 'dev':
-            bonafide_files = self.loader.load_bonafide_val_files()
-            spoof_files = self.loader.load_spoof_val_files()
+            bonafide_files = self.loader.load_bonafide_dev_files()
+            spoof_files = self.loader.load_spoof_dev_files()
         elif split == 'eval':
-            bonafide_files = self.loader.load_bonafide_test_files()
-            spoof_files = self.loader.load_spoof_test_files()
+            bonafide_files = self.loader.load_bonafide_eval_files()
+            spoof_files = self.loader.load_spoof_eval_files()
 
         b_clean, b_aug = counts['bonafide']
         s_clean, s_aug = counts['spoof']
