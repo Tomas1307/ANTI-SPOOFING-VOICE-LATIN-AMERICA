@@ -95,6 +95,7 @@ clean-vs-augmented carries no information about the label. The natural
 training time (class weights or a balanced sampler).
 """
 
+import os
 import random
 import logging
 import numpy as np
@@ -113,6 +114,13 @@ from app.schema import AugmentationType
 import app.utils.utils as utils
 
 
+# Fixed modification timestamp applied to every emitted file after the run.
+# Clips are written class by class, so filesystem mtimes would otherwise order
+# the corpus by label (an `ls -t` would produce a class-sorted listing, and tar
+# preserves mtimes into the released archive). 2026-01-01 00:00:00 UTC.
+CORPUS_MTIME = 1767225600
+
+
 class AugmentationPipeline:
     """
     State-of-the-art augmentation pipeline for anti-spoofing.
@@ -121,6 +129,8 @@ class AugmentationPipeline:
     - Uniform augmentation factor for both classes (no corpus-side rebalancing)
     - Speaker-independent splits
     - ASVspoof2019 LA format output
+    - Leak-safe metadata: shuffled audio IDs, ID-sorted protocols, uniform
+      loudness, and uniform file timestamps
     """
 
     def __init__(
@@ -219,8 +229,14 @@ class AugmentationPipeline:
                      'bonafide_clean': 0, 'spoof_clean': 0}
         }
 
-        # Audio ID counters
-        self.audio_id_counter = {'train': 1, 'dev': 1, 'eval': 1}
+        # Shuffled audio-ID pools, one per split. IDs are drawn at random
+        # rather than assigned sequentially because clips are emitted class by
+        # class (all bonafide, then all spoof) and clean before augmented
+        # within each class. Sequential assignment would therefore make the
+        # audio ID an almost perfect predictor of both the label and the
+        # augmentation status, reintroducing through ID ranges exactly the
+        # leakage that opaque identifiers are meant to prevent.
+        self.audio_id_pool: Dict[str, List[str]] = {'train': [], 'dev': [], 'eval': []}
 
         # Protocol entries
         self.protocol_entries = {'train': [], 'dev': [], 'eval': []}
@@ -307,13 +323,46 @@ class AugmentationPipeline:
         composite_id = "|".join(system_ids) if system_ids else "-"
         return current, composite_id
 
+    PREFIX_MAP = {'train': 'LA_T', 'dev': 'LA_D', 'eval': 'LA_E'}
+
+    def _prepare_audio_ids(self, split: str, total: int) -> None:
+        """Build a shuffled pool of audio IDs for one split.
+
+        The pool contains exactly ``total`` identifiers, ``LA_?_0000001``
+        through ``LA_?_{total:07d}``, shuffled with the seeded RNG so that the
+        identifier a clip receives is independent of the order in which clips
+        are emitted, and therefore carries no information about class or
+        augmentation status.
+
+        Args:
+            split: One of "train"/"dev"/"eval".
+            total: Number of clips that will be emitted for this split.
+        """
+        prefix = self.PREFIX_MAP[split]
+        pool = [f"{prefix}_{i:07d}" for i in range(1, total + 1)]
+        random.shuffle(pool)
+        self.audio_id_pool[split] = pool
+
     def _generate_audio_id(self, split: str) -> str:
-        """Generate ASVspoof-style audio ID."""
-        prefix_map = {'train': 'LA_T', 'dev': 'LA_D', 'eval': 'LA_E'}
-        prefix = prefix_map[split]
-        audio_id = f"{prefix}_{self.audio_id_counter[split]:07d}"
-        self.audio_id_counter[split] += 1
-        return audio_id
+        """Draw the next audio ID for a split from its shuffled pool.
+
+        Args:
+            split: One of "train"/"dev"/"eval".
+
+        Returns:
+            An ASVspoof-style audio identifier.
+
+        Raises:
+            RuntimeError: If the pool is exhausted, which means the emitted
+                clip count exceeded the total declared to _prepare_audio_ids.
+        """
+        pool = self.audio_id_pool[split]
+        if not pool:
+            raise RuntimeError(
+                f"Audio ID pool exhausted for split '{split}': more clips were "
+                f"emitted than the total reserved by _prepare_audio_ids()."
+            )
+        return pool.pop()
 
     def _save_audio_and_protocol(
         self, audio: np.ndarray, sr: int, split: str,
@@ -408,6 +457,14 @@ class AugmentationPipeline:
 
         b_clean, b_aug = counts['bonafide']
         s_clean, s_aug = counts['spoof']
+
+        # Reserve one shuffled identifier per clip about to be emitted.
+        total_emissions = (
+            (b_clean if b_clean is not None else len(bonafide_files)) + b_aug
+            + (s_clean if s_clean is not None else len(spoof_files)) + s_aug
+        )
+        self._prepare_audio_ids(split, total_emissions)
+
         self.logger.info(
             f"  Bonafide: {len(bonafide_files)} originals -> "
             f"{b_clean if b_clean is not None else len(bonafide_files)} clean + {b_aug} aug"
@@ -435,11 +492,35 @@ class AugmentationPipeline:
                 protocol_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}"
                 protocol_path = protocol_dir / filename
 
+                # Sort by audio ID so row order follows the shuffled
+                # identifiers rather than the class-by-class emission order;
+                # otherwise the position of a row in the file would still
+                # reveal its label.
+                entries = sorted(
+                    self.protocol_entries[split], key=lambda e: e.split()[1]
+                )
+
                 with open(protocol_path, 'w') as f:
-                    for entry in self.protocol_entries[split]:
+                    for entry in entries:
                         f.write(entry + '\n')
 
                 self.logger.info(f"  Written: {filename} ({len(self.protocol_entries[split])} entries)")
+
+    def _normalize_timestamps(self):
+        """Set a single fixed mtime on every emitted file.
+
+        Clips are written class by class (bonafide before spoof, clean before
+        augmented), so creation-order timestamps would sort the corpus by
+        label. A constant mtime removes that channel; it also survives tar,
+        which preserves timestamps into a released archive.
+        """
+        self.logger.info("\nNormalizing file timestamps...")
+        count = 0
+        for path in self.output_dir.rglob("*"):
+            if path.is_file():
+                os.utime(path, (CORPUS_MTIME, CORPUS_MTIME))
+                count += 1
+        self.logger.info(f"  Set uniform mtime on {count:,} files.")
 
     def _print_final_report(self):
         """Print and log the final report, including the per-class clean-fraction
@@ -651,6 +732,9 @@ class AugmentationPipeline:
 
         # Write protocols
         self._write_protocol_files()
+
+        # Remove the creation-order timestamp channel
+        self._normalize_timestamps()
 
         # Final report
         self._print_final_report()
