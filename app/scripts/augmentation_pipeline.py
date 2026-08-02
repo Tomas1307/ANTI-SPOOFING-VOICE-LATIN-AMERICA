@@ -508,13 +508,30 @@ class AugmentationPipeline:
         self.logger.info("PREFLIGHT CHECK")
         self.logger.info("="*70)
 
+        problems: List[str] = []
+
+        # Codec availability is logged (not just printed) because a silently
+        # degraded codec set previously survived a full production run.
+        enabled = self.codec_augmenter.available_codecs
+        skipped = self.codec_augmenter.skipped_codecs
+        self.logger.info(f"\n  Codecs enabled ({len(enabled)}): {enabled}")
+        for name in skipped:
+            spec = self.codec_augmenter.registry.get(name)
+            encoder = spec.encoder if spec else name
+            reason = self.codec_augmenter.codec_errors.get(encoder, "unknown failure")
+            self.logger.warning(f"  Codec SKIPPED: {name} ({encoder}) -> {reason}")
+        if skipped:
+            problems.append(
+                f"codec set incomplete: {skipped} unavailable; the corpus would "
+                f"be generated with only {enabled}"
+            )
+
         statistics = self.loader.get_dataset_statistics()
         split_loaders = {
             'train': self.loader.load_train_files,
             'dev': self.loader.load_dev_files,
             'eval': self.loader.load_eval_files,
         }
-        problems: List[str] = []
 
         for split, load_files in split_loaders.items():
             report = self.loader.reports[split]

@@ -549,19 +549,23 @@ Table~\ref{tab:pscomp}.
 not chosen at random: the goal is to place each splice seam where it is
 least audible, in silence rather than in the middle of connected speech.
 To find such seams, every word boundary $b$ in the cloned audio is given
-a \emph{valley score} $s(b)$, computed from the short-time RMS energy
-$\mathrm{RMS}(t)$ within a fixed-duration window $W_b$ centered on the
-boundary:
+a \emph{valley score} $s(b)$. Let $W_b$ denote the set of short-time
+analysis frames whose centres lie within $\pm 100$\,ms of the boundary,
+let $N_b = |W_b|$ be the number of such frames, and let
+$\mathrm{RMS}(t) \ge 0$ be the root-mean-square energy of frame $t$
+(frames are 5\,ms long, so $N_b = 40$ away from the signal edges). The
+score is
 \begin{equation}
 s(b) \;=\; \frac{\displaystyle\min_{t \in W_b} \mathrm{RMS}(t)}
-                 {\displaystyle\frac{1}{|W_b|}\sum_{t \in W_b} \mathrm{RMS}(t)}
+                 {\displaystyle\frac{1}{N_b}\sum_{t \in W_b} \mathrm{RMS}(t)}
 \label{eq:valleyscore}
 \end{equation}
 that is, the quietest instant in the window divided by the window's
-average loudness. A boundary that falls in clear inter-word silence has
-almost no energy at its quietest instant, so $s(b) \to 0$; a boundary
-buried in continuous speech never quiets down within the window, so
-$s(b) \to 1$. Only words whose boundary score falls below a configurable
+average loudness. Since RMS energy is non-negative and a minimum can
+never exceed the corresponding mean, $s(b) \in [0,1]$ by construction. A
+boundary that falls in clear inter-word silence has almost no energy at
+its quietest instant, so $s(b) \to 0$; a boundary buried in continuous
+speech never quiets down within the window, so $s(b) \to 1$. Only words whose boundary score falls below a configurable
 threshold, and whose duration exceeds a minimum, are eligible for
 replacement, because a cut placed in silence produces no audible
 discontinuity whereas a cut inside connected speech does. Eligible words

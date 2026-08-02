@@ -16,13 +16,21 @@ class CodecSpec(BaseModel):
     Technical specification for one real codec applied via ffmpeg.
 
     Attributes:
-        codec_format: ffmpeg container/muxer name (e.g. "wav", "amr", "ogg").
-        encoder: ffmpeg encoder name (e.g. "pcm_mulaw", "libopus", "aac").
+        codec_format: ffmpeg container name. It must be valid as BOTH a muxer
+            and a demuxer, because the round-trip encodes and then decodes
+            using the same name (for example "adts" is write-only and fails on
+            read-back; "mpegts" works in both directions).
+        encoder: ffmpeg encoder name, not the codec ID (for example
+            "libopencore_amrnb", not "amr_nb"; "libspeex", not "speex").
         sample_rate: Operating sample rate the codec runs at (Hz).
         bitrates: Candidate bitrates (bps) to sample from, or None for codecs
             whose rate is fixed by the encoder (e.g. G.711 companding).
         narrowband: True for telephony-band codecs (used for the metadata
             ``bandpass`` flag and label).
+        backend: Execution path. "torio" runs in-process through
+            torchaudio's AudioEffector against the system ffmpeg libraries.
+            "ffmpeg_bin" shells out to an external ffmpeg binary, which is
+            required for codecs the system libavcodec was not built with.
     """
 
     codec_format: str
@@ -30,6 +38,7 @@ class CodecSpec(BaseModel):
     sample_rate: int
     bitrates: Optional[List[int]] = None
     narrowband: bool = False
+    backend: str = "torio"
 
 
 class RawBoostParams(BaseModel):
@@ -108,15 +117,19 @@ class CodecConfigV2(BaseModel):
     Attributes:
         codec_set: Codec names to draw from per clip. Default covers the full
             "all threats" range: narrowband telephony (G.711 mu-law/A-law,
-            AMR-NB, iLBC) plus broadband (Opus, AAC). Names unavailable in the
-            host ffmpeg build are disabled by the backend probe at runtime.
+            AMR-NB, Speex) plus broadband (Opus, AAC). Speex occupies the
+            legacy-VoIP slot: iLBC is absent from standard ffmpeg
+            distributions, whereas Speex fills the same role as the
+            pre-Opus open VoIP codec and is available in the stock build.
+            Names unavailable in the host ffmpeg build are disabled by the
+            backend probe at runtime.
         apply_packet_loss_prob: Probability of also simulating packet loss.
         packet_loss_range: (min, max) packet-loss fraction.
         apply_probability: Probability the codec augmentation is applied at all.
     """
 
     codec_set: List[str] = Field(
-        default_factory=lambda: ["g711_ulaw", "g711_alaw", "amr_nb", "ilbc", "opus", "aac"],
+        default_factory=lambda: ["g711_ulaw", "g711_alaw", "amr_nb", "speex", "opus", "aac"],
         description="Enabled codec names (subject to ffmpeg availability probe)",
     )
     codec_weights: Dict[str, float] = Field(
@@ -124,7 +137,7 @@ class CodecConfigV2(BaseModel):
             "g711_ulaw": 0.25,
             "g711_alaw": 0.15,
             "amr_nb": 0.20,
-            "ilbc": 0.05,
+            "speex": 0.05,
             "opus": 0.25,
             "aac": 0.10,
         },
