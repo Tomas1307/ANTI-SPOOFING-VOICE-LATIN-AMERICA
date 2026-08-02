@@ -1,10 +1,38 @@
 # Data Augmentation Pipeline
 
-**Status:** Audited 2026-06-08 — remediation pending (Tier A mandatory before any trustworthy training run)
+**Status:** Implemented & verified 2026-08-02 (see Section 0); originally audited 2026-06-08 — remediation pending (Tier A mandatory before any trustworthy training run)
 **Code:** `app/augmenter/` (base + 3 augmenters), `app/config/augmentation_config.py`, `app/schema.py`, `app/utils/utils.py`, `app/utils/augmentation_calculator.py`, `app/scripts/augmentation_pipeline.py`
-**Output:** `data/augmented/augmented_{factor}_balanced_{ratio}/LA/` in ASVspoof2019 LA format (flac + cm protocol)
+**Output:** `data/augmented/augmented_{factor}/LA/` in ASVspoof2019 LA format (flac + cm protocol)
 
 This page is the compiled source of truth for the channel/device data-augmentation layer that is applied to the ASVspoof2019-LA-format corpus (both bonafide and spoof) to train robust detectors. It synthesizes three inputs: (1) the as-built code, (2) a student investigation (`spoofing_DA.pdf`, `feedback_da_antispoofing.pdf`), and (3) the engineering audit of 2026-06-08. It describes intent vs. reality vs. feedback per augmentation, the two cross-cutting shortcuts, the correctness bugs, the locked decisions, and the remediation roadmap.
+
+---
+
+## 0. Current implemented state (2026-08-02) — supersedes sections 2–5 below
+
+The 2026-06-08/09 remediation is IMPLEMENTED and verified on ml-server03. Sections 2–5 of this page are retained as the audit record of the pre-remediation code; the as-shipped design is:
+
+**Input:** `data/marsa_speaker_disjoint_partition/` (speaker-disjoint train/dev/eval symlink partition, 80/10/10 by speaker, built by `app/scripts/build_speaker_disjoint_partition.py`). True class balance ~85/15 spoof/bonafide (the historical 90/10 figure was an MP3-discovery bug, see decision-log 2026-08-01). Discovery goes through a single `DatasetLoader._discover_split_files()` path accepting `.wav/.flac/.mp3`, with a `DatasetDiscoveryReport` per split (every on-disk file ingested or counted by extension) and sorted speaker order for seed reproducibility.
+
+**Preflight (`_preflight_check`)**: aborts before writing anything if any split is empty, any file was ignored by extension, any filename matches neither class prefix, any codec is unavailable, or any extension fails a real decode probe. Fails in ~2 minutes instead of yielding a silently wrong corpus after hours.
+
+**Factors:** uniform per class (Option B): each original emits 1 clean + (factor−1) augmented copies, both classes alike; dev/eval 100% clean. Factors 2x/3x/5x/10x, seed 42.
+
+**Families:** RIR+Noise 60% / Codec 40%, stacking gate 40% (RIR→CODEC, `|`-joined labels). RawBoost is training-time only. Realized 2x distributions verified within 0.3pp of every target (rooms 30/50/20, MUSAN 50/30/20, SNR bands 10/80/10, stacking 40.1%).
+
+**Codec set (final, all six verified on-server 2026-08-02):** G.711 µ-law 0.25 / G.711 A-law 0.15 / AMR-NB 0.20 / **Speex 0.05 (replaced iLBC — unobtainable in stock and static ffmpeg builds; same legacy-VoIP CELP narrowband slot)** / Opus 0.25 / AAC 0.10. AAC container is `mpegts` (the old `adts` was write-only — our bug, not the environment). AMR-NB runs via a pinned static binary (`tools/ffmpeg-7.0.2-amd64-static/ffmpeg`, env `MARSA_FFMPEG_BINARY`, `CodecSpec.backend="ffmpeg_bin"` subprocess path, ~41 ms/clip); the rest run in-process via torchaudio AudioEffector. Per-codec failures are recorded (`get_codec_errors()`), never silently swallowed. Realized mix within 0.2pp of all weights; AMR-NB/Speex spectrally verified (≈0 energy >4 kHz).
+
+**Leak-safety (all empirically verified on generated output):**
+- Audio IDs drawn from per-split seeded-shuffled pools (sequential IDs had encoded class: bonafide occupied ids 1..54,266 contiguously in the discarded 2x).
+- Protocol/metadata rows sorted by audio ID (row position otherwise leaks).
+- Constant mtime `CORPUS_MTIME` on every emitted file (emission order otherwise class-sorts `ls -t` and survives tar).
+- Single loudness policy −23 dBFS RMS + 0.99 peak limit on every clip (verified: mean/min/max −23.00 on 600 samples).
+- Equal clean fraction per class by construction; length-preserving round-trips; augmenters never see labels.
+- Documented-not-fixable: 13,111 MP3-sourced CV bonafide (36.5%) carry compression history no spoof shares — "Channel provenance" limitation in main.tex Usage Notes, verified per accent.
+
+**Output per split:** `ASVspoof2019.LA.cm.<split>.{trn,trl}.txt` in byte-exact ASVspoof2019 LA 5-field format (`SPEAKER AUDIO_ID - ATTACK_ID KEY`; ATTACK_ID = system slug, enables LOSO since all six systems appear in every split) plus `MARSA.LA.cm.<split>.metadata.csv` (`audio_id,speaker_id,key,attack_id,aug_id`) carrying the augmentation label.
+
+**Status:** code complete and pushed; 2x/3x/5x/10x regeneration pending (every earlier augmented output is invalid: 3-codec mix and/or sequential-ID leak). Open checks before launch: cross-split sentence overlap, cross-split ECAPA voice near-duplicates.
 
 ---
 

@@ -353,6 +353,20 @@ Outputs in `data/partial_spoof_output/`:
 - Wall-clock estimate: dominated by Chatterbox (~1.5-2.5 days per partition) and OuteTTS (~10-15 hours per partition). OmniVoice and the others combined should complete in under 24h.
 - Keep-bad-stuff: `ENABLE_STEP_6_REJECTION = False`. Low-quality samples land in the corpus labeled `quality_flag='low'`; the upstream clone gate (ECAPA SIM >= 0.60) still drops obvious non-attacks but nothing past Step 5 gets filtered for WER/NISQA.
 
+## Augmentation Runs on the MARSA Speaker-Disjoint Partition (2026-07-31 → 2026-08-02)
+
+Input: `data/marsa_speaker_disjoint_partition/` (1,567 speakers, 80/10/10; train 179,190 / dev 31,001 / eval 28,024 source files). All runs factor 2x, seed 42, ~1 h each on CPU (fishgram_env).
+
+| Run | Date | Result | Verdict |
+|---|---|---|---|
+| 2x #1 | 2026-07-31 | train OK, dev/eval EMPTY (loader `val`/`test` naming bug) | DISCARDED |
+| 2x #2 | 2026-08-01 | all splits populated but bonafide 10% not 15.1% (`.mp3` silently dropped: 13,111 CV bonafide missing) | DISCARDED |
+| 2x #3 | 2026-08-02 | 358,380/31,001/28,024; bonafide 15.1/15.1/14.6%; all six codecs within 0.2pp of target; AMR-NB/Speex spectrally confirmed; loudness −23.00; protocol↔file 1:1; speaker overlap 0 | VALID data, but **superseded**: generated before shuffled-ID/mtime/5-column-protocol fixes (bonafide ids 1..54,266 contiguous = label leak) |
+
+**Final-state regeneration pending:** 2x/3x/5x/10x in one batch with all fixes (shuffled IDs, ID-sorted rows, constant mtime, ASVspoof-exact protocol + metadata CSV, 6-codec set). Requires `export MARSA_FFMPEG_BINARY=~/ANTI-SPOOFING-VOICE-LATIN-AMERICA/tools/ffmpeg-7.0.2-amd64-static/ffmpeg` inside the tmux session (preflight hard-aborts without it — by design). Disk: ~290 GB total vs 547 GB free at 92% volume usage; check `df -h /` after 5x before 10x commits ~140 GB. Post-run verification battery: ID interleaving, windowed row-class rate, per-class aug-family distribution, mtime uniqueness (note: battery must parse the NEW 5-field protocol — key is field 5, attack field 4).
+
+Throughput reference: ~250 it/s clean copies, ~22 files/s overall including augmentation; 2x ≈ 1 h, projected 3x ≈ 1.5 h, 5x ≈ 2.5 h, 10x ≈ 5 h. Sizes: 2x = 30 GB measured; 3x ≈ 45 GB, 5x ≈ 72 GB, 10x ≈ 140 GB projected at ~75 KB/file.
+
 ## Related Pages
 
 - [Partial Spoof Approach](../methodology/partial-spoof-approach.md) -- algorithmic details and justifications for jitter

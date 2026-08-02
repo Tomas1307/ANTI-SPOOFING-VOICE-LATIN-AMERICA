@@ -56,20 +56,34 @@ OUTPUT STRUCTURE (ASVspoof2019 LA Format):
             │   └── ...
             └── ASVspoof2019.LA.cm.eval.trl.txt
 
-PROTOCOL FILE FORMAT:
---------------------
+PROTOCOL AND METADATA FILES:
+---------------------------
 
-    SPEAKER_ID AUDIO_ID SYSTEM_ID KEY
-    arf_00295 LA_T_0000001 - bonafide
-    arf_00295 LA_T_0000002 RIR_SMALL_NOI_SNR15 bonafide
-    clf_00123 LA_T_0000003 - spoof
-    clf_00123 LA_T_0000004 CODEC_8K_LOSS2PCT spoof
+    Two files are written per split.
 
-    Where:
-    - SPEAKER_ID: Speaker identifier
-    - AUDIO_ID: Unique file ID (LA_T_* for train, LA_D_* for dev, LA_E_* for eval)
-    - SYSTEM_ID: "-" for original/clean, or augmentation label for augmented
-    - KEY: "bonafide" or "spoof"
+    1. The protocol file is byte-faithful ASVspoof2019 LA format, five
+       whitespace-separated fields with a literal "-" third field (the
+       environment slot used only in the PA scenario):
+
+       SPEAKER_ID AUDIO_ID - ATTACK_ID KEY
+       arf_00295 LA_T_0000001 - - bonafide
+       clf_00123 LA_T_0000003 - fishgram spoof
+       clf_00123 LA_T_0000004 - omnivoice-psw2 spoof
+
+       Standard ASVspoof2019 loaders (for example AASIST's genSpoof_list,
+       which parses exactly five fields) consume it unchanged. ATTACK_ID is
+       "-" for bonafide, or the generating system slug for spoof; it enables
+       leave-one-system-out protocols and per-system evaluation.
+
+    2. A companion metadata CSV (MARSA.LA.cm.<split>.metadata.csv) carries
+       everything the strict format cannot, one row per emitted clip:
+
+       audio_id,speaker_id,key,attack_id,aug_id
+       LA_T_0000002,arf_00295,bonafide,-,RIR_SMALL_NOI_SNR15
+       LA_T_0000004,clf_00123,spoof,omnivoice-psw2,CODEC_AMR_NB_8K_LOSS2PCT_BP
+
+       aug_id is "-" for clean copies, the augmentation label for augmented
+       ones (stacked augmentations joined with "|").
 
 USAGE:
 ------
@@ -366,9 +380,19 @@ class AugmentationPipeline:
 
     def _save_audio_and_protocol(
         self, audio: np.ndarray, sr: int, split: str,
-        speaker_id: str, system_id: str, key: str
+        speaker_id: str, system_id: str, attack_id: str, key: str
     ):
-        """Save audio as FLAC and add protocol entry."""
+        """Save audio as FLAC and add a five-column protocol entry.
+
+        Args:
+            audio: Waveform to write.
+            sr: Sample rate in Hz.
+            split: One of "train"/"dev"/"eval".
+            speaker_id: Speaker identifier.
+            system_id: Augmentation label, or "-" for a clean copy.
+            attack_id: Generating attack system, or "-" for bonafide.
+            key: "bonafide" or "spoof".
+        """
         audio_id = self._generate_audio_id(split)
 
         flac_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}" / "flac"
@@ -382,8 +406,11 @@ class AugmentationPipeline:
         )
         utils.save_audio_flac(audio, str(audio_path), sr=sr)
 
-        protocol_entry = f"{speaker_id} {audio_id} {system_id} {key}"
-        self.protocol_entries[split].append(protocol_entry)
+        # Stored structured; formatting into the ASVspoof protocol line and
+        # the metadata CSV row happens at write time.
+        self.protocol_entries[split].append(
+            (speaker_id, audio_id, system_id, attack_id, key)
+        )
 
         self.stats[split][key] += 1
         self.stats[split]['total'] += 1
@@ -417,23 +444,27 @@ class AugmentationPipeline:
 
         audio_cache: Dict[str, Tuple[np.ndarray, int]] = {}
 
-        def _load(idx: int) -> Tuple[str, np.ndarray, int]:
+        def _load(idx: int) -> Tuple[str, str, np.ndarray, int]:
             info = files[idx % len(files)]
             path = info['filepath']
             if path not in audio_cache:
                 audio_cache[path] = utils.load_audio(path)
             audio, sr = audio_cache[path]
-            return info['speaker_id'], audio, sr
+            return info['speaker_id'], info.get('attack_id', '-'), audio, sr
 
         for i in tqdm(range(clean_count), desc=f"  {split} {key} clean"):
-            speaker_id, audio, sr = _load(i)
-            self._save_audio_and_protocol(audio, sr, split, speaker_id, "-", key)
+            speaker_id, attack_id, audio, sr = _load(i)
+            self._save_audio_and_protocol(
+                audio, sr, split, speaker_id, "-", attack_id, key
+            )
 
         for i in tqdm(range(aug_count), desc=f"  {split} {key} aug"):
-            speaker_id, audio, sr = _load(i)
+            speaker_id, attack_id, audio, sr = _load(i)
             aug_types = self._select_augmentation_mode()
             augmented, system_id = self._apply_augmentation(audio, sr, aug_types)
-            self._save_audio_and_protocol(augmented, sr, split, speaker_id, system_id, key)
+            self._save_audio_and_protocol(
+                augmented, sr, split, speaker_id, system_id, attack_id, key
+            )
 
     def _process_split(self, split: str, counts: Dict[str, Tuple]):
         """Process a complete split from per-class (clean, aug) counts.
@@ -478,8 +509,17 @@ class AugmentationPipeline:
         self._emit_class(spoof_files, split, 'spoof', s_clean, s_aug)
 
     def _write_protocol_files(self):
-        """Write protocol files for all splits."""
-        self.logger.info("\nWriting protocol files...")
+        """Write the ASVspoof protocol and the metadata CSV for each split.
+
+        The protocol file follows the ASVspoof2019 LA format exactly
+        (SPEAKER AUDIO_ID - ATTACK_ID KEY, third field a literal "-"), so
+        standard loaders consume it unchanged. The augmentation label, which
+        that format has no field for, goes to a companion CSV. Both files are
+        sorted by audio ID so row order follows the shuffled identifiers
+        rather than the class-by-class emission order; otherwise the position
+        of a row would still reveal its label.
+        """
+        self.logger.info("\nWriting protocol and metadata files...")
 
         protocol_map = {
             'train': 'ASVspoof2019.LA.cm.train.trn.txt',
@@ -488,23 +528,24 @@ class AugmentationPipeline:
         }
 
         for split, filename in protocol_map.items():
-            if self.protocol_entries[split]:
-                protocol_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}"
-                protocol_path = protocol_dir / filename
+            if not self.protocol_entries[split]:
+                continue
 
-                # Sort by audio ID so row order follows the shuffled
-                # identifiers rather than the class-by-class emission order;
-                # otherwise the position of a row in the file would still
-                # reveal its label.
-                entries = sorted(
-                    self.protocol_entries[split], key=lambda e: e.split()[1]
-                )
+            protocol_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}"
+            entries = sorted(self.protocol_entries[split], key=lambda e: e[1])
 
-                with open(protocol_path, 'w') as f:
-                    for entry in entries:
-                        f.write(entry + '\n')
+            protocol_path = protocol_dir / filename
+            with open(protocol_path, 'w') as f:
+                for speaker_id, audio_id, _aug_id, attack_id, key in entries:
+                    f.write(f"{speaker_id} {audio_id} - {attack_id} {key}\n")
+            self.logger.info(f"  Written: {filename} ({len(entries)} entries)")
 
-                self.logger.info(f"  Written: {filename} ({len(self.protocol_entries[split])} entries)")
+            metadata_path = protocol_dir / f"MARSA.LA.cm.{split}.metadata.csv"
+            with open(metadata_path, 'w') as f:
+                f.write("audio_id,speaker_id,key,attack_id,aug_id\n")
+                for speaker_id, audio_id, aug_id, attack_id, key in entries:
+                    f.write(f"{audio_id},{speaker_id},{key},{attack_id},{aug_id}\n")
+            self.logger.info(f"  Written: {metadata_path.name} ({len(entries)} rows)")
 
     def _normalize_timestamps(self):
         """Set a single fixed mtime on every emitted file.

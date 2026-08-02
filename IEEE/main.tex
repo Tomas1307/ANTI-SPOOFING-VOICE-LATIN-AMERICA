@@ -1071,6 +1071,27 @@ users should select a single factor appropriate to their compute budget
 rather than pooling all four, which would over-represent augmented
 variants of the same source utterances.
 
+\paragraph{Channel provenance of the bonafide tier.} The bonafide tier
+combines two recording provenances with different compression
+histories. The original HABLA studio recordings are stored losslessly
+end-to-end, whereas Mozilla distributes Common Voice clips as
+MP3-compressed audio: 13{,}111 utterances of the bonafide tier (36.5\%)
+are MP3-sourced. No synthetic utterance shares this history, because all
+six attack systems synthesize directly to lossless output. A detector
+could therefore, in principle, exploit residual MP3 coding artifacts as
+a shortcut for part of the bonafide class instead of learning synthesis
+artifacts. Two properties mitigate, but do not eliminate, this
+confound. First, the augmentation tier passes half of the training
+clips of \emph{both} classes through real lossy telephony and VoIP
+codec round-trips, partially homogenizing compression history across
+labels. Second, source provenance is recoverable per speaker
+(Peninsular and Mexican speakers derive entirely from the Common Voice
+extension, Argentine and Peruvian speakers entirely from the original
+HABLA release; Methods), so users can quantify a detector's reliance on
+the confound by comparing its bonafide accuracy across accent groups of
+different provenance. We flag this as a limitation shared by any corpus
+that extends a studio-condition bonafide pool with crowdsourced speech.
+
 \paragraph{Ethical use.} MARSA is released to support the development of
 \emph{defensive} anti-spoofing systems. The synthetic audio it contains
 is generated from open TTS systems applied to a consenting-speaker

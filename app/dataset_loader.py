@@ -124,6 +124,32 @@ class DatasetLoader:
             return "spoof"
         return None
 
+    def _attack_id(self, filename: str, file_type: str) -> str:
+        """
+        Extract the attack-system identifier from a partition filename.
+
+        Partition filenames encode the generating system as the token after
+        the ``spoof_`` prefix: ``spoof_fishgram_esm_00030_0001.flac`` yields
+        ``fishgram`` and the partial-spoof variant
+        ``spoof_omnivoice-psw2_esm_00030_0001.flac`` yields
+        ``omnivoice-psw2``. Bonafide files carry no system and yield ``-``,
+        matching the ASVspoof convention for the system column.
+
+        Args:
+            filename: Basename of the audio file.
+            file_type: 'bonafide' or 'spoof' as returned by _classify.
+
+        Returns:
+            The attack-system identifier, '-' for bonafide, or 'unknown'
+            when a spoof filename does not follow the naming convention.
+        """
+        if file_type == "bonafide":
+            return "-"
+        parts = filename.split("_")
+        if len(parts) >= 2 and parts[0] == "spoof" and parts[1]:
+            return parts[1]
+        return "unknown"
+
     def _resolve_speaker_dirs(self, split: str) -> tuple:
         """
         Resolve the speaker directories and their audio roots for a split.
@@ -208,7 +234,8 @@ class DatasetLoader:
                     "speaker_id": speaker_id,
                     "split": split,
                     "filename": filename,
-                    "file_type": file_type
+                    "file_type": file_type,
+                    "attack_id": self._attack_id(filename, file_type)
                 })
 
         report = DatasetDiscoveryReport(
