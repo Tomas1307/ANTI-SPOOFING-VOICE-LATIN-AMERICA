@@ -68,6 +68,21 @@ TRAIN_RATIO = 0.80
 DEV_RATIO = 0.10
 # EVAL_RATIO is the remainder.
 
+# Speakers forced into train by the cross-split voice-similarity audit of
+# 2026-08-02. ECAPA-TDNN embeddings (data/mozilla_speaker_selection/) were
+# compared across splits for all 1,567 speakers; six pairs exceeded the 0.75
+# cosine threshold the corpus itself uses to de-duplicate Common Voice
+# against HABLA, so the dev/eval member of each pair is consolidated into
+# train (never the reverse, so dev/eval contain no voice acoustically close
+# to a training voice):
+#   arf_02485 (dev)  ~ arf_09334 (train)  cos 0.872
+#   arf_04311 (eval) ~ arf_07049 (train)  cos 0.901
+#   esm_00117 (eval) ~ esm_00034 / esm_00200 (train)  cos 0.784 / 0.775
+#   mxm_00047 (eval) ~ esm_00200 / mxm_00205 (train)  cos 0.773 / 0.776
+SIMILARITY_FORCED_TRAIN: List[str] = [
+    "arf_02485", "arf_04311", "esm_00117", "mxm_00047",
+]
+
 
 class SpeakerDisjointPartitionBuilder:
     """Builds a speaker-disjoint train/dev/eval symlink partition.
@@ -99,6 +114,7 @@ class SpeakerDisjointPartitionBuilder:
         seed: int = 42,
         dry_run: bool = False,
         include_noisy_partial_spoof: bool = False,
+        force_train_speakers: Optional[List[str]] = None,
     ) -> None:
         """Initialize the builder.
 
@@ -112,6 +128,10 @@ class SpeakerDisjointPartitionBuilder:
                 writing anything to disk.
             include_noisy_partial_spoof: If True, include all partial-spoof
                 rows regardless of WER/CER instead of just the clean subset.
+            force_train_speakers: Speaker IDs assigned to train regardless of
+                the random draw (defaults to SIMILARITY_FORCED_TRAIN, the
+                cross-split voice-similarity consolidation). Pass an empty
+                list to disable.
         """
         self.bonafide_dir = bonafide_dir or DEFAULT_BONAFIDE_DIR
         self.partial_spoof_csv = partial_spoof_csv or DEFAULT_PARTIAL_SPOOF_CSV
@@ -120,6 +140,10 @@ class SpeakerDisjointPartitionBuilder:
         self.seed = seed
         self.dry_run = dry_run
         self.include_noisy_partial_spoof = include_noisy_partial_spoof
+        self.force_train_speakers = (
+            SIMILARITY_FORCED_TRAIN if force_train_speakers is None
+            else force_train_speakers
+        )
         self._preview_examples: List[str] = []
 
     def run(self) -> SpeakerPartitionReport:
@@ -179,6 +203,11 @@ class SpeakerDisjointPartitionBuilder:
                 "Partial-spoof source is corpus_samples.csv's spliced_audio_path "
                 "(includes all quality_flag tiers; filter by wer/cer/quality_flag "
                 "downstream if only the clean subset is wanted).",
+                f"Voice-similarity consolidation applied: "
+                f"{self.force_train_speakers} forced into train (cross-split "
+                f"ECAPA cosine > 0.75 with a training speaker; audit "
+                f"2026-08-02)." if self.force_train_speakers else
+                "Voice-similarity consolidation disabled.",
             ],
         )
         self._log_summary(report)
@@ -306,6 +335,24 @@ class SpeakerDisjointPartitionBuilder:
             assignment[speaker_id] = "dev"
         for speaker_id in shuffled[n_train + n_dev:]:
             assignment[speaker_id] = "eval"
+
+        # Voice-similarity consolidation: speakers acoustically closer than
+        # the 0.75 ECAPA threshold to a training speaker are moved into
+        # train so dev/eval never contain a near-duplicate of a training
+        # voice (see SIMILARITY_FORCED_TRAIN for the audit evidence).
+        for speaker_id in self.force_train_speakers:
+            previous = assignment.get(speaker_id)
+            if previous is None:
+                logger.warning(
+                    f"force-train speaker {speaker_id} not found in the "
+                    f"speaker pool; ignoring."
+                )
+            elif previous != "train":
+                assignment[speaker_id] = "train"
+                logger.info(
+                    f"  Voice-similarity merge: {speaker_id} moved "
+                    f"{previous} -> train."
+                )
 
         return assignment
 

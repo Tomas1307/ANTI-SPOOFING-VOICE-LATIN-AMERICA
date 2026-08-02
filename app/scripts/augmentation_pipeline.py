@@ -380,7 +380,8 @@ class AugmentationPipeline:
 
     def _save_audio_and_protocol(
         self, audio: np.ndarray, sr: int, split: str,
-        speaker_id: str, system_id: str, attack_id: str, key: str
+        speaker_id: str, system_id: str, attack_id: str, key: str,
+        source_file: str
     ):
         """Save audio as FLAC and add a five-column protocol entry.
 
@@ -392,6 +393,11 @@ class AugmentationPipeline:
             system_id: Augmentation label, or "-" for a clean copy.
             attack_id: Generating attack system, or "-" for bonafide.
             key: "bonafide" or "spoof".
+            source_file: Partition basename of the source utterance. Recorded
+                in the metadata CSV (never the protocol) so filters defined at
+                the source-utterance level, such as the sentence-disjoint
+                strict-eval list, can be joined onto the augmented corpus
+                after the fact.
         """
         audio_id = self._generate_audio_id(split)
 
@@ -409,7 +415,7 @@ class AugmentationPipeline:
         # Stored structured; formatting into the ASVspoof protocol line and
         # the metadata CSV row happens at write time.
         self.protocol_entries[split].append(
-            (speaker_id, audio_id, system_id, attack_id, key)
+            (speaker_id, audio_id, system_id, attack_id, key, source_file)
         )
 
         self.stats[split][key] += 1
@@ -444,26 +450,28 @@ class AugmentationPipeline:
 
         audio_cache: Dict[str, Tuple[np.ndarray, int]] = {}
 
-        def _load(idx: int) -> Tuple[str, str, np.ndarray, int]:
+        def _load(idx: int) -> Tuple[Dict, np.ndarray, int]:
             info = files[idx % len(files)]
             path = info['filepath']
             if path not in audio_cache:
                 audio_cache[path] = utils.load_audio(path)
             audio, sr = audio_cache[path]
-            return info['speaker_id'], info.get('attack_id', '-'), audio, sr
+            return info, audio, sr
 
         for i in tqdm(range(clean_count), desc=f"  {split} {key} clean"):
-            speaker_id, attack_id, audio, sr = _load(i)
+            info, audio, sr = _load(i)
             self._save_audio_and_protocol(
-                audio, sr, split, speaker_id, "-", attack_id, key
+                audio, sr, split, info['speaker_id'], "-",
+                info.get('attack_id', '-'), key, info['filename']
             )
 
         for i in tqdm(range(aug_count), desc=f"  {split} {key} aug"):
-            speaker_id, attack_id, audio, sr = _load(i)
+            info, audio, sr = _load(i)
             aug_types = self._select_augmentation_mode()
             augmented, system_id = self._apply_augmentation(audio, sr, aug_types)
             self._save_audio_and_protocol(
-                augmented, sr, split, speaker_id, system_id, attack_id, key
+                augmented, sr, split, info['speaker_id'], system_id,
+                info.get('attack_id', '-'), key, info['filename']
             )
 
     def _process_split(self, split: str, counts: Dict[str, Tuple]):
@@ -536,15 +544,18 @@ class AugmentationPipeline:
 
             protocol_path = protocol_dir / filename
             with open(protocol_path, 'w') as f:
-                for speaker_id, audio_id, _aug_id, attack_id, key in entries:
+                for speaker_id, audio_id, _aug, attack_id, key, _src in entries:
                     f.write(f"{speaker_id} {audio_id} - {attack_id} {key}\n")
             self.logger.info(f"  Written: {filename} ({len(entries)} entries)")
 
             metadata_path = protocol_dir / f"MARSA.LA.cm.{split}.metadata.csv"
             with open(metadata_path, 'w') as f:
-                f.write("audio_id,speaker_id,key,attack_id,aug_id\n")
-                for speaker_id, audio_id, aug_id, attack_id, key in entries:
-                    f.write(f"{audio_id},{speaker_id},{key},{attack_id},{aug_id}\n")
+                f.write("audio_id,speaker_id,key,attack_id,aug_id,source_file\n")
+                for speaker_id, audio_id, aug_id, attack_id, key, src in entries:
+                    f.write(
+                        f"{audio_id},{speaker_id},{key},{attack_id},"
+                        f"{aug_id},{src}\n"
+                    )
             self.logger.info(f"  Written: {metadata_path.name} ({len(entries)} rows)")
 
     def _normalize_timestamps(self):
