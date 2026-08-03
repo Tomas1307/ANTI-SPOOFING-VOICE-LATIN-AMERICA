@@ -349,21 +349,38 @@ class StrictEvalFilterBuilder:
                     f"lines vs {len(insertion)} validated samples"
                 )
 
-            candidates: List[Tuple[str, List[dict]]] = [
-                ("sorted(speaker,text_id)",
-                 sorted(insertion, key=lambda e: (e["speaker_id"], e["text_id"]))),
-                ("insertion order", insertion),
-                ("speaker-grouped insertion",
-                 self._group_by_speaker_preserving_order(insertion)),
-            ]
+            # Per-speaker matching: protocol lines are consumed in order
+            # within each speaker's own sequence and zipped against that
+            # speaker's validated entries, so the GLOBAL speaker order of the
+            # protocol is irrelevant. Only the within-speaker order is
+            # assumed (two candidates), and every candidate must still pass
+            # the acoustic duration verification.
+            per_speaker_entries: Dict[str, List[dict]] = {}
+            for entry in insertion:
+                per_speaker_entries.setdefault(entry["speaker_id"], []).append(entry)
+
+            per_speaker_protocol: Dict[str, List[Tuple[str, str, Path]]] = {}
+            for item in protocol_entries:
+                per_speaker_protocol.setdefault(item[0], []).append(item)
+
+            if set(per_speaker_protocol) != set(per_speaker_entries) or any(
+                len(per_speaker_protocol[s]) != len(per_speaker_entries[s])
+                for s in per_speaker_protocol
+            ):
+                return None, f"{split_dir.name}: per-speaker count mismatch"
 
             matched = False
             last_reason = "no candidate ordering matched"
-            for label, samples in candidates:
-                pairs = list(zip(protocol_entries, samples))
-                if any(spk != e["speaker_id"] for (spk, _a, _f), e in pairs):
-                    last_reason = f"{split_dir.name}/{label}: speaker sequence mismatch"
-                    continue
+            for label, keyfn in [
+                ("text_id order", lambda e: e["text_id"]),
+                ("within-speaker insertion", None),
+            ]:
+                pairs = []
+                for speaker_id, proto_items in per_speaker_protocol.items():
+                    entries = per_speaker_entries[speaker_id]
+                    if keyfn is not None:
+                        entries = sorted(entries, key=keyfn)
+                    pairs.extend(zip(proto_items, entries))
                 verdict = self._verify_durations(pairs)
                 if verdict is not None:
                     last_reason = f"{split_dir.name}/{label}: {verdict}"
@@ -379,24 +396,6 @@ class StrictEvalFilterBuilder:
         if not mapping:
             return None, "no protocol entries found"
         return mapping, f"OK via {'; '.join(labels_used)} ({len(mapping):,} ids)"
-
-    @staticmethod
-    def _group_by_speaker_preserving_order(entries: List[dict]) -> List[dict]:
-        """Group entries by speaker (sorted) keeping within-speaker order.
-
-        Args:
-            entries: Validated sample entries in insertion order.
-
-        Returns:
-            Entries regrouped speaker by speaker.
-        """
-        by_speaker: Dict[str, List[dict]] = {}
-        for entry in entries:
-            by_speaker.setdefault(entry["speaker_id"], []).append(entry)
-        grouped: List[dict] = []
-        for speaker_id in sorted(by_speaker):
-            grouped.extend(by_speaker[speaker_id])
-        return grouped
 
     def _verify_durations(
         self, pairs: List[Tuple[Tuple[str, str, Path], dict]]
