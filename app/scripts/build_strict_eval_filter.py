@@ -313,50 +313,72 @@ class StrictEvalFilterBuilder:
 
         validated = json.load(open(validated_path, encoding="utf-8"))
 
-        protocol_entries: List[Tuple[str, str, Path]] = []
-        for split_dir in sorted(la_dir.glob("ASVspoof2019_LA_*")):
+        # Some pipelines wrote everything into one LA split dir, others into
+        # three (train/dev/eval, with the sample's split recorded per entry).
+        # Reconstruction is therefore performed PER LA SPLIT DIR, matching
+        # protocol lines against the validated entries belonging to that
+        # split; within each split several candidate orderings are tried and
+        # accepted only after speaker-sequence AND duration verification.
+        insertion_all = list(validated.values())
+        split_dirs = sorted(la_dir.glob("ASVspoof2019_LA_*"))
+        mapping: Dict[str, str] = {}
+        labels_used: List[str] = []
+
+        for split_dir in split_dirs:
+            split_token = split_dir.name.rsplit("_", 1)[-1]
             flac_dir = split_dir / "flac"
+            protocol_entries: List[Tuple[str, str, Path]] = []
             for protocol in sorted(split_dir.glob("ASVspoof2019.LA.cm.*.txt")):
                 for line in open(protocol, encoding="utf-8"):
                     parts = line.split()
                     if len(parts) >= 2:
                         protocol_entries.append((parts[0], parts[1], flac_dir))
-
-        if len(protocol_entries) != len(validated):
-            return None, (
-                f"count mismatch: {len(protocol_entries)} protocol lines vs "
-                f"{len(validated)} validated samples"
-            )
-
-        # Different pipelines formatted their LA output in different orders,
-        # so several candidate orderings are tried; a candidate is accepted
-        # only if it passes speaker-sequence AND duration verification.
-        insertion = list(validated.values())
-        candidates: List[Tuple[str, List[dict]]] = [
-            ("sorted(speaker,text_id)",
-             sorted(insertion, key=lambda e: (e["speaker_id"], e["text_id"]))),
-            ("insertion order", insertion),
-            ("speaker-grouped insertion",
-             self._group_by_speaker_preserving_order(insertion)),
-        ]
-
-        last_reason = "no candidate ordering matched"
-        for label, samples in candidates:
-            pairs = list(zip(protocol_entries, samples))
-            if any(spk != e["speaker_id"] for (spk, _a, _f), e in pairs):
-                last_reason = f"{label}: speaker sequence mismatch"
+            if not protocol_entries:
                 continue
-            verdict = self._verify_durations(pairs)
-            if verdict is not None:
-                last_reason = f"{label}: {verdict}"
-                continue
-            mapping = {
-                audio_id: self._norm(entry["text"])
-                for (_spk, audio_id, _fd), entry in pairs
-            }
-            return mapping, f"OK via {label} ({len(mapping):,} ids)"
 
-        return None, last_reason
+            if len(split_dirs) > 1:
+                insertion = [
+                    e for e in insertion_all if e.get("split") == split_token
+                ]
+            else:
+                insertion = insertion_all
+
+            if len(protocol_entries) != len(insertion):
+                return None, (
+                    f"{split_dir.name}: {len(protocol_entries)} protocol "
+                    f"lines vs {len(insertion)} validated samples"
+                )
+
+            candidates: List[Tuple[str, List[dict]]] = [
+                ("sorted(speaker,text_id)",
+                 sorted(insertion, key=lambda e: (e["speaker_id"], e["text_id"]))),
+                ("insertion order", insertion),
+                ("speaker-grouped insertion",
+                 self._group_by_speaker_preserving_order(insertion)),
+            ]
+
+            matched = False
+            last_reason = "no candidate ordering matched"
+            for label, samples in candidates:
+                pairs = list(zip(protocol_entries, samples))
+                if any(spk != e["speaker_id"] for (spk, _a, _f), e in pairs):
+                    last_reason = f"{split_dir.name}/{label}: speaker sequence mismatch"
+                    continue
+                verdict = self._verify_durations(pairs)
+                if verdict is not None:
+                    last_reason = f"{split_dir.name}/{label}: {verdict}"
+                    continue
+                for (_spk, audio_id, _fd), entry in pairs:
+                    mapping[audio_id] = self._norm(entry["text"])
+                labels_used.append(f"{split_token}:{label}")
+                matched = True
+                break
+            if not matched:
+                return None, last_reason
+
+        if not mapping:
+            return None, "no protocol entries found"
+        return mapping, f"OK via {'; '.join(labels_used)} ({len(mapping):,} ids)"
 
     @staticmethod
     def _group_by_speaker_preserving_order(entries: List[dict]) -> List[dict]:
