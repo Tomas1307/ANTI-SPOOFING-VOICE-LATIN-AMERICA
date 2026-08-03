@@ -738,21 +738,28 @@ regime with a light tail at each extreme.
 encode-then-decode round-trip through six telephony and VoIP codecs via
 an ffmpeg backend, covering the channels most representative of the
 target deployment: G.711 mu-law and A-law (PSTN and landline), AMR-NB
-(2G/3G mobile), iLBC (legacy VoIP), Opus (the dominant over-the-top
-codec, used by consumer messaging and conferencing apps), and AAC
-(broadband). For codecs with a selectable bitrate a bitrate is drawn
-from the encoder's supported set, and with a fixed probability an
-additional packet-loss simulation is applied at a sampled loss fraction.
-The signal is resampled to each codec's native rate for the round-trip
-and back to \SI{16}{\kilo\hertz} on write. The codec set is probed
-against the host ffmpeg build at run time, and any codec the build does
-not provide is skipped and logged; on our reference build the applied
-codecs were G.711 mu-law/A-law and Opus, whereas AMR-NB, iLBC, and AAC
-require a non-default ffmpeg build. This configured codec set was chosen
-for deployment realism; a broader design that adds wideband and
-enterprise codecs together with a burst-loss channel model and per-codec
-packet-loss concealment is documented as a planned extension but is not
-part of the released corpus.
+(2G/3G mobile), Speex (legacy VoIP; the pre-Opus open VoIP codec, which
+RFC~6716 positions as Opus's predecessor), Opus (the dominant
+over-the-top codec, used by consumer messaging and conferencing apps),
+and AAC (broadband). For codecs with a selectable
+bitrate a bitrate is drawn from the encoder's supported set, and with a
+fixed probability an additional packet-loss simulation is applied at a
+sampled loss fraction. The signal is resampled to each codec's native
+rate for the round-trip and back to \SI{16}{\kilo\hertz} on write. Five
+of the six codecs run in-process against the system ffmpeg libraries;
+AMR-NB, which Linux distributions omit for licensing reasons, is
+routed through a version-pinned static ffmpeg binary so that all six
+codecs are realized in the released corpus. Codec availability is
+probed at run time and generation aborts, rather than silently
+narrowing the codec set, if any configured codec is unavailable. In the
+released tiers the realized codec distribution matches the configured
+sampling weights to within 0.3 percentage points, and the narrowband
+codecs were spectrally verified (AMR-NB and Speex outputs carry
+essentially zero energy above \SI{4}{\kilo\hertz}, confirming true
+\SI{8}{\kilo\hertz} round-trips). A broader design that adds wideband
+and enterprise codecs together with a burst-loss channel model and
+per-codec packet-loss concealment is documented as a planned extension
+but is not part of the released corpus.
 
 \paragraph{Training-time augmentation.} A convolutive and additive
 signal-level augmentation of the RawBoost family \citep{tak2022ssl} is
@@ -819,8 +826,8 @@ Stacking-gate probability & 0.40 (RIR+noise then codec) \\
 Room size & small 0.30, medium 0.50, large 0.20 \\
 Noise source & noise 0.50, babble 0.30, music 0.20 \\
 SNR band (dB) & $[0,5]$ (0.10), $[5,30]$ (0.80), $[30,35]$ (0.10) \\
-Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, iLBC 0.05, Opus 0.25, AAC 0.10 \\
-Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/iLBC fixed \\
+Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, Speex 0.05, Opus 0.25, AAC 0.10 \\
+Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/Speex fixed \\
 Packet loss & applied with prob.\ 0.30; fraction Uniform$[0,0.05]$ \\
 Multiplication factors & $\times$2, $\times$3, $\times$5, $\times$10; same factor applied to both classes \\
 \midrule
@@ -874,9 +881,26 @@ quality; the recommended clean partition is identifiable directly from
 the released per-sample metrics (Technical Validation; see also Usage
 Notes).
 
-The augmentation tiers reuse the same protocol convention, with the
-augmentation chain recorded in the system identifier field as described
-above.
+The augmentation tiers are released with two files per split. The
+protocol file follows the ASVspoof2019 LA five-field format exactly
+(\texttt{SPEAKER AUDIO\_ID - ATTACK\_ID KEY}, with a literal
+``\texttt{-}'' third field as in the original LA protocols), so
+standard anti-spoofing loaders consume it unchanged; the
+\texttt{ATTACK\_ID} field carries the generating system
+(\texttt{fishgram}, \texttt{omnivoice-psw2}, \ldots, or ``\texttt{-}''
+for bonafide), providing per-utterance attack attribution. A companion
+metadata CSV per split
+(\texttt{audio\_id, speaker\_id, key, attack\_id, aug\_id,
+source\_file}) records what the strict format has no field for: the
+applied augmentation chain (\texttt{aug\_id}; stacked augmentations
+joined with ``\texttt{|}'', ``\texttt{-}'' for clean copies) and the
+source utterance each clip derives from (\texttt{source\_file}), which
+makes source-level filters joinable onto the augmented corpus. Within
+each augmented split, audio identifiers are assigned by a seeded random
+shuffle rather than sequentially, protocol rows are sorted by
+identifier, and all released files carry one constant modification
+timestamp, so that neither identifier ranges, row order, nor file
+timestamps carry any information about the class label.
 
 \PENDING{Final on-disk size of the deposited record, and the exact
 top-level directory tree, to be inserted once the deposit is finalized.}
@@ -1091,6 +1115,60 @@ HABLA release; Methods), so users can quantify a detector's reliance on
 the confound by comparing its bonafide accuracy across accent groups of
 different provenance. We flag this as a limitation shared by any corpus
 that extends a studio-condition bonafide pool with crowdsourced speech.
+
+\paragraph{Speaker disjointness of the augmented tiers.} The augmented
+tiers are built on a canonical speaker-disjoint partition of the corpus
+(80/10/10 by speaker, seeded and reproducible from the released code):
+every utterance a speaker owns, across the bonafide, full-spoof, and
+partial-spoof tiers, is assigned to exactly one of train/dev/eval, and
+spoofed audio follows its \emph{target} speaker, so a detector is never
+evaluated on a cloned voice whose real counterpart it saw in training.
+Beyond identifier-level disjointness, the partition was audited
+acoustically: ECAPA-TDNN speaker embeddings were compared across splits
+for all 1{,}567 speakers, and the four dev/eval speakers whose cosine
+similarity to a training speaker exceeded 0.75 (the same threshold used
+to de-duplicate the Common Voice extension against HABLA) were
+consolidated into the training split. After consolidation no
+cross-split pair exceeds the threshold; the maximum residual
+cross-split speaker similarity is 0.74. Two of the flagged pairs
+(cosine 0.87 and 0.90, both within the original HABLA material) exhibit
+same-speaker-level similarity and are likely the same person recorded
+under two session identifiers inherited from the source corpus; users
+requiring strict distinct-identity counts should treat the corpus's
+1{,}567 speaker labels as an upper bound on distinct voices.
+
+\paragraph{Sentence overlap across splits.} Speaker disjointness does
+not imply sentence disjointness: the bonafide sources draw on shared
+sentence pools (Common Voice prompts are read by many contributors, and
+HABLA prompt sets repeat across speakers), so the same sentence can be
+read by a training speaker and, independently, by an evaluation
+speaker. Measured on the canonical partition, 66.4\% of eval source
+utterances (2{,}649 of 3{,}987) and 53.4\% of dev source utterances
+share their sentence, after text normalization, with at least one
+training utterance. This overlap is label-independent (every shared
+sentence exists in both classes, as a genuine reading and as its cloned
+counterparts), so it cannot be exploited as a class shortcut, and
+comparable corpora do not control it (ASVspoof2019 LA inherits VCTK's
+repeated prompts across speakers and splits). It can, however,
+contribute text-dependent overfitting to seen phrases. For studies that
+require a text-independent evaluation we release a \emph{strict eval
+filter}: the list of eval source utterances whose sentence never
+appears in training (1{,}338 utterances, 33.6\% of eval sources),
+together with all clips derived from them, joinable onto every
+augmented tier through the \texttt{source\_file} metadata column.
+
+\paragraph{Seen-attack versus unseen-attack evaluation.} The canonical
+partition is speaker-disjoint but system-overlapping: since spoofed
+audio is assigned to the split of its target speaker, all six attack
+systems appear in train, dev, and eval alike. Results on the canonical
+eval split therefore measure \emph{seen-attack} detection, where the
+detector has trained on artifacts of every generator it is tested
+against, and they must not be read as generalization to unseen
+synthesis systems. For unseen-attack claims, the per-utterance
+\texttt{ATTACK\_ID} attribution released with every tier lets users
+construct leave-one-system-out protocols on top of the canonical split:
+train on a subset of the six systems and evaluate on the held-out ones,
+with speaker disjointness kept intact.
 
 \paragraph{Ethical use.} MARSA is released to support the development of
 \emph{defensive} anti-spoofing systems. The synthetic audio it contains

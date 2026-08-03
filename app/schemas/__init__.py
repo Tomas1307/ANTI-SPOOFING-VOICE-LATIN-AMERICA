@@ -11,6 +11,7 @@ from app.schemas.dataset_discovery_report import DatasetDiscoveryReport
 from app.schemas.fullspoof_system_description_stat import SystemDescriptionStat
 from app.schemas.partition_split_stat import PartitionSplitStat
 from app.schemas.speaker_partition_report import SpeakerPartitionReport
+from app.schemas.strict_eval_filter_report import StrictEvalFilterReport
 
 __all__ = [
     "AccentValidationStat",
@@ -22,4 +23,5 @@ __all__ = [
     "SystemDescriptionStat",
     "PartitionSplitStat",
     "SpeakerPartitionReport",
+    "StrictEvalFilterReport",
 ]
