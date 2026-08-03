@@ -728,6 +728,21 @@ class AugmentationPipeline:
                     f"at {sample_rate} Hz"
                 )
 
+        # A previous run's files in the output flac dirs would survive as
+        # orphans if the new run emits fewer clips (smaller ID range), mixing
+        # superseded audio into the released directory. Refuse to run over a
+        # dirty output; the operator archives it first (mv, never rm).
+        for split in ('train', 'dev', 'eval'):
+            flac_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}" / "flac"
+            if flac_dir.exists():
+                leftover = sum(1 for _ in flac_dir.glob("*.flac"))
+                if leftover:
+                    problems.append(
+                        f"output flac dir already contains {leftover:,} files "
+                        f"({flac_dir}); archive the old run first, e.g. "
+                        f"mv {self.output_dir} data/_archive/"
+                    )
+
         if problems:
             self.logger.error("\nPREFLIGHT FAILED:")
             for problem in problems:
