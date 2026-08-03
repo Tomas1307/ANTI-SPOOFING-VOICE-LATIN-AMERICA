@@ -175,6 +175,29 @@ class StrictEvalFilterBuilder:
                          strict)
                     )
 
+        # Per-class breakdown (bonafide / full-spoof / partial-spoof) so the
+        # composition of the strict subset is interpretable at a glance.
+        breakdown: Dict[Tuple[str, str], List[int]] = {}
+        for _name, split, _spk, attack_id, resolution, strict in rows:
+            if attack_id == "-":
+                group = "bonafide"
+            elif "-ps" in attack_id:
+                group = "partial"
+            else:
+                group = "full"
+            cell = breakdown.setdefault((split, group), [0, 0, 0])
+            cell[0] += 1
+            cell[1] += strict
+            cell[2] += int(resolution == "unresolved")
+        for (split, group), (total, strict, unres) in sorted(breakdown.items()):
+            resolved = total - unres
+            pct = strict / resolved * 100 if resolved else 0.0
+            logger.info(
+                f"  {split:5s} {group:9s} total={total:6,}  "
+                f"strict={strict:6,} ({pct:.1f}% of resolved)  "
+                f"unresolved={unres:,}"
+            )
+
         self.output_csv.parent.mkdir(parents=True, exist_ok=True)
         with open(self.output_csv, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -289,10 +312,6 @@ class StrictEvalFilterBuilder:
             return None, "missing validated_samples.json or LA dir"
 
         validated = json.load(open(validated_path, encoding="utf-8"))
-        samples = sorted(
-            validated.values(),
-            key=lambda e: (e["speaker_id"], e["text_id"]),
-        )
 
         protocol_entries: List[Tuple[str, str, Path]] = []
         for split_dir in sorted(la_dir.glob("ASVspoof2019_LA_*")):
@@ -303,32 +322,76 @@ class StrictEvalFilterBuilder:
                     if len(parts) >= 2:
                         protocol_entries.append((parts[0], parts[1], flac_dir))
 
-        if len(protocol_entries) != len(samples):
+        if len(protocol_entries) != len(validated):
             return None, (
                 f"count mismatch: {len(protocol_entries)} protocol lines vs "
-                f"{len(samples)} validated samples"
+                f"{len(validated)} validated samples"
             )
 
-        per_speaker_protocol: Dict[str, int] = {}
-        for speaker_id, _aid, _fd in protocol_entries:
-            per_speaker_protocol[speaker_id] = per_speaker_protocol.get(speaker_id, 0) + 1
-        per_speaker_samples: Dict[str, int] = {}
-        for entry in samples:
-            sid = entry["speaker_id"]
-            per_speaker_samples[sid] = per_speaker_samples.get(sid, 0) + 1
-        if per_speaker_protocol != per_speaker_samples:
-            return None, "per-speaker count mismatch between protocol and samples"
+        # Different pipelines formatted their LA output in different orders,
+        # so several candidate orderings are tried; a candidate is accepted
+        # only if it passes speaker-sequence AND duration verification.
+        insertion = list(validated.values())
+        candidates: List[Tuple[str, List[dict]]] = [
+            ("sorted(speaker,text_id)",
+             sorted(insertion, key=lambda e: (e["speaker_id"], e["text_id"]))),
+            ("insertion order", insertion),
+            ("speaker-grouped insertion",
+             self._group_by_speaker_preserving_order(insertion)),
+        ]
 
-        pairs = list(zip(protocol_entries, samples))
-        for (speaker_id, _aid, _fd), entry in pairs:
-            if speaker_id != entry["speaker_id"]:
-                return None, "speaker order mismatch between protocol and samples"
+        last_reason = "no candidate ordering matched"
+        for label, samples in candidates:
+            pairs = list(zip(protocol_entries, samples))
+            if any(spk != e["speaker_id"] for (spk, _a, _f), e in pairs):
+                last_reason = f"{label}: speaker sequence mismatch"
+                continue
+            verdict = self._verify_durations(pairs)
+            if verdict is not None:
+                last_reason = f"{label}: {verdict}"
+                continue
+            mapping = {
+                audio_id: self._norm(entry["text"])
+                for (_spk, audio_id, _fd), entry in pairs
+            }
+            return mapping, f"OK via {label} ({len(mapping):,} ids)"
 
+        return None, last_reason
+
+    @staticmethod
+    def _group_by_speaker_preserving_order(entries: List[dict]) -> List[dict]:
+        """Group entries by speaker (sorted) keeping within-speaker order.
+
+        Args:
+            entries: Validated sample entries in insertion order.
+
+        Returns:
+            Entries regrouped speaker by speaker.
+        """
+        by_speaker: Dict[str, List[dict]] = {}
+        for entry in entries:
+            by_speaker.setdefault(entry["speaker_id"], []).append(entry)
+        grouped: List[dict] = []
+        for speaker_id in sorted(by_speaker):
+            grouped.extend(by_speaker[speaker_id])
+        return grouped
+
+    def _verify_durations(
+        self, pairs: List[Tuple[Tuple[str, str, Path], dict]]
+    ) -> Optional[str]:
+        """Verify a candidate mapping acoustically on a random sample.
+
+        Args:
+            pairs: Zipped (protocol entry, validated sample) pairs.
+
+        Returns:
+            None when verification passes, otherwise a failure description.
+        """
         rng = random.Random(self.seed)
         check = rng.sample(pairs, min(DURATION_CHECK_SAMPLES, len(pairs)))
         failures = 0
         checked = 0
-        for (speaker_id, audio_id, flac_dir), entry in check:
+        for (_speaker_id, audio_id, flac_dir), entry in check:
             recorded = entry.get("duration_seconds")
             flac_path = flac_dir / f"{audio_id}.flac"
             if recorded is None or not flac_path.exists():
@@ -338,21 +401,13 @@ class StrictEvalFilterBuilder:
             if abs(actual - float(recorded)) > DURATION_TOLERANCE_S:
                 failures += 1
         if checked == 0:
-            return None, "duration verification impossible (no durations recorded)"
+            return "duration verification impossible (no durations recorded)"
         if failures > DURATION_MAX_FAILURES:
-            return None, (
-                f"duration verification FAILED ({failures}/{checked} beyond "
-                f"{DURATION_TOLERANCE_S}s); ordering assumption unsafe"
+            return (
+                f"duration check failed ({failures}/{checked} beyond "
+                f"{DURATION_TOLERANCE_S}s)"
             )
-
-        mapping = {
-            audio_id: self._norm(entry["text"])
-            for (_spk, audio_id, _fd), entry in pairs
-        }
-        return mapping, (
-            f"OK ({len(mapping):,} ids; duration check {checked - failures}/"
-            f"{checked} within {DURATION_TOLERANCE_S}s)"
-        )
+        return None
 
     def _sentence_for_clip(
         self,
