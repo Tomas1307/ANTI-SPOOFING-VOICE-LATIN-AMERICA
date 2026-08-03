@@ -390,12 +390,90 @@ class StrictEvalFilterBuilder:
                 labels_used.append(f"{split_token}:{label}")
                 matched = True
                 break
+
+            if not matched:
+                # Order-free fallback: within each speaker, pair protocol
+                # flacs against entries by DURATION (measured vs recorded).
+                # No ordering assumption remains; ambiguous or unmatched
+                # clips are simply left out of the mapping (they surface as
+                # unresolved downstream instead of being mislabeled).
+                added, dropped = self._match_by_duration(
+                    per_speaker_protocol, per_speaker_entries, mapping
+                )
+                total = added + dropped
+                if total and added / total >= 0.95:
+                    labels_used.append(
+                        f"{split_token}:duration matching "
+                        f"({added:,} matched, {dropped:,} dropped)"
+                    )
+                    matched = True
             if not matched:
                 return None, last_reason
 
         if not mapping:
             return None, "no protocol entries found"
         return mapping, f"OK via {'; '.join(labels_used)} ({len(mapping):,} ids)"
+
+    def _match_by_duration(
+        self,
+        per_speaker_protocol: Dict[str, List[Tuple[str, str, Path]]],
+        per_speaker_entries: Dict[str, List[dict]],
+        mapping: Dict[str, str],
+    ) -> Tuple[int, int]:
+        """Pair protocol flacs with entries by duration, per speaker.
+
+        Both sides are sorted by duration (measured for flacs, recorded for
+        entries) and paired positionally; a pair is accepted only when the
+        two durations agree within DURATION_TOLERANCE_S. When two entries of
+        one speaker have near-identical durations AND different sentences the
+        positional pairing could swap them, so such ambiguous pairs are also
+        dropped rather than risked.
+
+        Args:
+            per_speaker_protocol: Speaker to ordered protocol items.
+            per_speaker_entries: Speaker to validated entries.
+            mapping: Output mapping updated in place (audio_id to sentence).
+
+        Returns:
+            Tuple of (accepted pair count, dropped pair count).
+        """
+        added = 0
+        dropped = 0
+        for speaker_id, proto_items in per_speaker_protocol.items():
+            measured: List[Tuple[float, str]] = []
+            for _spk, audio_id, flac_dir in proto_items:
+                flac_path = flac_dir / f"{audio_id}.flac"
+                if not flac_path.exists():
+                    dropped += 1
+                    continue
+                measured.append((sf.info(str(flac_path)).duration, audio_id))
+            entries = [
+                (float(e["duration_seconds"]), self._norm(e["text"]))
+                for e in per_speaker_entries[speaker_id]
+                if e.get("duration_seconds") is not None
+            ]
+            measured.sort()
+            entries.sort()
+
+            for i, ((m_dur, audio_id), (r_dur, sentence)) in enumerate(
+                zip(measured, entries)
+            ):
+                if abs(m_dur - r_dur) > DURATION_TOLERANCE_S:
+                    dropped += 1
+                    continue
+                ambiguous = False
+                for j in (i - 1, i + 1):
+                    if 0 <= j < len(entries):
+                        n_dur, n_sentence = entries[j]
+                        if (abs(n_dur - r_dur) <= DURATION_TOLERANCE_S
+                                and n_sentence != sentence):
+                            ambiguous = True
+                if ambiguous:
+                    dropped += 1
+                    continue
+                mapping[audio_id] = sentence
+                added += 1
+        return added, dropped
 
     def _verify_durations(
         self, pairs: List[Tuple[Tuple[str, str, Path], dict]]
@@ -455,9 +533,20 @@ class StrictEvalFilterBuilder:
         if name.startswith("spoof_"):
             token = name.split("_")[1]
             if "-ps" in token:
-                match = re.search(r"([a-z]{3}_\d{5}_\d+)$", target.stem)
+                # Spliced filenames embed the source bonafide basename after
+                # SYSTEM_PSW<k>[J]_<speaker>_. HABLA sources are named
+                # <speaker>_<digits> (speaker prefix repeated), Common Voice
+                # sources are named common_voice_es_<digits> (no speaker
+                # prefix), so the manifest key differs per provenance.
+                match = re.match(
+                    r"^[A-Za-z0-9]+_PSW\d+J?_([a-z]{3}_\d{5})_(.+)$",
+                    target.stem,
+                )
                 if match:
-                    return manifest_by_basename.get(match.group(1))
+                    speaker, rest = match.group(1), match.group(2)
+                    key = rest if rest.startswith("common_voice") \
+                        else f"{speaker}_{rest}"
+                    return manifest_by_basename.get(key)
                 return None
             la_map = la_maps.get(token)
             if la_map is not None:
