@@ -417,6 +417,12 @@ class StrictEvalFilterBuilder:
                         f"({added:,} matched, {dropped:,} dropped)"
                     )
                     matched = True
+                else:
+                    last_reason = (
+                        f"{split_dir.name}: duration matching insufficient "
+                        f"({added:,} matched / {dropped:,} dropped); "
+                        f"order candidates: {last_reason}"
+                    )
             if not matched:
                 return None, last_reason
 
@@ -465,24 +471,44 @@ class StrictEvalFilterBuilder:
             measured.sort()
             entries.sort()
 
-            for i, ((m_dur, audio_id), (r_dur, sentence)) in enumerate(
-                zip(measured, entries)
-            ):
-                if abs(m_dur - r_dur) > DURATION_MATCH_TOLERANCE_S:
+            # Ambiguity by GROUP: a maximal chain of entries whose
+            # consecutive durations lie within tolerance is unresolvable only
+            # if it contains more than one distinct sentence; equal durations
+            # with the same sentence are fine.
+            ambiguous = [False] * len(entries)
+            start = 0
+            while start < len(entries):
+                end = start
+                while (end + 1 < len(entries)
+                       and entries[end + 1][0] - entries[end][0]
+                       <= DURATION_MATCH_TOLERANCE_S):
+                    end += 1
+                if len({entries[k][1] for k in range(start, end + 1)}) > 1:
+                    for k in range(start, end + 1):
+                        ambiguous[k] = True
+                start = end + 1
+
+            # Two-pointer multiset matching: an element missing from one
+            # side is skipped locally instead of shifting every subsequent
+            # positional pair (a single extra clip would otherwise cascade
+            # into wholesale tolerance failures).
+            i = j = 0
+            while i < len(measured) and j < len(entries):
+                delta = measured[i][0] - entries[j][0]
+                if abs(delta) <= DURATION_MATCH_TOLERANCE_S:
+                    if ambiguous[j]:
+                        dropped += 1
+                    else:
+                        mapping[measured[i][1]] = entries[j][1]
+                        added += 1
+                    i += 1
+                    j += 1
+                elif delta < 0:
                     dropped += 1
-                    continue
-                ambiguous = False
-                for j in (i - 1, i + 1):
-                    if 0 <= j < len(entries):
-                        n_dur, n_sentence = entries[j]
-                        if (abs(n_dur - r_dur) <= DURATION_MATCH_TOLERANCE_S
-                                and n_sentence != sentence):
-                            ambiguous = True
-                if ambiguous:
-                    dropped += 1
-                    continue
-                mapping[audio_id] = sentence
-                added += 1
+                    i += 1
+                else:
+                    j += 1
+            dropped += len(measured) - i
         return added, dropped
 
     def _verify_durations(
