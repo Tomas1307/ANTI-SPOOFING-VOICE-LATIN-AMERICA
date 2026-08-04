@@ -240,8 +240,11 @@ practical guidance for reuse (Usage Notes).
 pipeline's structural and quality gates, verified from on-disk file
 counts. Hours are total audio duration: read directly from file headers
 for bonafide and partial spoof, and from generation metadata for full
-spoof. Augmentation multiplies both utterance count and duration by the
-same factor, without generating new attacks.}
+spoof. Augmentation multiplies the training split's utterance count and
+duration by the factor, without generating new attacks; the dev and eval
+splits of every augmented tier are released clean. Augmented-tier hours
+are totals over train/dev/eval of the speaker-disjoint partition, whose
+partial-spoof component is the recommended clean subset.}
 \label{tab:overview}
 \small
 \begin{tabular}{lrrl}
@@ -254,7 +257,7 @@ Partial spoof       & 18{,}421  & 30.2  & 1--3 word replacements, energy-aware s
 \midrule
 \textbf{Base total} & \textbf{240{,}995} & \textbf{302.6} & pre-augmentation \\
 \midrule
-Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & (same factor) & RIR+noise / codec / stacked \\
+Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & 523 / 748 / 1{,}199 / 2{,}325 & RIR+noise / codec / stacked; train only \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1093,7 +1096,14 @@ boundary-anomaly shortcut rather than a synthesis-artifact feature.
 one another in construction intent but are released as independent tiers;
 users should select a single factor appropriate to their compute budget
 rather than pooling all four, which would over-represent augmented
-variants of the same source utterances.
+variants of the same source utterances. Within any factor, augmentation
+covers all three classes alike: bonafide, full-synthesis, and
+partial-spoof clips are multiplied in the training split under the same
+uniform factor, and all three classes are present, clean, in dev and
+eval. Because the \texttt{ATTACK\_ID} column distinguishes full-synthesis
+systems from partial-spoof tiers in every split, full-spoof-only,
+partial-spoof-only, or combined training and evaluation sets are
+assembled by filtering the protocol, with no regeneration required.
 
 \paragraph{Channel provenance of the bonafide tier.} The bonafide tier
 combines two recording provenances with different compression
@@ -1152,10 +1162,17 @@ comparable corpora do not control it (ASVspoof2019 LA inherits VCTK's
 repeated prompts across speakers and splits). It can, however,
 contribute text-dependent overfitting to seen phrases. For studies that
 require a text-independent evaluation we release a \emph{strict eval
-filter}: the list of eval source utterances whose sentence never
-appears in training (1{,}338 utterances, 33.6\% of eval sources),
-together with all clips derived from them, joinable onto every
-augmented tier through the \texttt{source\_file} metadata column.
+filter}: a per-clip table marking every dev and eval clip whose source
+sentence never appears in any training clip, genuine or synthetic,
+joinable onto every augmented tier through the \texttt{source\_file}
+metadata column. Under this criterion 74.2\% of eval clips are strict.
+Full-synthesis clips are predominantly strict (91.2\%) because their
+target texts are drawn from a per-speaker sentence pool with little
+repetition across speakers, whereas bonafide and partial-spoof clips
+are strict at 32.3\% and 33.2\% respectively, reflecting the bonafide
+sentence overlap reported above. The 4.9\% of eval clips whose source
+sentence could not be mapped back to generation records with full
+confidence are conservatively marked non-strict.
 
 \paragraph{Seen-attack versus unseen-attack evaluation.} The canonical
 partition is speaker-disjoint but system-overlapping: since spoofed

@@ -4931,9 +4931,60 @@ audio {
 </section>
 
 <!-- ==================================================
-     57 - 16_next_steps
+     57 - 15k_factors_strict_eval
 ================================================== -->
-<section class="slide" id="s57">
+<section class="slide tall" id="s57">
+  <div class="inner" style="max-width:980px;">
+    <div class="eyebrow">Results &mdash; Full augmentation suite <span class="tag" style="background:rgba(62,255,139,0.12); color:var(--green); border-color:rgba(62,255,139,0.3);">complete</span></div>
+    <h2>All four factors generated, plus a text-independent strict eval</h2>
+    <p style="margin-bottom:16px; max-width:860px; font-size:13px; color:var(--muted);">
+      Every tier passed the verification battery (exact counts, shuffled-ID interleaving, single file timestamp, per-class parity). Because augmentation is length-preserving, tier hours are exactly source hours &times; factor. <strong style="color:var(--white);">All three classes are augmented</strong> (bonafide, full spoof, partial spoof) and all three appear in train, dev, and eval; the per-clip <span style="font-family:'JetBrains Mono',monospace; font-size:11px;">attack_id</span> lets anyone assemble full-only, partial-only, or combined train/eval sets by filtering &mdash; no regeneration.
+    </p>
+
+    <table style="font-size:11.5px; margin-bottom:16px;">
+      <thead><tr><th>Tier</th><th>Train files</th><th>Clean fraction</th><th>Total hours (train+dev+eval)</th><th>Verified</th></tr></thead>
+      <tbody style="font-family:'JetBrains Mono',monospace; font-size:11px;">
+        <tr><td style="color:var(--white); font-weight:600;">2&times;</td><td>359,198</td><td>50%</td><td>523 h</td><td style="color:var(--green);">full battery</td></tr>
+        <tr><td style="color:var(--white); font-weight:600;">3&times;</td><td>538,797</td><td>33%</td><td>748 h</td><td style="color:var(--green);">OK</td></tr>
+        <tr><td style="color:var(--white); font-weight:600;">5&times;</td><td>897,995</td><td>20%</td><td>1,199 h</td><td style="color:var(--green);">OK</td></tr>
+        <tr><td style="color:var(--white); font-weight:600;">10&times;</td><td>1,795,990</td><td>10%</td><td>2,325 h</td><td style="color:var(--green);">OK</td></tr>
+      </tbody>
+    </table>
+
+    <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Strict eval filter &mdash; clips whose sentence never appears in ANY training clip</div>
+    <div class="three" style="gap:12px; margin-bottom:14px;">
+      <div class="card-sm">
+        <div style="font-size:22px; font-weight:700; color:var(--white); font-family:'JetBrains Mono',monospace;">74.2%</div>
+        <div style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">of eval clips are <span style="color:var(--green);">strict</span> (text unseen in training). Released as a per-clip table, joinable onto every augmented tier via <span style="font-family:'JetBrains Mono',monospace; font-size:10px;">source_file</span>.</div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:600; color:var(--white); margin-bottom:6px;">Strict rate by class (eval)</div>
+        <div style="font-size:10px; color:var(--muted); line-height:1.8; font-family:'JetBrains Mono',monospace;">
+          full spoof&nbsp;&nbsp; <span style="color:var(--white);">91.2%</span> (per-speaker text pool)<br>
+          partial&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">33.2%</span><br>
+          bonafide&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">32.3%</span><br>
+          unresolved&nbsp; <span style="color:var(--muted2);">4.9% (marked non-strict)</span>
+        </div>
+      </div>
+      <div class="card-sm">
+        <div style="font-size:11px; font-weight:600; color:var(--white); margin-bottom:6px;">How we know the filter is correct</div>
+        <div style="font-size:10px; color:var(--muted); line-height:1.6;">
+          <strong style="color:var(--white);">Two scales, same weight:</strong> an independent script measured sentence overlap directly and predicted <span style="color:var(--white);">33.6%</span> unseen; the filter reports <span style="color:var(--white);">32.3%</span>.<br>
+          <strong style="color:var(--white);">Child matches parent:</strong> partial-spoof clips are built from bonafide recordings, so their rate must match bonafide's &mdash; and it does (<span style="color:var(--white);">33.2%</span> vs <span style="color:var(--white);">32.3%</span>).
+        </div>
+      </div>
+    </div>
+
+    <div class="callout hi" style="font-size:12px;">
+      <strong style="color:var(--white);">Why this matters.</strong> The same sentence is often read by a training speaker and, separately, by an evaluation speaker (66.4% of eval sentences also appear in training &mdash; inherited from shared prompt pools; comparable corpora such as ASVspoof2019 do not even measure this). A detector could gain a small unfair edge on sentences it saw in training. Filtering evaluation to the strict subset removes that doubt entirely: the detector is then tested on speakers it never heard, voices acoustically unlike any it trained on (max cross-split similarity 0.74), and sentences it never saw. Clips that cannot be mapped to their sentence with certainty (4.9%) are left out of the strict subset rather than guessed.
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+     58 - 16_next_steps
+================================================== -->
+<section class="slide" id="s58">
   <div class="glow" style="width:600px;height:600px;background:#fff;bottom:-250px;right:-150px;"></div>
   <div class="inner">
     <div class="eyebrow">What's next</div>
@@ -4991,7 +5042,7 @@ audio {
 </section>
 
 <script>
-const N = 57;
+const N = 58;
 let cur = 1;
 
 const dotsEl = document.getElementById('dots');
