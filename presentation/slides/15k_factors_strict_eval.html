@@ -17,19 +17,15 @@
     </table>
 
     <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px;">Strict eval filter &mdash; clips whose sentence never appears in ANY training clip</div>
-    <div class="three" style="gap:12px; margin-bottom:14px;">
-      <div class="card-sm">
-        <div style="font-size:22px; font-weight:700; color:var(--white); font-family:'JetBrains Mono',monospace;">74.2%</div>
-        <div style="font-size:11px; color:var(--muted); margin-top:6px; line-height:1.5;">of eval clips are <span style="color:var(--green);">strict</span> (text unseen in training). Released as a per-clip table, joinable onto every augmented tier via <span style="font-family:'JetBrains Mono',monospace; font-size:10px;">source_file</span>.</div>
-      </div>
+    <div class="two" style="gap:12px; margin-bottom:14px;">
       <div class="card-sm">
         <div style="font-size:11px; font-weight:600; color:var(--white); margin-bottom:6px;">Strict rate by class (eval)</div>
         <div style="font-size:10px; color:var(--muted); line-height:1.8; font-family:'JetBrains Mono',monospace;">
-          full spoof&nbsp;&nbsp; <span style="color:var(--white);">91.2%</span> (per-speaker text pool)<br>
-          partial&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">33.2%</span><br>
-          bonafide&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">32.3%</span><br>
-          unresolved&nbsp; <span style="color:var(--muted2);">4.9% (marked non-strict)</span>
+          full spoof&nbsp;&nbsp; <span style="color:var(--white);">91.2%</span> (per-speaker text pool, little repetition)<br>
+          partial&nbsp;&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">33.2%</span> (shared prompt pools)<br>
+          bonafide&nbsp;&nbsp;&nbsp; <span style="color:var(--white);">32.3%</span> (shared prompt pools)
         </div>
+        <div style="font-size:10px; color:var(--muted); margin-top:8px; line-height:1.5;">Released as a per-clip table, joinable onto every augmented tier via <span style="font-family:'JetBrains Mono',monospace; font-size:10px;">source_file</span>.</div>
       </div>
       <div class="card-sm">
         <div style="font-size:11px; font-weight:600; color:var(--white); margin-bottom:6px;">How we know the filter is correct</div>
@@ -41,7 +37,7 @@
     </div>
 
     <div class="callout hi" style="font-size:12px;">
-      <strong style="color:var(--white);">Why this matters.</strong> The same sentence is often read by a training speaker and, separately, by an evaluation speaker (66.4% of eval sentences also appear in training &mdash; inherited from shared prompt pools; comparable corpora such as ASVspoof2019 do not even measure this). A detector could gain a small unfair edge on sentences it saw in training. Filtering evaluation to the strict subset removes that doubt entirely: the detector is then tested on speakers it never heard, voices acoustically unlike any it trained on (max cross-split similarity 0.74), and sentences it never saw. Clips that cannot be mapped to their sentence with certainty (4.9%) are left out of the strict subset rather than guessed.
+      <strong style="color:var(--white);">Why this matters.</strong> The same sentence is often read by a training speaker and, separately, by an evaluation speaker (66.4% of eval sentences also appear in training &mdash; inherited from shared prompt pools; comparable corpora such as ASVspoof2019 do not even measure this). A detector could gain a small unfair edge on sentences it saw in training. Filtering evaluation to the strict subset removes that doubt entirely: the detector is then tested on speakers it never heard, voices acoustically unlike any it trained on (max cross-split similarity 0.74), and sentences it never saw.
     </div>
   </div>
 </section>
