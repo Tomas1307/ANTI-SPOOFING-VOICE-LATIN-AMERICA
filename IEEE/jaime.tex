@@ -7,10 +7,7 @@
 %% Advisor: Prof. Ruben Francisco Manrique
 %% FLAG Lab, Universidad de los Andes, Bogotá, Colombia
 %%
-%% Compilation note: SVG figures require Inkscape to be installed and
-%%   the svg LaTeX package (included below). If Inkscape is unavailable,
-%%   replace \includesvg{...} with \includegraphics{...} and export SVGs
-%%   to PDF/PNG externally.
+%% All figures are PDF; no external converter is required to build this file.
 
 \documentclass{llncs}
 
@@ -18,55 +15,56 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{multirow}
-\usepackage{xcolor}
-\usepackage{array}  
-\usepackage{svg}
-\svgpath{{./svg/}}
+\usepackage{array}
+\usepackage{bbding}
 \usepackage{url}
-
+ 
 \begin{document}
 
-\title{Accent-Based Evaluation of Speech Anti-Spoofing 
+\title{Accent-Based Evaluation of Speech Anti-spoofing
        Countermeasures Across Multiple Languages}
 
-
-\author{Jaime Arturo Hurtado Romero\inst{1} \and Tomas Acosta Bernal \and 
-        Ruben Francisco Manrique\inst{1}}
+%% The corresponding author is marked with \Envelope, as required by the
+%% Springer proceedings instructions. This must match the name signing the
+%% licence-to-publish agreement.
+\author{Jaime Arturo Hurtado Romero\Envelope \and Tom\'{a}s Acosta Bernal \and
+        Rub\'{e}n Francisco Manrique}
 
 \institute{FLAG Lab, Department of Systems and Computing Engineering,\\
            Universidad de los Andes, Bogot\'{a}, Colombia\\
-           \email{\{ja.hurtado, t.acosta, rf.manrique\}@uniandes.edu.co}}
+           \email{ja.hurtado@uniandes.edu.co}\\
+           \email{\{t.acosta, rf.manrique\}@uniandes.edu.co}}
 
 \maketitle
 
 %% ----------------------------------------------------------------
 \begin{abstract}
-Speech-based biometric systems face increasing threats from sophisticated
-spoofing attacks enabled by advances in deep generative modelling.  In
-particular, a critical yet under-studied limitation is the severe performance
-degradation that occurs when anti-spoofing countermeasure models trained on
-English corpora are applied to Spanish speech, owing to systematic
-accent-induced differences in prosodic and spectral features.  This paper
-presents a systematic evaluation of 48 anti-spoofing architectures formed by
-crossing four front-end feature extractors---Mel-frequency Cepstral
-Coefficients (MFCC), Linear Frequency Cepstral Coefficients (LFCC),
-Constant-Q Cepstral Coefficients (CQCC), and Spectrogram---with three Light
-Convolutional Neural Network (LCNN) back-ends (Attention, Trim-pad, LSTM-sum)
-and four loss functions.  Models are trained and evaluated on the
-ASVspoof~2019 English database, the HABLA Spanish multi-accent database, and
-a combined bilingual corpus; each configuration is run six times with
-different random seeds, and results are reported as mean Equal Error Rate
-(EER).  Joint English--Spanish training achieves near-zero EER on
-Spanish---the best result being MFCC-LCNN-LSTM-sum with AM-Softmax at
-$0.09\%$---while sacrificing fewer than one percentage point on English,
-demonstrating that a single bilingually trained model can generalise across
-languages.  An accent-granularity analysis over five Latin-American accents
-further reveals that the optimal architecture varies per accent, motivating
-accent-adaptive or ensemble strategies in future work.
-\end{abstract}
+Speech-based biometric systems face growing threats from spoofing attacks
+built on deep generative models, and countermeasures trained on English
+corpora are known to degrade severely when applied to Spanish speech.  This
+paper evaluates 48 anti-spoofing architectures, crossing four front-end
+feature extractors (MFCC, LFCC, CQCC and spectrogram) with three Light
+Convolutional Neural Network (LCNN) back-ends and four loss functions, over
+the ASVspoof~2019 English database, the HABLA Spanish multi-accent database
+and a combined bilingual corpus.  Each configuration is trained six times
+under different random seeds and reported with medians, observed ranges and
+distribution-free paired tests of Equal Error Rate (EER), which show that the
+leading configurations are not statistically separable and should be read as
+a family rather than a ranking.  Joint English-Spanish training reaches
+median EER below $0.2\%$ on Spanish while sacrificing under one percentage
+point on English, although a pool of conversion target identities shared
+across partitions makes this an upper bound.  A per-attack decomposition
+shows that the cross-language collapse is driven almost entirely by voice
+conversion rather than by text-to-speech: English-trained models remain near
+chance on converted speech yet still detect Spanish TTS attacks at $1.79\%$
+EER.  A filter-bank scale study shows that descendant scaling benefits
+Mel-scale front-ends but not linear ones, and an accent- and gender-resolved
+analysis over five Latin-American varieties identifies speaker gender rather
+than regional accent as the dominant residual source of error.
 
-\keywords{speech anti-spoofing \and accent diversity \and cross-language evaluation
-          \and MFCC \and LFCC \and LCNN \and ASVspoof \and HABLA}
+\keywords{speech anti-spoofing \and accent diversity \and cross-language
+          evaluation \and voice conversion \and LCNN \and ASVspoof \and HABLA}
+\end{abstract}
 
 %% ----------------------------------------------------------------
 \section{Introduction}
@@ -85,7 +83,7 @@ lowered the barrier to generating perceptually convincing synthetic speech,
 underscoring the urgency of robust anti-spoofing countermeasures
 (CMs)~\cite{kaur2014review}.
 
-The \textit{ASVspoof} challenge series \cite{yamagishi2019asvspoof} \cite{delgado2021asvspoof} has driven most recent progress in anti-spoofing;
+The \textit{ASVspoof} challenge series~\cite{yamagishi2019asvspoof,delgado2021asvspoof} has driven most recent progress in anti-spoofing;
 however, all its benchmark datasets are exclusively in English.
 Prior work has shown that state-of-the-art CMs trained on English data
 degrade severely when evaluated on Spanish speech~\cite{tamayo2022voice},
@@ -102,23 +100,27 @@ This work makes the following contributions:
   \item A systematic comparison of four front-end feature extractors combined
         with three LCNN back-end variants and four loss functions (48
         architecture combinations), each trained and evaluated across three
-        dataset conditions.
-  \item Cross-language experiments evaluating models trained on
-        English, Spanish, and a combined bilingual corpus on both languages.
-  \item An accent-granularity analysis over five Spanish regional accents
-        (Argentina, Chile, Colombia, Peru, Venezuela), revealing
-        accent-specific performance trends that cannot be inferred from
-        aggregate metrics.
-  \item A filter-bank scale analysis demonstrating that descendant
-        (low-frequency emphasis) scaling consistently benefits cepstral
-        front-ends, in line with the importance of low-frequency voice
-        formants.
+        dataset conditions and reported with distribution-free statistics
+        over six random seeds, so that architectural differences can be
+        separated from seed variation.
+  \item A per-attack decomposition of the cross-language degradation
+        reported by Tamayo et~al.~\cite{tamayo2022voice}, showing that the
+        collapse is driven almost entirely by voice conversion rather than by
+        text-to-speech, a distinction not previously reported.
+  \item An accent and gender-resolved analysis over five Spanish regional
+        varieties (Argentina, Chile, Colombia, Peru, Venezuela), identifying
+        speaker gender as a residual error source whose direction reverses
+        between countries.
+  \item A filter-bank scale analysis showing that descendant
+        (low-frequency emphasis) scaling benefits Mel-scale cepstral
+        front-ends but not linear-scale ones, refining the assumption that
+        low-frequency emphasis is universally preferable.
 \end{enumerate}
 
 %% ----------------------------------------------------------------
 \section{Related Work}
 
-\subsection{Anti-Spoofing Datasets}
+\subsection{Anti-spoofing Datasets}
 
 The ASVspoof benchmarks are the primary evaluation corpora for logical-access
 (LA) and physical-access (PA) spoofing.  ASVspoof~2019~\cite{yamagishi2019asvspoof}
@@ -176,27 +178,9 @@ LSTM-augmented LCNNs~\cite{wang2021comparative} further model long-range
 temporal dependencies.  End-to-end models such as RawNet2~\cite{tak2021end}
 operate directly on raw waveforms, whereas classical Gaussian Mixture Models
 (GMMs) remain competitive for PA scenarios~\cite{cai2017countermeasures}.
-Table~\ref{table:anti-spoofing-taxonomy} lists representative
-front-end/back-end pairings from the literature.
-
-\begin{table}[htbp]
-\centering
-\caption{Representative anti-spoofing model taxonomy from the literature.}
-\label{table:anti-spoofing-taxonomy}
-\setlength\extrarowheight{-2pt}
-\begin{tabular}{lll}
-\hline
-\textbf{Front-end}         & \textbf{Back-end}        & \textbf{Reference}          \\
-\hline
-Spectrogram                & CNN + RNN                & \cite{zhang2017investigation} \\
-LFCC / IMFCC               & GMM \& TDNN              & \cite{wu2014study}            \\
-CQCC + Spectrogram         & GMM \& ResNet            & \cite{cai2017countermeasures} \\
-Spectrogram + LCNN         & RNN                      & \cite{lavrentyeva2017audio}   \\
-Spectrogram                & SENet34                  & \cite{lai2019assert}          \\
-Raw wave                   & RawNet2                  & \cite{tak2021end}             \\
-\hline
-\end{tabular}
-\end{table}
+Representative front-end/back-end pairings from the literature span
+spectrogram inputs with CNN, RNN and squeeze-excitation back-ends, cepstral
+inputs with GMM and TDNN, and end-to-end models operating on raw waveforms.
 
 \subsection{Research Gap}
 
@@ -255,6 +239,17 @@ artefacts are often present.
 \textbf{Spectrogram} retains the full STFT magnitude as a 2-D image fed
 directly into the LCNN.
 
+All front-ends share the same short-time analysis, so that differences in
+performance are attributable to the filter bank and cepstral stage rather than
+to framing: a Hann window of 320 samples with a 160-sample shift and a
+512-point FFT.  MFCC, LFCC and CQCC retain 20 static coefficients and append
+first- and second-order deltas; the spectrogram front-end uses 60 static
+coefficients and no deltas.  All four therefore present 60 dimensions per
+frame to the back-end.
+
+No voice activity detection, cepstral mean normalisation or feature-level
+normalisation is applied at any stage.
+
 \subsection{LCNN Back-End Architecture}
 
 All back-ends share a common LCNN feature-extraction stem followed by one of
@@ -298,6 +293,7 @@ MaxPool                & $2{\times}2$ / $2{\times}2$ & $54{\times}38{\times}32$ 
 \end{table}
 
 \subsection{Datasets and Partitions}
+\label{sec:datasets}
 
 Two anti-spoofing corpora are used; partition sizes are listed in
 Table~\ref{table:datasets-partitions}.
@@ -308,12 +304,34 @@ the evaluation set.
 
 \textbf{Spanish (HABLA Spoof)}~\cite{tamayo2022voice,tamayoflorez23_interspeech}: Latin-American
 multi-accent corpus covering five countries (Argentina, Chile, Colombia,
-Peru, Venezuela).  Speakers are assigned exclusively to a single partition
-and are never shared across training, validation, and test splits.
+Peru, Venezuela).  We audited the partition assignment directly from the file
+lists.  Bonafide speakers are strictly disjoint across the three splits (29,
+16 and 14, none shared), as are the source speakers feeding the conversion
+systems; the \emph{target} identities those systems imitate are not, with all
+113 test identities also present in training.  No test speaker's genuine voice
+is therefore seen during training, but conversions directed at the same
+identities are, and this affects $95.5\%$ of Spanish test utterances.  Working
+in the opposite direction, CycleGAN conversions appear in training but not in
+the Spanish test split, making part of the evaluation an unseen-attack
+condition.
 
 \textbf{Combined}: The English and Spanish training sets are concatenated
 to form a 60\,064-utterance bilingual training corpus; evaluation is
 performed separately on each language's test partition.
+
+Three properties of this design constrain the bilingual results.  First, the
+merged corpus is \emph{not} language-balanced: Spanish contributes $34\,684$
+utterances ($57.7\%$) against $25\,380$ for English ($42.3\%$), so the
+near-zero Spanish EER and the small English penalty are confounded with corpus
+composition and we do not claim to have separated the two.  Second, the
+Spanish test partition holds only $4\,809$ utterances, so an EER of $0.1\%$
+reflects a handful of trials, which motivates the treatment in
+Section~\ref{sec:metric}.  Third, the shared pool of conversion targets leaves
+the spoofed side of the decision exposed even though the bonafide side is not:
+a model may learn artefacts specific to a target identity and meet that
+identity again at test time.  The Spanish rates are therefore an upper bound
+on performance under a strictly identity-disjoint protocol, while comparisons
+across architectures, which share this exposure, remain internally valid.
 
 \begin{table}[htbp]
 \centering
@@ -324,9 +342,9 @@ performed separately on each language's test partition.
 \hline
 \textbf{Training set} & \textbf{Train} & \textbf{Dev} & \textbf{Test} \\
 \hline
-English               & 25\,380 & 24\,840 & 71\,237 \\
+English               & 25\,380 & 24\,844 & 71\,237 \\
 Spanish               & 34\,684 &  3\,658 &  4\,809 \\
-Combined              & 60\,064 & 28\,498 & --- \\
+Combined              & 60\,064 & 28\,502 & --- \\
 \hline
 \end{tabular}
 \end{table}
@@ -345,21 +363,11 @@ initialisation, every configuration is trained \textbf{six} times with
 different random seeds; results are reported as \emph{mean $\pm$ standard
 deviation EER~(\%)}.
 
-Figure~\ref{fig:loss_curve} shows a representative training curve,
-illustrating the interplay between the learning-rate schedule, the
-best-model callback, and early stopping.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.85\textwidth]{figures/loss_curve}
-    \caption{Training curve for the LFCC-LCNN-Attention-AM model (logarithmic
-             scale).  The best-model callback retains the minimum dev-loss
-             checkpoint; early stopping triggers at epoch~72, 50 epochs after
-             the last improvement.}
-    \label{fig:loss_curve}
-\end{figure}
+In a representative run, early stopping triggers at epoch~72, fifty epochs
+after the last improvement in development loss.
 
 \subsection{Evaluation Metric}
+\label{sec:metric}
 
 Models are evaluated using the \textit{Equal Error Rate} (EER), the
 operating point at which the False Rejection Rate (FRR) equals the False
@@ -373,43 +381,60 @@ Acceptance Rate (FAR):
 \end{equation}
 
 A lower EER indicates better discrimination between bona-fide and
-spoofed utterances.
+spoofed utterances.  Because EER alone ignores the cost of the errors it
+counts, we additionally report the minimum normalised tandem detection cost
+function (min t-DCF), which weights countermeasure decisions by their effect
+on a downstream speaker verification system, for both languages.
+
+\subsubsection{Statistical treatment.}
+The same six seeds are used for every configuration, so runs can be compared
+in matched pairs.  EER is bounded below by zero and, in the Spanish
+conditions, concentrates near that bound: exact zeros occur, skewness exceeds
+one in a quarter of the cells, and a Gaussian interval would place mass on
+negative error rates.  We therefore avoid any normality assumption, summarise
+with the median and observed range, compare with the Wilcoxon signed-rank
+test on seed-matched pairs, and report Cohen's $d$ as effect size, applying a
+Bonferroni correction for multiple comparisons.  With six seeds the smallest
+attainable two-sided $p$-value is $0.031$, so the design is underpowered for
+small effects and we do not treat marginal $p$-values as decisive.
 
 %% ----------------------------------------------------------------
 \section{Experiments and Results}
 
 We structure the experiments around five conditions, systematically varying
-the training language and the evaluation language.  The code and trained
-model weights are publicly available~\cite{MisisThesisCode}.
+the training language and the evaluation language.  All models are
+implemented on the open-source anti-spoofing framework released by the
+Yamagishi Laboratory~\cite{Yamagishilab}, and the scripts used to audit the
+corpus partitions reported in Section~\ref{sec:datasets} are included with
+this submission.
 
 \subsection{English Training, English Evaluation}
 
-Table~\ref{table:mean-train-en-eval-en} and
-Figure~\ref{fig:heatmap-train-en-eval-en} report results when all models
+Table~\ref{table:mean-train-en-eval-en} reports results when all models
 are trained and evaluated on the English partitions.  Performance is
 consistently low across all 48 configurations.  Cepstral front-ends (LFCC and
 MFCC) consistently outperform CQCC and Spectrogram.
 
-The overall best configuration is \textbf{LFCC-LCNN-LSTM-sum with P2S-Grad}
-at $2.67\%$ EER ($\sigma=0.60$).  P2S-Grad loss dominates across front-ends;
-OC-Softmax is the second strongest.  Spectrogram front-ends show higher
-variance than cepstral ones, and CQCC performs comparably to Spectrogram in
-this English-only setting.
-
-\begin{figure}[htbp]
-    \centering
-    \includesvg[inkscapelatex=false, width=\textwidth]{english_heatmap}
-    \caption{EER (\%) heat map for models trained and evaluated on the English
-             partition.  Darker cells indicate higher EER.  Rows are sorted
-             in ascending EER order.}
-    \label{fig:heatmap-train-en-eval-en}
-\end{figure}
+The lowest mean EER is obtained by \textbf{LFCC-LCNN-LSTM-sum with P2S-Grad}
+at $2.67\%$ ($\sigma=0.60$), but this configuration is not separable from its
+competitors: against the next seven, seed-matched Wilcoxon tests yield no
+significant difference in any case ($p > 0.31$ throughout) and the effect size
+against the runner-up is $d = 0.22$.  Summarised without a normality
+assumption, it has a median EER of $2.51\%$ over an observed range of
+$2.12$--$3.70$, while the seven that follow span medians of $2.61$ to
+$2.97\%$ with ranges that overlap it in every case, and their median min
+t-DCF values ($0.063$ to $0.075$) do not reproduce the EER ordering.  The
+eight should therefore be read as one indistinguishable group rather than a
+ranking.  What the data does support at this sample size is that P2S-Grad and
+OC-Softmax outperform AM-Softmax and Sigmoid, that Spectrogram front-ends show
+higher seed variance than cepstral ones, and that CQCC performs comparably to
+Spectrogram here.
 
 \begin{table}[htbp]
 \centering
 \caption{Mean and std of EER (\%) for English train / English eval.
-         Best per back-end in \textbf{bold}; overall best in
-         \textcolor{red}{\textbf{red}}.}
+         Best per back-end in \textbf{bold}; overall best
+         \underline{\textbf{underlined}}.}
 \label{table:mean-train-en-eval-en}
 \setlength\extrarowheight{-8pt}
 \footnotesize
@@ -441,7 +466,7 @@ this English-only setting.
 \hline
 \textbf{LFCC}
   & AM-softmax & 4.00 & 0.33 & 5.58 & 0.61 & 3.25 & 1.11 \\
-  & P2SGrad    & 3.48 & 0.78 & 2.88 & 0.41 & \textcolor{red}{\textbf{2.67}} & \textcolor{red}{\textbf{0.60}} \\
+  & P2SGrad    & 3.48 & 0.78 & 2.88 & 0.41 & \underline{\textbf{2.67}} & \underline{\textbf{0.60}} \\
   & OC-softmax & \textbf{2.96} & \textbf{0.35} & \textbf{2.88} & \textbf{0.23} & 2.80 & 0.61 \\
   & Sigmoid    & 3.73 & 0.35 & 3.04 & 0.36 & 3.33 & 0.31 \\
 \hline
@@ -449,16 +474,74 @@ this English-only setting.
 \end{table}
 
 \subsection{Cross-Language Evaluation: English Models on Spanish}
+\label{sec:cross-language}
 
 Applying the English-trained models directly to the Spanish test partition
 reveals severe degradation: \emph{all} 48 configurations exceed $30\%$ EER,
-and most exceed $40\%$.  Among front-ends, Spectrogram degrades the least
-(best mean $\approx 36\%$), while CQCC degrades the most ($43\text{--}48\%$)
-despite being the strongest English front-end.  This inversion suggests that
-CQCC captures English-specific phonetic patterns that do not transfer to
-Spanish prosody.  MFCC and LFCC, despite being strong English baselines,
-yield cross-lingual EERs of $34\text{--}55\%$, confirming that language-specific
-training is essential for robust performance.
+the lowest configuration mean being $34.4\%$, and 28 of the 48 exceed $40\%$.
+Among front-ends, Spectrogram degrades the least (best mean $\approx 36\%$).
+CQCC and LFCC degrade the most, at $45.5\%$ and $45.4\%$ mean EER
+respectively; the two are effectively tied and we do not read an ordering
+between them.  MFCC and LFCC, despite being strong English baselines, yield
+cross-lingual EERs of $34\text{--}55\%$.  This confirms the degradation
+reported by Tamayo et~al.~\cite{tamayo2022voice}.
+
+The aggregate figure conceals a structure that matters for interpretation.
+Decomposing the same evaluation by attack family
+(Table~\ref{table:per-attack}) shows that the collapse is not uniform: the
+three voice conversion families drive it almost entirely, while
+text-to-speech attacks remain detectable.  The best English-trained model
+reaches $1.79\%$ EER on Spanish TTS attacks, within the range it achieves on
+English, yet is at or below chance on CycleGAN, DiffVC and StarGAN.
+
+\begin{table}[htbp]
+\centering
+\caption{EER (\%) by attack family on the Spanish evaluation set, for the
+         three P2S-Grad back-ends.  English-trained models fail on voice
+         conversion but not on TTS.  VC = voice conversion.}
+\label{table:per-attack}
+\setlength\extrarowheight{-2pt}
+\footnotesize
+\begin{tabular}{llcccc}
+\hline
+ & & \multicolumn{3}{c}{\textbf{VC attacks}} & \textbf{TTS} \\
+\textbf{Back-end} & \textbf{Training} & CycleGAN & DiffVC & StarGAN & \\
+\hline
+LCNN-Attention & English & 53.09 & 50.33 & 64.77 & 46.11 \\
+LCNN-LSTM-sum  & English & 51.72 & 53.99 & 65.83 & \textbf{1.79} \\
+LCNN-trim-pad  & English & 51.28 & 43.22 & 63.77 & 16.92 \\
+\hline
+LCNN-Attention & Spanish & 0.03 & 0.00 & 0.01 & 0.00 \\
+LCNN-LSTM-sum  & Spanish & 0.01 & 0.01 & 0.01 & 0.00 \\
+LCNN-trim-pad  & Spanish & 0.03 & 0.01 & 0.01 & 0.01 \\
+\hline
+\end{tabular}
+\end{table}
+
+Two details are worth noting.  StarGAN yields EER \emph{above} chance
+($63\text{--}66\%$), so the decision is inverted rather than merely
+uninformative, and the TTS column varies by an order of magnitude across
+back-ends, so cross-language TTS transfer depends on the pooling strategy
+and not on the front-end alone.
+
+A plausible reading is that vocoder artefacts are largely
+language-independent and therefore transfer, whereas conversion artefacts are
+entangled with the speaker and accent characteristics that the conversion
+model preserves, and those are exactly what changes between English and
+Spanish.  Figure~\ref{fig:det} shows the corresponding detection error
+trade-off curves.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.62\textwidth]{figures/det_curves}
+    \caption{Detection error trade-off curves on the Spanish evaluation set.
+             Grey curves are English-trained models, black curves are
+             Spanish-trained models of the same architecture; circles mark the
+             equal error rate.  Curves are computed on the full HABLA
+             evaluation set (32{,}327 utterances), which is larger than the
+             partition used for Table~\ref{table:datasets-partitions}.}
+    \label{fig:det}
+\end{figure}
 
 \subsection{Spanish Training, Spanish Evaluation}
 
@@ -478,8 +561,8 @@ This language-specific sensitivity motivates the combined-training approach.
 \begin{table}[htbp]
 \centering
 \caption{Mean and std of EER (\%) for Spanish train / Spanish eval (best
-         activation per front-end/back-end shown).  Overall best in
-         \textcolor{red}{\textbf{red}}.}
+         activation per front-end/back-end shown).  Overall best
+         \underline{\textbf{underlined}}.}
 \label{table:mean-train-es-eval-es}
 \setlength\extrarowheight{-8pt}
 \footnotesize
@@ -511,7 +594,7 @@ This language-specific sensitivity motivates the combined-training approach.
 \hline
 \textbf{LFCC}
   & AM-softmax & 1.40 & 0.90 & 3.58 & 3.05 & \textbf{0.45} & \textbf{0.27} \\
-  & P2SGrad    & \textcolor{red}{\textbf{0.14}} & \textcolor{red}{\textbf{0.09}} & 3.55 & 2.80 & 2.32 & 1.57 \\
+  & P2SGrad    & \underline{\textbf{0.14}} & \underline{\textbf{0.09}} & 3.55 & 2.80 & 2.32 & 1.57 \\
   & OC-softmax & 0.68 & 0.90 & 3.89 & 4.70 & 1.30 & 1.71 \\
   & Sigmoid    & 0.49 & 0.50 & 4.07 & 5.36 & 0.57 & 0.55 \\
 \hline
@@ -519,39 +602,37 @@ This language-specific sensitivity motivates the combined-training approach.
 \end{table}
 
 \subsection{Combined Bilingual Training}
+\label{sec:combined}
 
-Training on the merged English--Spanish corpus provides the most practically
-robust models.  Figure~\ref{fig:heatmap-train-un-eval-es} and
-Table~\ref{table:mean-train-un-eval-es} show results on the Spanish
-evaluation partition; Table~\ref{table:mean-train-un-eval-en} shows results
+Training on the merged English-Spanish corpus provides the most practically
+robust models.  Table~\ref{table:mean-train-un-eval-es} shows results on the
+Spanish evaluation partition; Table~\ref{table:mean-train-un-eval-en} shows results
 on the English partition.
 
-\begin{figure}[htbp]
-    \centering
-    \includesvg[inkscapelatex=false, width=\textwidth]{united-eval-lat_heatmap}
-    \caption{EER (\%) heat map for models trained on the combined
-             English--Spanish corpus and evaluated on Spanish.  Darker cells
-             indicate higher EER.}
-    \label{fig:heatmap-train-un-eval-es}
-\end{figure}
-
 MFCC and LFCC front-ends achieve near-zero EER ($\leq 0.5\%$) on Spanish
-evaluation, with the top result being \textbf{MFCC-LCNN-LSTM-sum with
-AM-Softmax} at $\mathbf{0.09\%}$ ($\sigma=0.04$).  CQCC also performs well ($\leq 1.3\%$); Spectrogram remains the weakest
-front-end, mirroring the Spanish-only experiment.
+evaluation.  The lowest mean is \textbf{MFCC-LCNN-LSTM-sum with AM-Softmax}
+at $0.087\%$ ($\sigma=0.04$), but here too the leading group is not
+separable: against the two nearest competitors (both $0.17\%$) Wilcoxon
+returns $p = 0.0625$, and although a paired $t$-test flags three of seven at
+$p < 0.05$, none survives Bonferroni correction ($p < 0.0071$ required).  We
+therefore report a leading family of four cepstral configurations below
+$0.2\%$ rather than a single best system, whose median min t-DCF lies between
+$0.0022$ and $0.0035$.  CQCC also performs well ($\leq 1.3\%$); Spectrogram
+remains the weakest front-end, mirroring the Spanish-only experiment.
 
 On the English evaluation partition (Table~\ref{table:mean-train-un-eval-en}),
 performance decreases by only $\sim$1 percentage point relative to the
-English-only baseline.  The best bilingual English configuration is
+English-only baseline, the lowest bilingual English mean being
 MFCC-LCNN-trim-pad with P2S-Grad at $3.64\%$.  This near-parity on English
-together with near-zero EER on Spanish confirms that joint training achieves
-genuine bilingual generalisation.
+together with near-zero EER on Spanish indicates that joint training achieves
+bilingual generalisation, subject to the caveat in
+Section~\ref{sec:datasets} that the merged corpus is not language-balanced.
 
 \begin{table}[htbp]
 \centering
 \caption{Mean and std of EER (\%) for combined-trained models, Spanish eval.
-         Best per back-end in \textbf{bold}; overall best in
-         \textcolor{red}{\textbf{red}}.}
+         Best per back-end in \textbf{bold}; overall best
+         \underline{\textbf{underlined}}.}
 \label{table:mean-train-un-eval-es}
 \setlength\extrarowheight{-8pt}
 \footnotesize
@@ -576,7 +657,7 @@ genuine bilingual generalisation.
   & Sigmoid    & 16.65 & 2.40 & 18.58 & 1.35 & 16.96 & 2.74 \\
 \hline
 \textbf{MFCC}
-  & AM-softmax & 0.31 & 0.22 & 0.42 & 0.17 & \textcolor{red}{\textbf{0.09}} & \textcolor{red}{\textbf{0.04}} \\
+  & AM-softmax & 0.31 & 0.22 & 0.42 & 0.17 & \underline{\textbf{0.09}} & \underline{\textbf{0.04}} \\
   & P2SGrad    & \textbf{0.17} & \textbf{0.09} & \textbf{0.17} & \textbf{0.09} & 0.35 & 0.33 \\
   & OC-softmax & 0.40 & 0.34 & 0.29 & 0.03 & 0.45 & 0.47 \\
   & Sigmoid    & 0.55 & 0.36 & 0.38 & 0.13 & 0.45 & 0.49 \\
@@ -593,8 +674,8 @@ genuine bilingual generalisation.
 \begin{table}[htbp]
 \centering
 \caption{Mean and std of EER (\%) for combined-trained models, English eval.
-         Best per back-end in \textbf{bold}; overall best in
-         \textcolor{red}{\textbf{red}}.}
+         Best per back-end in \textbf{bold}; overall best
+         \underline{\textbf{underlined}}.}
 \label{table:mean-train-un-eval-en}
 \setlength\extrarowheight{-8pt}
 \footnotesize
@@ -620,7 +701,7 @@ genuine bilingual generalisation.
 \hline
 \textbf{MFCC}
   & AM-softmax & 4.96 & 1.27 & 4.43 & 0.67 & 4.62 & 0.71 \\
-  & P2SGrad    & 4.07 & 0.47 & \textcolor{red}{\textbf{3.64}} & \textcolor{red}{\textbf{0.42}} & 4.58 & 1.02 \\
+  & P2SGrad    & 4.07 & 0.47 & \underline{\textbf{3.64}} & \underline{\textbf{0.42}} & 4.58 & 1.02 \\
   & OC-softmax & \textbf{3.86} & \textbf{0.66} & 3.75 & 0.52 & 4.97 & 1.18 \\
   & Sigmoid    & 4.64 & 0.77 & 3.66 & 0.37 & \textbf{4.26} & \textbf{0.84} \\
 \hline
@@ -634,114 +715,243 @@ genuine bilingual generalisation.
 \end{table}
 
 \subsection{Accent Analysis}
+\label{sec:accent-analysis}
 
 Using the bilingually trained models, we break down Spanish evaluation EER
-by Latin-American accent.  Figure~\ref{fig:accent-MFCC} shows results for
-the MFCC front-end; LFCC yields qualitatively similar patterns.
+by Latin-American accent.  Results below are for the MFCC front-end; LFCC
+yields qualitatively similar patterns.
 
-\begin{figure}[htbp]
-    \centering
-    \includesvg[inkscapelatex=false, width=\textwidth]{accent_MFCC}
-    \caption{Accent-level EER (\%) for MFCC front-end models trained on the
-             combined corpus, disaggregated by Latin-American accent.}
-    \label{fig:accent-MFCC}
-\end{figure}
-
-Key observations:
-
-\begin{itemize}
-  \item \textbf{Chile and Peru} achieve consistently near-zero EER across
-        architectures, indicating that these accents are well-modelled by
-        general cepstral features.
-  \item \textbf{Argentina} performs well but benefits disproportionately from
-        LCNN-Attention with P2S-Grad, suggesting that its prosodic signature
-        aligns with the attention mechanism's learned weighting.
-  \item \textbf{Colombia} yields higher EER overall, attributable to the
-        notable intra-country accent diversity that is not fully captured by
-        the HABLA corpus.
-  \item \textbf{Venezuela} is the most challenging accent: LCNN-LSTM-sum
-        outperforms LCNN-Attention here, the \emph{reverse} of the pattern
-        for other accents.  This suggests temporally distributed cues specific
-        to Venezuelan prosody that LSTM pooling is better suited to capture.
-\end{itemize}
-
-These findings confirm that no single architecture uniformly dominates across
-all accents, motivating accent-adaptive or multi-task learning approaches.
-
-\subsection{Filter-Bank Scale Effects}
-
-Filter-bank scale (ascendant, constant, or descendant frequency weighting)
-affects primarily the LFCC and MFCC front-ends.  Descendant filter banks,
-which place greater weight on low frequencies, consistently yield the lowest
-median EER, in line with the observation that human voice formants F1 and~F2
-reside below 900~Hz and carry the primary anti-spoofing cues.  The ascendant
-bank performs worst across all configurations and loss functions.
-
-LFCC with a constant filter bank and LCNN-LSTM-sum/P2S-Grad achieves the
-best median EER of $2.58\%$ on the English test set, while the descendant bank achieves a competitive median of $2.51\%$ with
-marginally higher inter-run variance.  Table~\ref{table:scale-best-eer} summarises the variance
-statistics for the best-performing LFCC architecture across the three scales.
+Table~\ref{table:accent-gender} reports the same results resolved by country
+and by speaker gender, and three observations follow.  First, differences
+between accents are small: Chile ($0.032\%$) and Peru ($0.053\%$) are the
+best-modelled and Colombia ($0.287\%$) the worst, but all five medians are
+zero and the spread is below half a percentage point, so accent alone is a
+weak predictor of residual error.  Second, the back-end ranking does not vary
+by accent: LCNN-LSTM-sum attains the lowest mean EER for \emph{all five}
+countries, a negative result that argues against accent-conditioned model
+selection rather than for it.  Third, speaker gender carries the dominant
+residual signal and its direction reverses between countries: Colombia and
+Venezuela are markedly worse on male speakers ($0.544\%$ against $0.029\%$,
+and $0.271\%$ against $0.065\%$), whereas Argentina, Chile and Peru are worse
+on female speakers.  The Colombian gap accounts for essentially all of that
+country's disadvantage, and because the direction is inconsistent it cannot
+reflect a single global bias of the front-end, pointing instead to an
+interaction between speaker population and the attack generators used for
+each subset.
 
 \begin{table}[htbp]
 \centering
-\caption{EER (\%) distribution for LCNN-LSTM-sum/P2S-Grad with LFCC across
-         filter-bank scales (English eval, 6 runs per condition).}
-\label{table:scale-best-eer}
+\caption{Mean EER (\%) by country and speaker gender for MFCC front-end
+         models trained on the combined corpus, aggregated over three
+         back-ends, four losses and six seeds.}
+\label{table:accent-gender}
 \setlength\extrarowheight{-2pt}
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccc}
 \hline
-\textbf{Scale} & \textbf{Max} & \textbf{Q3} & \textbf{Median} & \textbf{Q1} & \textbf{Min} \\
+\textbf{Country} & \textbf{Overall} & \textbf{Female} & \textbf{Male} \\
 \hline
-Ascendant  & 3.246 & 2.861 & 2.427 & 2.367 & 2.298 \\
-Constant   & 2.763 & 2.639 & 2.577 & 2.444 & 2.148 \\
-Descendant & 3.699 & 2.904 & 2.510 & 2.217 & 2.118 \\
+Chile      & 0.032 & 0.059 & 0.005 \\
+Peru       & 0.053 & 0.085 & 0.021 \\
+Argentina  & 0.140 & 0.177 & 0.103 \\
+Venezuela  & 0.168 & 0.065 & 0.271 \\
+Colombia   & 0.287 & 0.029 & 0.544 \\
 \hline
 \end{tabular}
 \end{table}
 
-LFCC also exhibits lower inter-run variance than MFCC across all scale
-conditions, making it the more repeatable choice under random initialisation.
-For practitioners prioritising stability, the constant filter bank combined
-with LFCC and LCNN-LSTM-sum/P2S-Grad offers the best reliability.
+\subsection{Filter-Bank Scale Effects}
+\label{sec:filter-bank}
+
+Filter-bank scale (ascendant, constant, or descendant frequency weighting)
+affects primarily the cepstral front-ends.  To separate a genuine effect from
+a single fortunate configuration, we evaluate all three scales across the
+full grid of three back-ends and four losses, six seeds each, giving 72 runs
+per scale within each filter-bank family.  Results are given in
+Table~\ref{table:scale-aggregate}.
+
+\begin{table}[htbp]
+\centering
+\caption{Filter-bank scale compared across the full configuration grid
+         (English eval; 72 runs per scale per family).  ``Wins'' counts the
+         configurations out of twelve for which that scale attains the lowest
+         mean EER.}
+\label{table:scale-aggregate}
+\setlength\extrarowheight{-2pt}
+\begin{tabular}{llccc}
+\hline
+\textbf{Family} & \textbf{Scale} & \textbf{Median} & \textbf{Mean} & \textbf{Wins} \\
+\hline
+\multirow{3}{*}{Linear (LFCC)}
+   & Ascendant  & \textbf{3.069} & 3.292 & 3 \\
+   & Constant   & 3.162 & 3.294 & \textbf{6} \\
+   & Descendant & 3.190 & 3.383 & 3 \\
+\hline
+\multirow{3}{*}{Mel (MFCC)}
+   & Ascendant  & 3.793 & 4.368 & 3 \\
+   & Constant   & 3.855 & 4.385 & 1 \\
+   & Descendant & \textbf{3.475} & \textbf{3.925} & \textbf{8} \\
+\hline
+\end{tabular}
+\end{table}
+
+The benefit of descendant scaling is specific to the Mel family.
+For Mel-scale banks it attains the lowest median and mean and wins eight of
+twelve configurations; for linear-scale banks the same weighting is the
+\emph{worst} of the three by median and wins only three, with the constant
+bank winning six.  Reporting either family alone would invert the conclusion,
+and the assumption that low-frequency emphasis is universally preferable does
+not survive the full grid.  A single configuration cannot settle this: for
+LFCC with LCNN-LSTM-sum/P2S-Grad the three scales differ by less than
+$0.16$~percentage points of median EER, well inside the seed-to-seed spread.
+
+The physiology supports the restricted claim rather than the general one.  F1
+does lie below roughly $1$~kHz for most vowels, but F2 spans approximately
+$600$--$2500$~Hz, so an emphasis profile motivated by ``formants are low'' is
+only partially justified.  The Mel scale already compresses high frequencies
+and descendant weighting compounds that compression, whereas a linear bank has
+no such compression and suppressing its high-frequency resolution discards
+information the classifier was using.
+
+The linear family is nonetheless the more repeatable choice, with roughly half
+the across-configuration standard deviation of the Mel family under every
+scale: prefer a linear bank for run-to-run stability, and a Mel bank with
+descendant weighting for lowest expected EER.
+
+%% ----------------------------------------------------------------
+%\section{Conclusions}
+
+%This paper presented a comprehensive, multi-condition evaluation of speech
+%anti-spoofing countermeasures, examining the impact of language, accent, and
+%filter-bank design on system performance.  The main conclusions are:
+
+%\begin{enumerate}
+%  \item \textbf{Cepstral front-ends dominate, but no single configuration
+%        does.}  LFCC and MFCC consistently outperform CQCC and Spectrogram.
+%        Within that group, however, the leading configurations are not
+%        separable: on English none of the seven runners-up differs
+%        significantly from the best configuration, and on bilingually trained
+%        Spanish evaluation the four leading configurations have overlapping
+ %       intervals.  Reporting a single winner would overstate what six seeds
+ %       can support.
+
+%  \item \textbf{The cross-language collapse is an attack-family effect, not a
+%        uniform one.}  Models trained exclusively on English fall to chance on
+%        Spanish, confirming Tamayo et~al.~\cite{tamayo2022voice}.  Decomposing
+%        by attack shows the failure is concentrated in voice conversion, where
+%        EER reaches $43$--$66\%$, while text-to-speech attacks remain
+%        detectable at $1.79\%$ EER by the best English-trained model.  Vocoder
+%        artefacts transfer across languages; conversion artefacts, entangled
+%        with speaker and accent characteristics, do not.
+
+  %\item \textbf{Bilingual training achieves near-parity on both languages.}
+   %     Merging English and Spanish training data yields near-zero EER on
+    %    Spanish while sacrificing fewer than one percentage point on English.
+     %   We note that the merged corpus is not language-balanced
+%        ($57.7\%$ Spanish), so the magnitude of both effects is confounded
+ %       with corpus composition.
+
+ % \item \textbf{Residual error tracks speaker gender, not regional accent.}
+ %       Once bilingual training is in place, differences between the five
+ %       Latin-American varieties are below half a percentage point and the
+ %       back-end ranking is identical for all of them.  The larger and less
+ %       expected effect is a gender gap whose direction reverses by country.
+ %       This argues for demographic balancing rather than accent-adaptive
+ %       architecture selection.
+
+  %\item \textbf{Descendant filter-bank scaling helps Mel banks only.}  Across
+   %     the full configuration grid, descendant weighting attains the lowest
+    %    median EER for Mel-scale front-ends and wins eight of twelve
+    %    configurations, but is the worst of the three scales for linear-scale
+    %    front-ends.  Low-frequency emphasis is therefore not universally
+    %    preferable. The partial justification often given for it, namely
+    %    that the principal formants are low, holds for F1 but not for F2.
+%\end{enumerate}
 
 %% ----------------------------------------------------------------
 \section{Conclusions}
+This paper evaluated speech anti-spoofing countermeasures across languages,
+accents and filter-bank designs, and five findings emerge from the results.
 
-This paper presented a comprehensive, multi-condition evaluation of speech
-anti-spoofing countermeasures, examining the impact of language, accent, and
-filter-bank design on system performance.  The main conclusions are:
+Cepstral front-ends outperform the alternatives, although the margin among
+the best of them is too small to resolve. LFCC and MFCC place consistently
+ahead of CQCC and Spectrogram, yet within that leading group the individual
+configurations cannot be separated. On English, none of the seven runners-up
+differs significantly from the best configuration, and under bilingual
+training the four leading configurations on Spanish evaluation have
+overlapping confidence intervals. Six seeds do not support naming a single
+winner.
 
-\begin{enumerate}
-  \item \textbf{Cepstral front-ends dominate.}  LFCC and MFCC consistently
-        outperform CQCC and Spectrogram.  LFCC achieves the best English EER
-        ($2.67\%$) and lowest variance; MFCC achieves the best Spanish EER
-        under bilingual training ($0.09\%$).
+The collapse observed when the evaluation language changes is concentrated in
+one attack family rather than spread evenly across all of them. Models trained
+exclusively on English fall to chance level on Spanish, which confirms the
+observation of Tamayo et~al.~\cite{tamayo2022voice}. Decomposing the error by
+attack shows that voice conversion accounts for almost all of the degradation,
+with EER between $43\%$ and $66\%$, while text-to-speech attacks remain
+detectable and reach $1.79\%$ EER for the best English-trained model. Vocoder
+artefacts appear to survive the change of language, whereas conversion
+artefacts, entangled as they are with speaker and accent characteristics, do
+not survive it.
 
-  \item \textbf{Language mismatch is severe without adaptation.}  Models
-        trained exclusively on English degrade to $>30\%$ EER on Spanish,
-        confirming that single-language training is insufficient for
-        multilingual deployment.
+Bilingual training reaches comparable performance in both languages. Merging
+the English and Spanish training partitions drives EER on Spanish close to
+zero and costs less than one percentage point on English. The merged corpus is
+not balanced by language, since $57.7\%$ of its material is Spanish, so the
+magnitude of both effects remains confounded with corpus composition.
 
-  \item \textbf{Bilingual training achieves near-parity on both languages.}
-        Merging English and Spanish training data yields near-zero EER on
-        Spanish while sacrificing fewer than one percentage point on English,
-        demonstrating that a single model can generalise across languages.
+The residual error that survives bilingual training follows speaker gender and
+shows almost no dependence on regional accent. Differences between the five
+Latin-American varieties stay below half a percentage point, and the back-end
+ranking is identical for all of them. The larger and less expected effect is a
+gender gap whose direction reverses from one country to another. This points
+towards demographic balancing as a more productive line of work than
+accent-adaptive architecture selection.
 
-  \item \textbf{Optimal architecture is language- and accent-specific.}
-        The best front-end/back-end combination varies by language and by
-        Spanish regional accent, motivating accent-adaptive or ensemble
-        strategies.
+Descendant filter-bank scaling benefits Mel banks and harms linear ones.
+Across the full configuration grid, descendant weighting attains the lowest
+median EER for Mel-scale front-ends and wins eight of the twelve
+configurations, while for linear-scale front-ends it is the worst of the three
+scalings. Emphasising low frequencies is therefore not universally
+advantageous. The justification usually offered for it, that the principal
+formants lie in the lower part of the spectrum, holds for F1 and fails for F2.
 
-  \item \textbf{Descendant filter-bank scaling improves cepstral front-ends.}
-        Placing greater weight on lower frequencies aligns with human voice
-        formant structure and consistently reduces EER for both MFCC and LFCC.
-\end{enumerate}
+%% ----------------------------------------------------------------
+\section{Future Work}
+Two limitations of this evaluation shape our ongoing work.
 
-Future work will investigate transformer-based back-ends, self-supervised
-front-end representations (wav2vec~2.0~\cite{baevski2020wav2vec},
-HuBERT~\cite{hsu2021hubert}), deepfake detection with the ASVspoof~2021
-dataset~\cite{delgado2021asvspoof}, and the effect of speaker gender and age
-on accent-based anti-spoofing robustness.
+The first concerns attack coverage. Section~\ref{sec:cross-language} shows
+that conclusions drawn across languages depend strongly on which attack
+families a corpus contains, and HABLA covers only four. We are therefore
+constructing \textit{MARSA}, a multi-accent Spanish corpus that adds
+full-spoof attacks from six contemporary text-to-speech systems, a
+partial-spoof tier in which individual words are spliced into otherwise bona
+fide utterances, and an acoustic augmentation layer covering reverberation,
+noise and codec degradation. Evaluating the partial-spoof tier requires
+frame-level scoring, which the utterance-level EER used here cannot express.
+
+The second concerns the training and evaluation protocol. Retraining on
+language-balanced subsets would separate the effect of bilingual data from
+that of corpus composition (Section~\ref{sec:datasets}), and a protocol that
+also holds out the target identities used by the conversion attacks would
+remove the residual optimism identified there. The gender asymmetry reported
+in Section~\ref{sec:accent-analysis} further suggests that demographic
+conditioning is a more promising adaptation target than regional conditioning.
+
+Beyond these two lines, we intend to evaluate transformer-based back-ends and
+self-supervised front-end representations such as
+wav2vec~2.0~\cite{baevski2020wav2vec} and HuBERT~\cite{hsu2021hubert}, and to
+extend the evaluation to deepfake detection with the ASVspoof~2021
+dataset~\cite{delgado2021asvspoof}.
+
+
+
+
+%% ----------------------------------------------------------------
+%\subsubsection{Acknowledgements.}
+%This work was carried out at the FLAG Lab, Universidad de los Andes.
+
+%\subsubsection{Disclosure of Interests.}
+%The authors have no competing interests to declare that are relevant to the
+%content of this article.
 
 %% ----------------------------------------------------------------
 \bibliographystyle{splncs04}
