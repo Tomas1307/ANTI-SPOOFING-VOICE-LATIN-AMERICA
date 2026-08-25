@@ -72,6 +72,15 @@ class DetectorTrainer:
         crop_samples = int(config.crop_seconds * settings.SAMPLE_RATE)
         eval_crop = int(config.eval_crop_seconds * settings.SAMPLE_RATE)
 
+        if model.required_samples:
+            logger.info(
+                f"Backend requires exactly {model.required_samples:,} samples "
+                f"({model.required_samples / settings.SAMPLE_RATE:.4f} s); "
+                f"overriding the configured crop of {crop_samples:,}/{eval_crop:,}"
+            )
+            crop_samples = model.required_samples
+            eval_crop = model.required_samples
+
         self.train_dataset = MarsaAudioDataset(
             entries=train_split.entries,
             flac_dir=Path(train_split.flac_dir),

@@ -181,24 +181,27 @@ fails exactly those three checks, names the offenders, and exits non-zero.
 
 ## 8. Open items
 
-**DF-Arena adapter needs a rewrite.** The published config was probed on
-2026-08-24 and contradicts the adapter's assumptions:
+**DF-Arena adapter: resolved.** The published modeling source settled it. The
+model is a complete detector, not a backbone awaiting a head:
 
-```
-auto_map.AutoModel -> modeling_antispoofing.DF_Arena_1B_Antispoofing
-auto_map.AutoFeatureExtractor -> feature_extraction_antispoofing.AntispoofingFeatureExtractor
-out_dim: 1024   sample_rate: 16000   num_labels: 2
-id2label: {1: bonafide, 0: spoof}
+```python
+def forward(self, input_values, attention_mask=None):
+    logits = self.backbone(input_values)
+    return {"logits": logits}
 ```
 
-`AutoModel` is the right class and the label order matches ours, but the model
-ships a **native two-class head** that the current adapter ignores in favour of
-a freshly initialised one, and it publishes a dedicated feature extractor,
-which suggests `forward` does not take a raw `input_values` tensor. The feature
-width lives in `out_dim`; the adapter now reads it and raises rather than
-falling back, since the old default of 1024 happened to be correct for this
-checkpoint and would have masked the bug on any other backbone. Rewriting is
-blocked on reading `modeling_antispoofing.py`.
+Its feature extractor pins the input to exactly **64,600 samples** (4.0375 s at
+16 kHz), truncating longer clips and tiling shorter ones. The adapter therefore
+does no pooling, adds no classifier, and reads `outputs["logits"]` — the return
+is a plain dict, so attribute access would raise. `attention_mask` is accepted
+and never forwarded to the backbone, which is harmless only because the
+fixed-length contract leaves no padding to mask. The published label order
+`{1: bonafide, 0: spoof}` matches ours and is asserted at construction rather
+than assumed, since a silent mismatch inverts every score.
+
+A backend may now declare `required_samples`, and the trainer and evaluator
+crop to it instead of to the configured crop, logging the override. The model
+is authoritative about its own input contract.
 
 **LFCC-LCNN backend not written.** Jaime's checkpoint is a flat 61-tensor state
 dict in the `project-NN-Pytorch-scripts` layout (`m_frontend.0.lfcc_fb (257,20)`,

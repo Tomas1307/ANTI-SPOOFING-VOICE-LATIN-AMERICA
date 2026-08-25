@@ -96,11 +96,15 @@ class DetectorEvaluator:
         Returns:
             The evaluation result.
         """
+        crop_samples = int(self.config.eval_crop_seconds * settings.SAMPLE_RATE)
+        if self.model.required_samples:
+            crop_samples = self.model.required_samples
+
         dataset = MarsaAudioDataset(
             entries=split.entries,
             flac_dir=Path(split.flac_dir),
             sample_rate=settings.SAMPLE_RATE,
-            crop_samples=int(self.config.eval_crop_seconds * settings.SAMPLE_RATE),
+            crop_samples=crop_samples,
             training=False,
             seed=self.config.seed,
         )

@@ -12,26 +12,19 @@ class DFArenaBackendSettings(BaseModel):
     """Configuration for the DF-Arena detector backend.
 
     Attributes:
-        MODEL_ID: Hugging Face repository identifier of the backbone.
-        CLASSIFIER_HIDDEN_DIM: Width of the classifier head hidden layer.
-        CLASSIFIER_DROPOUT: Dropout applied inside the classifier head.
-        NORMALIZE_INPUT: Whether each waveform is standardised to zero mean
-            and unit variance over its unpadded samples, which is what
-            wav2vec2-style large backbones expect at their input.
+        MODEL_ID: Hugging Face repository identifier of the model.
+        REQUIRED_SAMPLES: Exact input length the published model demands. Its
+            feature extractor truncates longer clips and tiles shorter ones to
+            this length, so the dataset must deliver it precisely. 64,600
+            samples is 4.0375 seconds at 16 kHz, the ASVspoof convention.
     """
 
     MODEL_ID: str = Field(
         default="Speech-Arena-2025/DF_Arena_1B_V_1",
-        description="Backbone repository identifier.",
+        description="Model repository identifier.",
     )
-    CLASSIFIER_HIDDEN_DIM: int = Field(
-        default=256, description="Width of the classifier head hidden layer."
-    )
-    CLASSIFIER_DROPOUT: float = Field(
-        default=0.1, description="Dropout inside the classifier head."
-    )
-    NORMALIZE_INPUT: bool = Field(
-        default=True, description="Standardise each waveform before the backbone."
+    REQUIRED_SAMPLES: int = Field(
+        default=64600, description="Exact input length in samples."
     )
 
 

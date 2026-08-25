@@ -70,8 +70,5 @@ class DetectorFactory:
         """
         return DFArenaDetector(
             model_id=self.config.model_id or dfarena_settings.MODEL_ID,
-            hidden_dim=dfarena_settings.CLASSIFIER_HIDDEN_DIM,
-            dropout=dfarena_settings.CLASSIFIER_DROPOUT,
             freeze_backbone=self.config.freeze_backbone,
-            normalize_input=dfarena_settings.NORMALIZE_INPUT,
         )

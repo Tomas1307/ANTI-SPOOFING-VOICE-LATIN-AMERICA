@@ -1,221 +1,176 @@
 """
-DF-Arena detector: a self-supervised speech backbone with a pooled classifier.
+DF-Arena detector: a published end-to-end anti-spoofing model, wrapped.
 """
 from typing import Any, Dict, List
 
 import torch
 from loguru import logger
-from torch import nn
 from transformers import AutoConfig, AutoModel
 
 from app.pipeline.training.base_spoof_detector import BaseSpoofDetector
 
 
 class DFArenaDetector(BaseSpoofDetector):
-    """Self-supervised backbone, masked mean pooling and an MLP head.
+    """Adapter over the published DF-Arena anti-spoofing model.
 
-    The backbone is loaded from the Hugging Face hub and consumes raw
-    waveforms. Its frame-level hidden states are averaged over the unpadded
-    frames only, then classified. Masking matters: padded frames would
-    otherwise pull the pooled representation of short clips toward zero, and
-    duration correlates with class in any corpus built from mixed sources.
+    DF-Arena is not a self-supervised backbone waiting for a classifier: it is
+    a complete detector that consumes a raw waveform and emits two class
+    logits. An earlier draft of this class bolted a freshly initialised pooled
+    head onto it, which would have discarded a trained output layer and
+    crashed besides, because the model returns a plain dict rather than a
+    Hugging Face ModelOutput. Reading the published modeling source settled
+    both points:
+
+        def forward(self, input_values, attention_mask=None):
+            logits = self.backbone(input_values)
+            return {"logits": logits}
+
+    Two consequences the wrapper has to respect. The returned object is a
+    dict, so ``outputs["logits"]`` is the only correct access. And
+    ``attention_mask`` is accepted but never forwarded to the backbone, so
+    padding is not masked anywhere inside the model.
+
+    The published feature extractor pins the input contract to exactly 64,600
+    samples, truncating longer clips and tiling shorter ones. This class
+    declares that through ``required_samples``, which makes the dataset crop
+    every clip to precisely that length. Since every clip then has identical
+    length, no padding exists and the unmasked attention is harmless.
+
+    The model's own label order, ``{1: bonafide, 0: spoof}``, already matches
+    the project convention, so no index swap is needed anywhere.
 
     Attributes:
-        backbone: The pretrained self-supervised encoder.
-        classifier: The trainable classification head.
-        normalize_input: Whether waveforms are standardised per utterance.
-        frozen: Whether backbone parameters are excluded from optimisation.
+        model: The published DF-Arena model.
+        frozen: Whether the weights are excluded from optimisation.
     """
+
+    REQUIRED_SAMPLES = 64600
 
     def __init__(
         self,
         model_id: str,
-        hidden_dim: int,
-        dropout: float,
-        freeze_backbone: bool,
-        normalize_input: bool = True,
+        freeze_backbone: bool = False,
     ) -> None:
         """Initialize the detector.
 
         Args:
-            model_id: Hugging Face repository identifier of the backbone.
-            hidden_dim: Width of the classifier hidden layer.
-            dropout: Dropout applied inside the classifier head.
-            freeze_backbone: Whether to freeze the backbone weights.
-            normalize_input: Whether to standardise each waveform to zero mean
-                and unit variance, which is what wav2vec2-style large models
-                expect.
+            model_id: Hugging Face repository identifier of the model.
+            freeze_backbone: Whether to freeze every published weight. Unlike
+                a backbone-plus-head design there is no separate head to train
+                afterwards, so freezing leaves nothing trainable; it is useful
+                only for a pure inference run.
+
+        Raises:
+            ValueError: If the published label order is not the expected one,
+                which would silently invert every score.
         """
         super().__init__()
 
         config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-        self.backbone = AutoModel.from_pretrained(
+        self._assert_label_order(config)
+
+        self.model = AutoModel.from_pretrained(
             model_id, config=config, trust_remote_code=True
         )
-        feature_dim = self._feature_dim(config)
-
-        self.classifier = nn.Sequential(
-            nn.Linear(feature_dim, hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(hidden_dim, 2),
-        )
-        self.normalize_input = normalize_input
+        self.required_samples = self.REQUIRED_SAMPLES
         self.frozen = freeze_backbone
 
         if freeze_backbone:
-            for parameter in self.backbone.parameters():
+            for parameter in self.model.parameters():
                 parameter.requires_grad = False
-            self.backbone.eval()
+            self.model.eval()
 
         trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
         total = sum(p.numel() for p in self.parameters())
         logger.info(
-            f"DFArenaDetector ready: backbone={model_id}, feature_dim={feature_dim}, "
-            f"trainable={trainable:,}/{total:,} parameters, frozen={freeze_backbone}"
-        )
-
-
-    @staticmethod
-    def _feature_dim(config) -> int:
-        """Read the backbone feature width from its configuration.
-
-        DF-Arena publishes this as ``out_dim`` rather than the ``hidden_size``
-        most Hugging Face audio configs use. Guessing here is dangerous: an
-        earlier draft defaulted to 1024, which happens to be correct for this
-        checkpoint and would therefore have hidden the bug until a different
-        backbone was tried.
-
-        Args:
-            config: The loaded model configuration.
-
-        Returns:
-            The feature width the classifier head consumes.
-
-        Raises:
-            ValueError: If no known field carries the feature width.
-        """
-        for field in ("out_dim", "hidden_size", "output_hidden_size"):
-            value = getattr(config, field, None)
-            if value:
-                return int(value)
-        raise ValueError(
-            "Cannot determine the backbone feature width: none of out_dim, "
-            "hidden_size or output_hidden_size is set on the config. Inspect "
-            "the model card before proceeding; do not guess."
+            f"DFArenaDetector ready: {model_id}, "
+            f"required input {self.REQUIRED_SAMPLES:,} samples "
+            f"({self.REQUIRED_SAMPLES / 16000:.4f} s at 16 kHz), "
+            f"trainable {trainable:,}/{total:,} parameters, frozen={freeze_backbone}"
         )
 
     def forward(self, waveform: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
         """Score a batch of waveforms.
 
         Args:
-            waveform: Padded waveforms of shape (batch, samples).
-            lengths: True sample count per item, of shape (batch,).
+            waveform: Waveforms of shape (batch, samples). Every clip is
+                expected to carry exactly ``required_samples`` samples, which
+                the dataset guarantees.
+            lengths: True sample count per item. Unused: the model ignores its
+                own attention mask, and the fixed-length contract means there
+                is no padding to mask. Accepted to satisfy the interface.
 
         Returns:
-            Class logits of shape (batch, 2).
+            Class logits of shape (batch, 2), spoof at index 0 and bonafide at
+            index 1.
         """
-        if self.normalize_input:
-            waveform = self._standardise(waveform, lengths)
-
-        attention_mask = self._sample_mask(waveform, lengths)
-        outputs = self.backbone(
-            input_values=waveform, attention_mask=attention_mask
-        )
-        hidden = outputs.last_hidden_state
-
-        pooled = self._masked_mean(hidden, lengths, waveform.shape[1])
-        return self.classifier(pooled)
+        outputs = self.model(input_values=waveform)
+        return outputs["logits"]
 
     def parameter_groups(
         self, head_learning_rate: float, backbone_learning_rate: float
     ) -> List[Dict[str, Any]]:
         """Build optimiser parameter groups.
 
+        DF-Arena publishes a trained output layer rather than exposing a fresh
+        head, so there is no group that warrants the larger head learning
+        rate. Every trainable weight is pretrained and goes into a single
+        group at the backbone rate.
+
         Args:
-            head_learning_rate: Peak learning rate for the classifier head.
-            backbone_learning_rate: Peak learning rate for backbone weights.
+            head_learning_rate: Ignored; retained to satisfy the interface.
+            backbone_learning_rate: Peak learning rate for the whole model.
 
         Returns:
-            One group for the head, plus a backbone group when it is trainable.
+            One parameter group covering every trainable weight.
+
+        Raises:
+            ValueError: If the model is frozen, since nothing would train.
         """
-        groups: List[Dict[str, Any]] = [
+        trainable = [p for p in self.model.parameters() if p.requires_grad]
+        if not trainable:
+            raise ValueError(
+                "DFArenaDetector is frozen, so there is nothing to optimise. "
+                "Drop --freeze-backbone to fine-tune, or use --eval-only to "
+                "score the published weights without training."
+            )
+        return [
             {
-                "params": list(self.classifier.parameters()),
-                "lr": head_learning_rate,
-                "name": "classifier",
+                "params": trainable,
+                "lr": backbone_learning_rate,
+                "name": "dfarena",
             }
         ]
-        if not self.frozen:
-            groups.append(
-                {
-                    "params": [
-                        p for p in self.backbone.parameters() if p.requires_grad
-                    ],
-                    "lr": backbone_learning_rate,
-                    "name": "backbone",
-                }
+
+    @staticmethod
+    def _assert_label_order(config) -> None:
+        """Verify the published label order matches the project convention.
+
+        The project scores bonafide as class 1 so that a higher score means
+        more genuine. DF-Arena publishes the same mapping. Checking rather
+        than assuming matters because a silent mismatch inverts every score
+        and turns a good detector into an apparently terrible one, or worse,
+        the reverse.
+
+        Args:
+            config: The loaded model configuration.
+
+        Raises:
+            ValueError: If the mapping is present and does not match.
+        """
+        mapping = getattr(config, "id2label", None)
+        if not mapping:
+            logger.warning(
+                "Model publishes no id2label mapping; assuming index 1 is "
+                "bonafide, per the project convention."
             )
-        return groups
+            return
 
-    @staticmethod
-    def _standardise(waveform: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
-        """Standardise each waveform over its unpadded samples.
-
-        Args:
-            waveform: Padded waveforms of shape (batch, samples).
-            lengths: True sample count per item.
-
-        Returns:
-            Standardised waveforms of the same shape.
-        """
-        mask = DFArenaDetector._sample_mask(waveform, lengths)
-        counts = mask.sum(dim=1, keepdim=True).clamp(min=1)
-        mean = (waveform * mask).sum(dim=1, keepdim=True) / counts
-        variance = (((waveform - mean) * mask) ** 2).sum(dim=1, keepdim=True) / counts
-        return (waveform - mean) / torch.sqrt(variance + 1e-7) * mask
-
-    @staticmethod
-    def _sample_mask(waveform: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
-        """Build a sample-level padding mask.
-
-        Args:
-            waveform: Padded waveforms of shape (batch, samples).
-            lengths: True sample count per item.
-
-        Returns:
-            A float mask of shape (batch, samples), one for real samples.
-        """
-        positions = torch.arange(waveform.shape[1], device=waveform.device)
-        return (positions.unsqueeze(0) < lengths.unsqueeze(1).to(waveform.device)).to(
-            waveform.dtype
-        )
-
-    @staticmethod
-    def _masked_mean(
-        hidden: torch.Tensor, lengths: torch.Tensor, input_samples: int
-    ) -> torch.Tensor:
-        """Average frame-level features over the unpadded frames only.
-
-        The backbone downsamples by a factor this class does not hard-code;
-        the frame count per item is derived proportionally from the sample
-        count, which holds for any convolutional front end and avoids
-        depending on architecture-specific helper methods.
-
-        Args:
-            hidden: Frame-level features of shape (batch, frames, dim).
-            lengths: True sample count per item.
-            input_samples: Padded sample count the backbone consumed.
-
-        Returns:
-            Pooled features of shape (batch, dim).
-        """
-        frames = hidden.shape[1]
-        ratio = frames / max(input_samples, 1)
-        frame_lengths = torch.clamp(
-            (lengths.to(hidden.device).float() * ratio).ceil().long(), min=1, max=frames
-        )
-        positions = torch.arange(frames, device=hidden.device)
-        mask = (positions.unsqueeze(0) < frame_lengths.unsqueeze(1)).to(hidden.dtype)
-        summed = (hidden * mask.unsqueeze(-1)).sum(dim=1)
-        return summed / mask.sum(dim=1, keepdim=True).clamp(min=1)
+        normalised = {int(key): str(value).lower() for key, value in mapping.items()}
+        if normalised.get(1) != "bonafide" or normalised.get(0) != "spoof":
+            raise ValueError(
+                f"Unexpected label order {normalised}. This project scores "
+                "bonafide as class 1; a mismatch would invert every score. "
+                "Adapt the wrapper deliberately rather than proceeding."
+            )
+        logger.info(f"Label order verified: {normalised}")

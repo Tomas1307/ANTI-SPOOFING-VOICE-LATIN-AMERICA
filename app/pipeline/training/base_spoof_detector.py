@@ -2,7 +2,7 @@
 Abstract interface every anti-spoofing detector backend implements.
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import torch
 from torch import nn
@@ -15,7 +15,17 @@ class BaseSpoofDetector(nn.Module, ABC):
     interface, so the training and evaluation steps never learn which model
     they are driving. Adding Nes2Net or HoliAntiSpoof later means adding a
     subclass and a factory entry, and touching nothing else.
+
+    Attributes:
+        required_samples: Exact input length the backend demands, in samples,
+            or None when it accepts variable-length input. A backend that
+            publishes a fixed contract is authoritative about it: the dataset
+            crops to this length rather than to whatever the run configuration
+            asked for, and the steps log the override. DF-Arena, for instance,
+            requires exactly 64,600 samples.
     """
+
+    required_samples: Optional[int] = None
 
     @abstractmethod
     def forward(
