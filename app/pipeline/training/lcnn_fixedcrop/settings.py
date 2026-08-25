@@ -8,12 +8,12 @@ class LCNNFixedCropBackendSettings(BaseModel):
     """Configuration for Xin Wang's "fixed" LCNN backend.
 
     Attributes:
-        CHECKPOINT_PATH: Path to the published .pt state dict. Named
-            ``trained_network_att.pt`` on ml-server03 despite implementing the
-            architecture from the ``lfcc-lcnn-fixed-p2s`` directory -- verified
-            by matching parameter shapes before this backend was written; do
-            not "fix" this path by pointing it at ``trained_network_fix.pt``,
-            which holds a different architecture entirely.
+        CHECKPOINT_PATH: Path to the published .pt state dict,
+            ``trained_network_fix.pt`` on ml-server03. Confirmed by an
+            unambiguous, single-process fingerprint over all six checkpoints
+            (2026-08-25): the 47-tensor state dict with
+            ``m_output_act.0.1.weight`` and no ``m_pooling``/
+            ``m_before_pooling`` key is unique to this architecture.
         FRAME_LENGTH: LFCC analysis frame length, in waveform samples.
         FRAME_SHIFT: LFCC analysis frame shift, in waveform samples.
         FFT_N: FFT length.
@@ -29,9 +29,9 @@ class LCNNFixedCropBackendSettings(BaseModel):
     CHECKPOINT_PATH: str = Field(
         default=(
             "/home/jahurtado905/notebooks/anti-spoofing/anti-spoof-eval/"
-            "03-asvspoof-mega/trained_network_att.pt"
+            "03-asvspoof-mega/trained_network_fix.pt"
         ),
-        description="Path to the published fixed-crop checkpoint (misnamed 'att').",
+        description="Path to the published fixed-crop checkpoint.",
     )
     FRAME_LENGTH: int = Field(default=320, description="LFCC frame length, samples.")
     FRAME_SHIFT: int = Field(default=160, description="LFCC frame shift, samples.")

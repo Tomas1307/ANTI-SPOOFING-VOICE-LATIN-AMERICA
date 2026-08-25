@@ -20,15 +20,14 @@ class LCNNFixedCropDetector(BaseSpoofDetector):
     """Adapter over Xin Wang's "fixed" LCNN backend: LFCC-LCNN with a fixed
     750-frame truncation instead of BLSTM-sum or self-weighted pooling.
 
-    Its checkpoint file is confusingly named ``trained_network_att.pt`` on
-    ml-server03. That name was verified wrong before this class was written:
-    the directory Xin Wang's own code calls ``lfcc-lcnn-fixed-p2s`` matches
-    this checkpoint's parameter shapes exactly
-    (``Linear((750//16)*(60//16)*32, 160) = Linear(4416, 160)``), while the
-    directory called ``lfcc-lcnn-attention-p2s`` matches a different
-    checkpoint, ``trained_network_fix.pt``. This class is named for the
-    architecture it implements, not for the misleading checkpoint filename;
-    the default checkpoint path documents the mismatch explicitly.
+    Its checkpoint is ``trained_network_fix.pt`` on ml-server03, confirmed by
+    an unambiguous fingerprint over all six published checkpoints in one
+    process (2026-08-25) rather than by trusting the filename: this
+    architecture's 47-tensor state dict, with ``m_output_act.0.1.weight`` and
+    no ``m_pooling``/``m_before_pooling`` key, is unique to it. An earlier
+    session mistakenly concluded the checkpoint filenames were swapped, from
+    misreading the order of a batched multi-command paste; that conclusion
+    was wrong and has been corrected here.
 
     Unlike the LSTM-sum backend, this architecture has a genuine fixed-length
     contract, built into the network rather than merely chosen for evaluation
