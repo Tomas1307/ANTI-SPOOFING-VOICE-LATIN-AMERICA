@@ -77,8 +77,13 @@ No audio is decoded and no GPU is touched, so it costs about two minutes.
 Run it standalone before committing to a tier:
 
 ```bash
+source envs/dfarena_env/bin/activate
 python -m app.scripts.run_corpus_audit --corpus-root data/augmented/augmented_2x
+deactivate
 ```
+
+Run it from `dfarena_env`, not `fishgram_env`: the latter has no `loguru`, and
+its pinned transformers/hf_hub quartet must not be disturbed to add one.
 
 `--skip-audit` exists for smoke tests only. A run that skips the audit logs a
 warning and its error rate must not be reported.
@@ -139,6 +144,16 @@ Resume after an interruption by repeating the original command. `--resume`
 defaults to `auto`, which picks up the latest checkpoint in the run directory
 and replays the exact remaining batch order of the interrupted epoch.
 
+Zero-shot scoring, which trains nothing and never reads the training split:
+
+```bash
+python -m app.scripts.run_detector_training \
+    --run-name dfarena_zeroshot --eval-only --eval-splits eval
+```
+
+Add `--eval-checkpoint <path>` to score a checkpoint of our own instead of the
+backend's published weights.
+
 ---
 
 ## 7. Key options
@@ -148,6 +163,7 @@ and replays the exact remaining batch order of the interrupted epoch.
 | `--batch-size` | 8 | Micro-batch; raise until the A40 is full |
 | `--grad-accum` | 4 | Effective batch is the product of the two |
 | `--backend` | dfarena | Registered backend key |
+| `--eval-only` | off | Score without training; zero-shot baseline |
 | `--freeze-backbone` | off | Head-only training; far cheaper, weaker |
 | `--lr` / `--backbone-lr` | 1e-4 / 1e-6 | A pretrained backbone needs the smaller rate |
 | `--crop-seconds` | 4.0 | Random crop in training, centre crop in scoring |

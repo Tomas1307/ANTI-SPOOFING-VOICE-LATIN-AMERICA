@@ -21,6 +21,11 @@ Usage on ml-server03, pinned to one free GPU and detached from the terminal:
 An interrupted run resumes from its latest checkpoint by repeating the same
 command: the default resume mode is automatic, and the run directory is keyed
 by run name.
+
+Zero-shot scoring, which trains nothing and reads no training split:
+
+    python -m app.scripts.run_detector_training \
+        --run-name dfarena_zeroshot --eval-only --eval-splits eval
 """
 import argparse
 from pathlib import Path
@@ -126,6 +131,14 @@ def _parse_args() -> argparse.Namespace:
         help="Disable inverse-frequency class weighting in the loss.",
     )
     parser.add_argument(
+        "--eval-only", action="store_true",
+        help="Score a checkpoint without training it; produces a zero-shot baseline.",
+    )
+    parser.add_argument(
+        "--eval-checkpoint", type=str, default=None,
+        help="Checkpoint to score in eval-only mode; omit to score published weights.",
+    )
+    parser.add_argument(
         "--skip-audit", action="store_true",
         help="Skip the corpus audit. Smoke tests only; results are unreportable.",
     )
@@ -172,6 +185,8 @@ def _build_config(args: argparse.Namespace) -> DetectorTrainingConfig:
         resume=resume,
         eval_splits=args.eval_splits,
         strict_filter_csv=strict_filter,
+        eval_only=args.eval_only,
+        eval_checkpoint=args.eval_checkpoint,
         skip_audit=args.skip_audit,
         max_train_items=args.max_train_items,
     )
@@ -184,9 +199,10 @@ if __name__ == "__main__":
 
     logger.info("=" * 70)
     logger.info(f"Run '{outcome.run_name}' finished")
-    logger.info(
-        f"Best dev EER {outcome.best_dev_eer:.3f}% at epoch {outcome.best_epoch}"
-    )
+    if outcome.epochs:
+        logger.info(
+            f"Best dev EER {outcome.best_dev_eer:.3f}% at epoch {outcome.best_epoch}"
+        )
     for evaluation in outcome.evaluations:
         strict = (
             f", strict {evaluation.strict_eer:.3f}% over "

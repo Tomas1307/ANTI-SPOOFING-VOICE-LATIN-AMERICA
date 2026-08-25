@@ -41,6 +41,11 @@ class DetectorTrainingConfig(BaseModel):
         eval_splits: Splits scored after training completes.
         strict_filter_csv: Strict sentence-disjoint filter table. When set,
             evaluation reports a strict EER alongside the pooled EER.
+        eval_only: Score an existing checkpoint without training it. This is
+            how a zero-shot baseline is produced: no optimiser is built and
+            the training split is never read.
+        eval_checkpoint: Checkpoint to score in eval-only mode. None scores
+            the backend as it loads from its published weights.
         skip_audit: Whether to skip the pre-training corpus audit. Intended
             for smoke tests only.
         max_train_items: Cap on training clips, for smoke tests. Zero means no
@@ -96,6 +101,12 @@ class DetectorTrainingConfig(BaseModel):
     )
     strict_filter_csv: Optional[str] = Field(
         default=None, description="Strict sentence-disjoint filter table."
+    )
+    eval_only: bool = Field(
+        default=False, description="Score a checkpoint without training it."
+    )
+    eval_checkpoint: Optional[str] = Field(
+        default=None, description="Checkpoint to score in eval-only mode."
     )
     skip_audit: bool = Field(default=False, description="Skip the corpus audit.")
     max_train_items: int = Field(

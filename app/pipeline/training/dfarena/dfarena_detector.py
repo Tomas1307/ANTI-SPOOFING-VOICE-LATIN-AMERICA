@@ -52,9 +52,7 @@ class DFArenaDetector(BaseSpoofDetector):
         self.backbone = AutoModel.from_pretrained(
             model_id, config=config, trust_remote_code=True
         )
-        feature_dim = getattr(config, "hidden_size", None)
-        if feature_dim is None:
-            feature_dim = getattr(config, "output_hidden_size", 1024)
+        feature_dim = self._feature_dim(config)
 
         self.classifier = nn.Sequential(
             nn.Linear(feature_dim, hidden_dim),
@@ -75,6 +73,36 @@ class DFArenaDetector(BaseSpoofDetector):
         logger.info(
             f"DFArenaDetector ready: backbone={model_id}, feature_dim={feature_dim}, "
             f"trainable={trainable:,}/{total:,} parameters, frozen={freeze_backbone}"
+        )
+
+
+    @staticmethod
+    def _feature_dim(config) -> int:
+        """Read the backbone feature width from its configuration.
+
+        DF-Arena publishes this as ``out_dim`` rather than the ``hidden_size``
+        most Hugging Face audio configs use. Guessing here is dangerous: an
+        earlier draft defaulted to 1024, which happens to be correct for this
+        checkpoint and would therefore have hidden the bug until a different
+        backbone was tried.
+
+        Args:
+            config: The loaded model configuration.
+
+        Returns:
+            The feature width the classifier head consumes.
+
+        Raises:
+            ValueError: If no known field carries the feature width.
+        """
+        for field in ("out_dim", "hidden_size", "output_hidden_size"):
+            value = getattr(config, field, None)
+            if value:
+                return int(value)
+        raise ValueError(
+            "Cannot determine the backbone feature width: none of out_dim, "
+            "hidden_size or output_hidden_size is set on the config. Inspect "
+            "the model card before proceeding; do not guess."
         )
 
     def forward(self, waveform: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:

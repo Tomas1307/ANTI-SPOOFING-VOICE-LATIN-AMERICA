@@ -81,27 +81,10 @@ class DetectorTrainingPipeline:
             # === STEP 3: Build the detector ===
             model = DetectorFactory(self.config, device).execute()
 
-            # === STEP 4: Train ===
-            trainer = DetectorTrainer(
-                config=self.config,
-                model=model,
-                device=device,
-                train_split=splits["train"],
-                dev_split=splits["dev"],
-                run_dir=self.run_dir,
-            )
-            result = trainer.execute()
-
-            # === STEP 5: Evaluate the selected checkpoint ===
-            checkpoint = result.best_checkpoint or result.last_checkpoint
-            if checkpoint:
-                state = trainer.checkpoints.load(Path(checkpoint), map_location=str(device))
-                model.load_state_dict(state["model"])
-                logger.info(f"Evaluating checkpoint: {Path(checkpoint).name}")
-
-            result.evaluations = DetectorEvaluator(
-                config=self.config, model=model, device=device, run_dir=self.run_dir
-            ).execute(splits, checkpoint)
+            if self.config.eval_only:
+                result = self._evaluate_only(model, device, splits)
+            else:
+                result = self._train_and_evaluate(model, device, splits)
 
             self._persist_result(result)
             logger.info(f"{self.__class__.__name__.upper()} - COMPLETE")
@@ -110,6 +93,80 @@ class DetectorTrainingPipeline:
         except Exception as error:
             logger.exception(f"Pipeline failed: {error}")
             raise
+
+    def _train_and_evaluate(
+        self, model, device, splits: Dict[str, DatasetSplit]
+    ) -> TrainingResult:
+        """Train the detector, then score the selected checkpoint.
+
+        Args:
+            model: Detector to train.
+            device: Compute device.
+            splits: Resolved splits keyed by name.
+
+        Returns:
+            The training result with its evaluations attached.
+        """
+        trainer = DetectorTrainer(
+            config=self.config,
+            model=model,
+            device=device,
+            train_split=splits["train"],
+            dev_split=splits["dev"],
+            run_dir=self.run_dir,
+        )
+        result = trainer.execute()
+
+        checkpoint = result.best_checkpoint or result.last_checkpoint
+        if checkpoint:
+            state = trainer.checkpoints.load(Path(checkpoint), map_location=str(device))
+            model.load_state_dict(state["model"])
+            logger.info(f"Evaluating checkpoint: {Path(checkpoint).name}")
+
+        result.evaluations = DetectorEvaluator(
+            config=self.config, model=model, device=device, run_dir=self.run_dir
+        ).execute(splits, checkpoint)
+        return result
+
+    def _evaluate_only(
+        self, model, device, splits: Dict[str, DatasetSplit]
+    ) -> TrainingResult:
+        """Score a detector without training it.
+
+        This is how a zero-shot baseline is produced. No optimiser is built and
+        the training split is never read, so the run costs one forward pass per
+        clip of the scored splits.
+
+        Args:
+            model: Detector to score.
+            device: Compute device.
+            splits: Resolved splits keyed by name.
+
+        Returns:
+            A result carrying only the evaluations.
+
+        Raises:
+            FileNotFoundError: If a checkpoint was named but does not exist.
+        """
+        checkpoint = self.config.eval_checkpoint
+        if checkpoint:
+            path = Path(checkpoint)
+            if not path.exists():
+                raise FileNotFoundError(f"Evaluation checkpoint not found: {path}")
+            state = torch.load(path, map_location=str(device), weights_only=False)
+            model.load_state_dict(state["model"] if "model" in state else state)
+            logger.info(f"Eval-only: loaded weights from {path.name}")
+        else:
+            checkpoint = f"{self.config.detector_backend}:published-weights"
+            logger.info(
+                "Eval-only: scoring the backend as published, with no fine-tuning"
+            )
+
+        result = TrainingResult(run_name=self.config.run_name)
+        result.evaluations = DetectorEvaluator(
+            config=self.config, model=model, device=device, run_dir=self.run_dir
+        ).execute(splits, checkpoint)
+        return result
 
     def _audit(self) -> None:
         """Run the corpus audit and stop the run when it fails.
@@ -150,7 +207,7 @@ class DetectorTrainingPipeline:
         Returns:
             Mapping of split name to its resolved description.
         """
-        names: List[str] = ["train", "dev"]
+        names: List[str] = [] if self.config.eval_only else ["train", "dev"]
         for split in self.config.eval_splits:
             if split not in names:
                 names.append(split)

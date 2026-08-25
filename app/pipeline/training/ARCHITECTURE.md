@@ -181,13 +181,27 @@ fails exactly those three checks, names the offenders, and exits non-zero.
 
 ## 8. Open items
 
-**Eval-only mode is not implemented.** Scoring a pretrained checkpoint without
-training it — needed for the zero-shot baselines — requires a path that skips
-step 4. Small addition to the facade.
+**DF-Arena adapter needs a rewrite.** The published config was probed on
+2026-08-24 and contradicts the adapter's assumptions:
 
-**DF-Arena head.** `DFArenaDetector` loads the backbone with `AutoModel` and
-adds its own pooled classifier. If the published checkpoint ships a native
-detection head, reusing it would start from a far better initialisation.
-Confirm against the model's `config.json` (`architectures`, `hidden_size`,
-`num_labels`) before the first full-length run, and add a second backend entry
-rather than mutating this one if both variants are worth comparing.
+```
+auto_map.AutoModel -> modeling_antispoofing.DF_Arena_1B_Antispoofing
+auto_map.AutoFeatureExtractor -> feature_extraction_antispoofing.AntispoofingFeatureExtractor
+out_dim: 1024   sample_rate: 16000   num_labels: 2
+id2label: {1: bonafide, 0: spoof}
+```
+
+`AutoModel` is the right class and the label order matches ours, but the model
+ships a **native two-class head** that the current adapter ignores in favour of
+a freshly initialised one, and it publishes a dedicated feature extractor,
+which suggests `forward` does not take a raw `input_values` tensor. The feature
+width lives in `out_dim`; the adapter now reads it and raises rather than
+falling back, since the old default of 1024 happened to be correct for this
+checkpoint and would have masked the bug on any other backbone. Rewriting is
+blocked on reading `modeling_antispoofing.py`.
+
+**LFCC-LCNN backend not written.** Jaime's checkpoint is a flat 61-tensor state
+dict in the `project-NN-Pytorch-scripts` layout (`m_frontend.0.lfcc_fb (257,20)`,
+`m_frontend.0.l_dct.weight (20,20)`, `m_transform.*` with Max-Feature-Map
+halving, plus `input_mean/std` buffers). Replicating it exactly needs his
+`model.py` and `config.py`.
