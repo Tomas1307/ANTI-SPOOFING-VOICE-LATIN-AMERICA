@@ -11,6 +11,12 @@ from app.pipeline.training.dfarena.dfarena_detector import DFArenaDetector
 from app.pipeline.training.dfarena.settings import settings as dfarena_settings
 from app.pipeline.training.lcnn.lcnn_detector import LCNNDetector
 from app.pipeline.training.lcnn.settings import settings as lcnn_settings
+from app.pipeline.training.lcnn_fixedcrop.lcnn_fixedcrop_detector import (
+    LCNNFixedCropDetector,
+)
+from app.pipeline.training.lcnn_fixedcrop.settings import (
+    settings as lcnn_fixedcrop_settings,
+)
 from app.pipeline.training.schemas.pipeline_config import DetectorTrainingConfig
 
 
@@ -39,6 +45,7 @@ class DetectorFactory:
         self._registry: Dict[str, Callable[[], BaseSpoofDetector]] = {
             "dfarena": self._build_dfarena,
             "lcnn": self._build_lcnn,
+            "lcnn_fixedcrop": self._build_lcnn_fixedcrop,
         }
 
     def execute(self) -> BaseSpoofDetector:
@@ -88,4 +95,16 @@ class DetectorFactory:
         """
         return LCNNDetector(
             checkpoint_path=self.config.model_id or lcnn_settings.CHECKPOINT_PATH
+        )
+
+    def _build_lcnn_fixedcrop(self) -> BaseSpoofDetector:
+        """Construct the fixed-750-frame-truncation LCNN detector.
+
+        Returns:
+            An initialised LCNNFixedCropDetector, with the published
+            checkpoint loaded.
+        """
+        return LCNNFixedCropDetector(
+            checkpoint_path=self.config.model_id
+            or lcnn_fixedcrop_settings.CHECKPOINT_PATH
         )
