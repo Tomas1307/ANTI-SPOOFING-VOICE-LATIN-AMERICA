@@ -126,6 +126,12 @@ class DetectorEvaluator:
 
         eer, _threshold = metrics.compute_eer(scores[labels == 1], scores[labels == 0])
         per_attack = metrics.compute_per_attack_eer(scores, labels, attack_ids)
+        per_attack_clips = metrics.count_spoof_clips_per_attack(labels, attack_ids)
+        low_confidence = sorted(
+            attack
+            for attack, count in per_attack_clips.items()
+            if count < settings.MIN_ATTACK_CLIPS_FOR_EER
+        )
 
         score_file = self.run_dir / "scores" / f"scores_{split.name}.txt"
         protocol_io.write_scores(
@@ -142,6 +148,8 @@ class DetectorEvaluator:
             clip_count=int(scores.size),
             eer=eer,
             per_attack_eer=per_attack,
+            per_attack_clips=per_attack_clips,
+            low_confidence_attacks=low_confidence,
             score_file=str(score_file),
         )
         self._add_strict_eer(result, split.name, ordered, scores, labels)
@@ -156,7 +164,19 @@ class DetectorEvaluator:
             )
         )
         for attack, value in sorted(per_attack.items(), key=lambda item: -item[1]):
-            logger.info(f"    {attack:<24} {value:6.3f}%")
+            count = per_attack_clips.get(attack, 0)
+            flag = (
+                "  [low sample count]"
+                if attack in result.low_confidence_attacks
+                else ""
+            )
+            logger.info(f"    {attack:<24} {value:6.3f}%   n={count:<7,}{flag}")
+        if result.low_confidence_attacks:
+            logger.info(
+                f"    Rates over fewer than {settings.MIN_ATTACK_CLIPS_FOR_EER} "
+                "clips are reported in full but cannot resolve differences "
+                "finer than roughly one over that count."
+            )
         return result
 
     def _add_strict_eer(

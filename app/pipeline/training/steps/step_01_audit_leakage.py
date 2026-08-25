@@ -374,7 +374,15 @@ class CorpusLeakageAuditor:
     def _check_attack_coverage(
         self, entries: Dict[str, List[ProtocolEntry]]
     ) -> LeakageCheckResult:
-        """Report whether every attack system appears in every split.
+        """Report whether the splits carry exactly the expected attack systems.
+
+        Both directions matter. A missing system breaks leave-one-system-out
+        for that system. An unexpected extra one is usually a naming
+        inconsistency rather than a new generator, and it is more insidious:
+        it silently splits one system across two rows of a per-attack table
+        and lets held-out clips of that system leak back into training. This
+        corpus shipped exactly such a defect, with Qwen recorded as ``qwen``
+        for full spoof and ``qwen3tts`` for partial spoof.
 
         Args:
             entries: Protocol entries per split.
@@ -382,23 +390,26 @@ class CorpusLeakageAuditor:
         Returns:
             The check result, non-fatal.
         """
+        expected = set(settings.EXPECTED_ATTACK_SYSTEMS)
         details: List[str] = []
         offenders: List[str] = []
         for split, rows in entries.items():
             present = {row.attack_id for row in rows if row.key == "spoof"}
             families = {attack.split("-")[0] for attack in present}
-            absent = [
-                system
-                for system in settings.EXPECTED_ATTACK_SYSTEMS
-                if system not in families
-            ]
-            details.append(f"{split}: {len(present)} attack ids, {len(families)} systems")
+            absent = sorted(expected - families)
+            unexpected = sorted(families - expected)
+            details.append(
+                f"{split}: {len(present)} attack ids, {len(families)} systems"
+            )
             offenders.extend(f"{split}|absent_system|{system}" for system in absent)
+            offenders.extend(
+                f"{split}|unexpected_system|{system}" for system in unexpected
+            )
         return LeakageCheckResult(
             name="attack_coverage",
             description=(
-                "All six attack systems appear in every split, which is what "
-                "leave-one-system-out protocols require."
+                "Every split carries exactly the expected attack systems, "
+                "neither missing one nor naming one twice."
             ),
             passed=not offenders,
             detail="; ".join(details),

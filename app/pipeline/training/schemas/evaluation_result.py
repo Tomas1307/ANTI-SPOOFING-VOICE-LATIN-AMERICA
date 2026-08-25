@@ -1,7 +1,7 @@
 """
 Pydantic schema for a scored evaluation pass.
 """
-from typing import Dict
+from typing import Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +24,12 @@ class EvaluationResult(BaseModel):
             no strict filter was supplied.
         per_attack_eer: Equal error rate per attack system, each computed
             against the split's full bonafide pool.
+        per_attack_clips: Spoof clips backing each per-attack rate. Always
+            reported next to the rate, since a rate can only resolve
+            differences down to roughly one over this count.
+        low_confidence_attacks: Attacks whose clip count falls below the
+            reporting threshold. Their rates are still reported in full; the
+            flag exists so no reader leans on them.
         score_file: Path of the written per-clip score file.
     """
 
@@ -35,5 +41,11 @@ class EvaluationResult(BaseModel):
     strict_eer: float = Field(default=-1.0, description="Strict EER, percent.")
     per_attack_eer: Dict[str, float] = Field(
         default_factory=dict, description="EER per attack system, percent."
+    )
+    per_attack_clips: Dict[str, int] = Field(
+        default_factory=dict, description="Spoof clips behind each per-attack rate."
+    )
+    low_confidence_attacks: List[str] = Field(
+        default_factory=list, description="Attacks with too few clips to lean on."
     )
     score_file: str = Field(default="", description="Path of the score file.")

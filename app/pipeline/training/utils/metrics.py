@@ -108,3 +108,28 @@ def compute_per_attack_eer(
         eer, _threshold = compute_eer(bonafide, spoof)
         per_attack[attack] = eer
     return per_attack
+
+
+def count_spoof_clips_per_attack(
+    labels: np.ndarray, attack_ids: List[str]
+) -> Dict[str, int]:
+    """Count the spoof clips backing each per-attack rate.
+
+    A per-attack equal error rate can only resolve differences down to about
+    one over this count, so it must always be reported next to the rate. Some
+    attacks are legitimately tiny: OpenVoice partial spoofs number in the
+    single digits at evaluation because the clone-similarity gate rejected
+    nearly all of them.
+
+    Args:
+        labels: Integer labels, 1 for bonafide and 0 for spoof.
+        attack_ids: Attack identifier per clip.
+
+    Returns:
+        Mapping of attack identifier to its spoof clip count.
+    """
+    attacks = np.asarray(attack_ids)
+    counts: Dict[str, int] = {}
+    for attack in sorted(set(attacks[labels == 0].tolist())):
+        counts[attack] = int(((labels == 0) & (attacks == attack)).sum())
+    return counts

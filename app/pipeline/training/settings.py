@@ -67,6 +67,10 @@ class MarsaTrainingSettings(BaseModel):
             toward zero.
         EXPECTED_ATTACK_SYSTEMS: Attack system slugs that must appear in every
             split for leave-one-system-out protocols to be viable.
+        MIN_ATTACK_CLIPS_FOR_EER: Spoof clips below which a per-attack rate is
+            flagged as low confidence. The rate is still reported in full;
+            the flag records that a rate over n clips cannot resolve
+            differences finer than about one over n.
     """
 
     CORPUS_ROOT: str = Field(
@@ -170,6 +174,9 @@ class MarsaTrainingSettings(BaseModel):
             "omnivoice",
         ],
         description="Attack systems that must appear in every split.",
+    )
+    MIN_ATTACK_CLIPS_FOR_EER: int = Field(
+        default=30, description="Clips below which a per-attack rate is flagged."
     )
 
 
