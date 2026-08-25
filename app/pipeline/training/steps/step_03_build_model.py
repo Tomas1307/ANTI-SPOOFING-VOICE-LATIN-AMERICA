@@ -9,6 +9,8 @@ from loguru import logger
 from app.pipeline.training.base_spoof_detector import BaseSpoofDetector
 from app.pipeline.training.dfarena.dfarena_detector import DFArenaDetector
 from app.pipeline.training.dfarena.settings import settings as dfarena_settings
+from app.pipeline.training.lcnn.lcnn_detector import LCNNDetector
+from app.pipeline.training.lcnn.settings import settings as lcnn_settings
 from app.pipeline.training.schemas.pipeline_config import DetectorTrainingConfig
 
 
@@ -36,6 +38,7 @@ class DetectorFactory:
         self.device = device
         self._registry: Dict[str, Callable[[], BaseSpoofDetector]] = {
             "dfarena": self._build_dfarena,
+            "lcnn": self._build_lcnn,
         }
 
     def execute(self) -> BaseSpoofDetector:
@@ -71,4 +74,18 @@ class DetectorFactory:
         return DFArenaDetector(
             model_id=self.config.model_id or dfarena_settings.MODEL_ID,
             freeze_backbone=self.config.freeze_backbone,
+        )
+
+    def _build_lcnn(self) -> BaseSpoofDetector:
+        """Construct Jaime Hurtado's LFCC-LCNN-BLSTM-P2SGrad detector.
+
+        The run configuration's model_id, when set, overrides the checkpoint
+        path rather than a repository identifier: this backend loads a local
+        .pt file, not a Hugging Face model.
+
+        Returns:
+            An initialised LCNNDetector, with the published checkpoint loaded.
+        """
+        return LCNNDetector(
+            checkpoint_path=self.config.model_id or lcnn_settings.CHECKPOINT_PATH
         )
