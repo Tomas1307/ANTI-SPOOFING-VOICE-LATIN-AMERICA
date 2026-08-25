@@ -105,12 +105,23 @@ python3 -m venv envs/dfarena_env
 source envs/dfarena_env/bin/activate
 pip install --upgrade pip
 pip install torch --index-url https://download.pytorch.org/whl/cu126
-pip install transformers soundfile numpy pydantic loguru
+pip install transformers soundfile numpy pydantic loguru einops
 deactivate
 ```
 
-The audit script alone has no torch dependency beyond what `fishgram_env`
-already carries, so it can run there.
+`einops` is not a direct dependency of ours: DF-Arena's conformer backbone is
+loaded through `trust_remote_code`, and that remote code imports it.
+
+Run the corpus audit from this environment too. `fishgram_env` lacks `loguru`,
+and its pinned transformers/hf_hub quartet must not be disturbed to add it.
+
+**If the model fails to load with `FileNotFoundError: ... conformer.py`**, an
+earlier failed load left the dynamic-module cache half-populated. Clear it and
+retry; the downloaded weights are held separately and are not re-fetched:
+
+```bash
+rm -rf ~/.cache/huggingface/modules/transformers_modules/Speech_hyphen_Arena_hyphen_2025
+```
 
 ---
 
