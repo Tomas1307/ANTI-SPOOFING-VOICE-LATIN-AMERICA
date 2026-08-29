@@ -32,6 +32,12 @@ Responses should be technical, precise, and focused on clean architecture.
 
 Code blocks must be complete and ready for integration into a professional repository.
 
+Writing Style (applies to prose in chat responses, comments, docstrings, and paper drafts):
+
+Do not use the rhetorical pattern "short statement: explanation" (e.g., "Fluent but wrong: relevancy is not correctness"). Do not use an em dash to build the same pattern either (e.g., "Fluent but wrong — relevancy is not correctness"). Rewrite such constructions as complete sentences without a colon or dash. Use colons only when introducing lists, formal definitions, quotations, or other cases where they are grammatically required. Use dashes only for genuine parenthetical asides, never to set up a punchy claim followed by its explanation.
+
+Avoid rhetorical or emphatic constructions that present a statement as a contrast between two categories, especially patterns such as "X is a requirement, not an option," "X is essential, not optional," "X is a necessity rather than an improvement," or "This is a requirement, not a recommendation." Do not use this kind of rhetorical contrast to emphasize a point. State the substantive claim directly and neutrally instead.
+
 Development Workflow (CRITICAL - READ THIS):
 
 This project uses a two-machine workflow:

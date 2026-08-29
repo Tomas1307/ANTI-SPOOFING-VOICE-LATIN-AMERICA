@@ -45,7 +45,7 @@ Tom\'as Acosta Bernal$^{1}$, Juan Camilo V\'asquez Correa$^{2}$,
 Mart\'in Daniel Calder\'on Acosta$^{1}$,\\
 Rub\'en Francisco Manrique$^{1,\ast}$ \\[4pt]
 \small $^{1}$Universidad de los Andes, Bogot\'a, Colombia \\
-\small $^{2}$\PENDING{affiliation of J. C. V\'asquez Correa} \\
+\small $^{2}$Vicomtech Foundation, Basque Research and Technology Alliance (BRTA), Donostia - San Sebastián, Spain \\
 \small $^{\ast}$Corresponding author: \PENDING{email}
 }
 \date{}
@@ -58,7 +58,7 @@ Rub\'en Francisco Manrique$^{1,\ast}$ \\[4pt]
 \noindent
 Neural text-to-speech (TTS) and voice-cloning technology increasingly
 enable voice-based fraud, impersonation, and disinformation: beyond
-defeating automatic speaker verification (ASV) systems, the same
+defeating automatic speaker verification (ASV) systems. The same
 technology drives identity theft, fraudulent phone calls that
 impersonate a trusted contact, fabricated audio misattributed to public
 figures, and cloned voice messages circulated on messaging platforms.
@@ -68,7 +68,7 @@ most-spoken native language, distributed across two continents and
 numerous mutually intelligible but acoustically distinct varieties) has
 had no large-scale, openly available anti-spoofing corpus that captures
 both full-utterance synthesis and partial (word-level) manipulation. We
-present \textbf{MARSA} (Multi-accent Audio Recordings for Spanish
+introduced \textbf{MARSA} (Multi-accent Audio Recordings for Spanish
 Anti-spoofing), a corpus of 240{,}995 utterances built
 from 35{,}927 bonafide recordings spanning seven Spanish accents across
 Spain and Latin America. MARSA comprises three tiers: (i) 186{,}647
@@ -85,7 +85,7 @@ with frame-level spoof labels for the partial-spoof tier and
 system-level identifiers that trace every spoofed utterance to its
 specific generating algorithm (and, for partial spoof, its replacement
 tier and splice variant). MARSA therefore supports not only
-bonafide-versus-spoof detection but also multi-class attack-type
+bonafide vs. spoof detection but also multi-class attack-type
 attribution, cross-condition benchmarking of Spanish anti-spoofing
 detectors, and, more broadly, the study of how language and dialect
 affect the generalization of spoofing countermeasures.
@@ -95,18 +95,17 @@ affect the generalization of spoofing countermeasures.
 \section*{Background \& Summary}
 
 Voice cloning is not solely a threat to biometric authentication.
-The same underlying synthesis technology enables identity theft and
+The same underlying technology enables identity theft and
 impersonation of private individuals, fabricated audio misattributed to
 public figures for disinformation and fake news, fraudulent phone calls
 that impersonate a trusted contact to extract money or information
 \citep{forbes2019ceofraud,destefano2023testimony,europol2022deepfakes},
 and cloned voice messages circulated on messaging platforms
-\citep{infobae2026whatsapp}, none of which require an automatic
-speaker verification (ASV) system to be present at all. These threats
+\citep{infobae2026whatsapp}. These threats
 are especially well documented in Latin America, where official police
 statistics and journalistic reporting describe a rising pattern of
 voice-cloning extortion and family-impersonation scams
-\citep{infobae2025colombia,infobae2026whatsapp}. ASV bypass is
+\citep{infobae2025colombia,infobae2026whatsapp}. Automatic Speaker Verification (ASV) bypass is
 nonetheless the best-studied instance of this threat, because it is the
 one setting with standardized, large-scale benchmarks; the underlying
 synthesis technology, and the countermeasures needed to detect it, are
@@ -124,7 +123,7 @@ this problem \citep{asvspoof2019,asvspoof2021,asvspoof5}, and a large body of wo
 has since developed neural countermeasures such as RawNet2, wav2vec\,2.0
 front-ends, and graph-attention detectors
 \citep{rawnet2,tak2022ssl,aasist}. This body of work almost universally
-casts the problem as binary detection (bonafide versus spoof), leaving a
+casts the problem as binary detection (bonafide vs. spoof), leaving a
 second, practically important question comparatively unaddressed: once a
 signal is flagged as spoofed, which generation algorithm produced it.
 Attack-type attribution matters for forensic response and for tracking
@@ -220,7 +219,7 @@ resource are:
   (and, for partial spoof, its replacement tier and splice variant)
   rather than a generic \texttt{spoof} label, so MARSA supports
   multi-class attack-type classification and attribution research, not
-  only binary bonafide-versus-spoof detection.
+  only binary detection.
 
   \item \textbf{Standardized release format.} All audio follows the
   ASVspoof2019 Logical Access protocol convention, and the partial-spoof
@@ -240,11 +239,8 @@ practical guidance for reuse (Usage Notes).
 pipeline's structural and quality gates, verified from on-disk file
 counts. Hours are total audio duration: read directly from file headers
 for bonafide and partial spoof, and from generation metadata for full
-spoof. Augmentation multiplies the training split's utterance count and
-duration by the factor, without generating new attacks; the dev and eval
-splits of every augmented tier are released clean. Augmented-tier hours
-are totals over train/dev/eval of the speaker-disjoint partition, whose
-partial-spoof component is the recommended clean subset.}
+spoof. Augmentation multiplies both utterance count and duration by the
+same factor, without generating new attacks.}
 \label{tab:overview}
 \small
 \begin{tabular}{lrrl}
@@ -257,7 +253,7 @@ Partial spoof       & 18{,}421  & 30.2  & 1--3 word replacements, energy-aware s
 \midrule
 \textbf{Base total} & \textbf{240{,}995} & \textbf{302.6} & pre-augmentation \\
 \midrule
-Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & 523 / 748 / 1{,}199 / 2{,}325 & RIR+noise / codec / stacked; train only \\
+Augmentation        & $\times$2, $\times$3, $\times$5, $\times$10 & (same factor) & RIR+noise / codec / stacked \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -271,14 +267,14 @@ The genuine-speech foundation of MARSA is HABLA~v2, an expanded release
 of the HABLA Latin American Spanish anti-spoofing dataset \citep{habla}.
 HABLA~v2 augments the original HABLA recordings with speakers drawn from
 Mozilla Common Voice \citep{commonvoice}: candidate Common Voice speakers
-were embedded with an ECAPA-TDNN speaker encoder \citep{ecapa}, any
+were embedded with an ECAPA-TDNN speaker encoder \citep{ecapa}. Any
 speaker whose cosine similarity to an existing HABLA speaker exceeded
 0.75 was excluded to avoid near-duplicate voices across the two sources,
 and the remainder were sampled per accent to fill the groups HABLA
 under-represents. Peninsular Spanish and Mexican speakers in HABLA~v2 are
 drawn entirely from this Common Voice extension; Colombian and Chilean
 speakers are a blend of both sources; Argentine and Peruvian speakers are
-unchanged from the original HABLA release (Table~\ref{tab:accents}).
+unchanged from the original HABLA release.
 
 It contains 35{,}927 bonafide utterances from 1{,}567 speakers, each
 labelled with one of seven accent codes. The accent distribution is
@@ -297,13 +293,11 @@ very few self-tagged Venezuelan-accent speakers, and only one passed the
 speaker-similarity filter, so the group's size (23 speakers) is almost
 entirely inherited from the original HABLA release (22 of 23). This
 imbalance is a property of the source data and is preserved, not
-corrected, in MARSA so that users can apply their own balancing strategy;
-we return to its implications in Usage Notes.
+corrected, in MARSA so that users can apply their own balancing strategy.
 
 \begin{table}[t]
 \centering
-\caption{Accent composition of the bonafide source (HABLA v2), verified
-by directory enumeration on the storage server. Codes: es~=~Peninsular
+\caption{Accent composition of the bonafide source (HABLA v2). Codes: es~=~Peninsular
 (Spain), mx~=~Mexican, co~=~Colombian, cl~=~Chilean, ar~=~Argentine,
 pe~=~Peruvian, ve~=~Venezuelan.}
 \label{tab:accents}
@@ -357,8 +351,8 @@ corpus does not encode the artifacts of a single synthesis family; and
 practice. The six systems are Fish-Speech \citep{fishspeech}, Qwen3-TTS
 \citep{qwen3tts}, OpenVoice v2 \citep{openvoice}, Chatterbox
 \citep{chatterbox}, OuteTTS \citep{outetts}, and OmniVoice
-\citep{omnivoice}. They span autoregressive language-model, diffusion
-language-model, and tone-conversion architectures. CosyVoice
+\citep{omnivoice}. They span autoregressive language-models, diffusion
+language-models, and tone-conversion architectures. CosyVoice
 \citep{cosyvoice} was evaluated and excluded because it produced
 non-Spanish output for Spanish input text.
 
@@ -370,8 +364,8 @@ artifacts.
 \centering
 \caption{Full-spoof systems: synthesis architecture, acoustic backend,
 and the configuration most relevant to the artifacts each leaves in the
-generated audio. RTF is the real-time factor observed on the generation
-hardware (lower is faster).}
+generated audio. \textbf{RTF}: Real-Time Factor observed on the generation
+hardware (lower is faster). \textbf{LM}: Language Model}
 \label{tab:systems}
 \small
 \begin{tabular}{p{2.1cm}p{3.0cm}p{4.6cm}}
@@ -390,7 +384,7 @@ OmniVoice & Diffusion language model & Native \SI{24}{\kilo\hertz} decoder resam
 
 The six systems were chosen to cover distinct generation families so
 that the corpus does not encode the fingerprint of a single synthesis
-paradigm. Fish-Speech and Qwen3-TTS are autoregressive language models
+paradigm. Fish-Speech and Qwen3-TTS are autoregressive language models (LMs)
 that predict acoustic tokens, decoded by a GAN vocoder and an
 x-vector-conditioned decoder respectively; Fish-Speech runs as a
 separate inference server, and Qwen3-TTS is driven in
@@ -405,7 +399,7 @@ takes a different route entirely: it synthesizes with a fixed MeloTTS
 base voice and then transfers timbre with a tone-color converter, which
 is fast but allows the base voice to bleed through and is the reason it
 is the weakest cloner by speaker similarity. OmniVoice is a diffusion
-language model with the largest Spanish training footprint of the six;
+LM with the largest Spanish training footprint of the six;
 it generates at \SI{24}{\kilo\hertz} and is conditioned on a reference
 transcript that we precompute with Parakeet to stay within a single ASR
 stack.
@@ -428,7 +422,7 @@ the target text, the mean opinion score (MOS) predicted by the NISQA
 no-reference speech-quality model \citep{nisqa}, and ECAPA-TDNN
 speaker-embedding cosine similarity to the target speaker
 \citep{ecapa}. NISQA outputs five quality dimensions (overall MOS,
-noisiness, discontinuity, coloration, loudness), of which only the
+noisiness, discontinuity, coloration, and loudness), of which only the
 overall MOS is used here. The autoregressive systems occasionally hallucinate a
 spurious leading word or fragment before the intended text; the screen
 detects this by aligning the re-transcription against the target
@@ -454,9 +448,7 @@ separately in Technical Validation (Table~\ref{tab:fullspoof}).
 system. Utterances are post-screening counts, identical to
 Table~\ref{tab:fullspoof}. Avg.\ duration and avg.\ words describe the
 generated audio and its Common Voice target text, respectively; hours
-are total generated-audio duration. This table describes what was
-generated; Table~\ref{tab:fullspoof} (Technical Validation) reports how
-good it is.}
+are total generated-audio duration.}
 \label{tab:fullspoofdesc}
 \small
 \begin{tabular}{lrccc}
@@ -493,6 +485,8 @@ transcribed word and rejects any utterance whose pre-speech level
 exceeds a silence floor; rejected utterances are regenerated rather than
 trimmed, since trimming risks cutting a natural vowel onset.
 
+
+ 
 \paragraph{Watermark handling.} Two of the six systems embed a neural
 steganographic watermark in their output by default: Chatterbox with a
 Perth watermark, and OpenVoice with a WavMark payload carried in the
@@ -500,10 +494,12 @@ waveform itself. Such a watermark is imperceptible but survives
 resampling and re-encoding, and if it were present in one system's
 output and absent from the others it would constitute a trivial
 class-label shortcut, letting a detector identify the watermark instead
-of the synthesis artifact. Both watermarkers were therefore disabled at
+of the synthesis artifact. Therefore, both watermarkers were disabled at
 generation time, so that no released MARSA sample carries a
-synthesis-system watermark. This makes watermark presence uninformative
+synthesis-system watermark. This makes the presence of watermarks uninformative
 about the class and forces detection onto genuine synthesis cues.
+
+
 
 \paragraph{System-specific pre- and post-processing.} Beyond the common
 pipeline, a few systems require bespoke handling that shapes their
@@ -534,10 +530,10 @@ replacements independently.
 replacement word in isolation (which yields flat, citation-form prosody
 that is trivially detectable), the pipeline clones the \emph{full}
 sentence in the target voice with one of the six systems above and
-extracts the required words from the clone by word-level alignment.
+extracts the required words from the full synthezied utterance by word-level alignment.
 In-context words carry natural coarticulation and prosody, making the
-splice harder to detect. Only clones whose ECAPA-TDNN similarity to the
-target speaker is at least 0.60 proceed to splicing; below-threshold
+splice harder to detect. Only utterances whose ECAPA-TDNN similarity to the
+target speaker is at least 0.60 proceed to splicing. Below-threshold
 clones do not resemble the target and are treated as generation
 failures, not attacks. A consequence of this gate is that systems whose
 clones sit well below 0.60 contribute little to the partial-spoof tier:
@@ -549,29 +545,29 @@ that of the full-spoof tier; the realised counts are given in
 Table~\ref{tab:pscomp}.
 
 \paragraph{Energy-aware word selection.} Candidate replacement words are
-not chosen at random: the goal is to place each splice seam where it is
-least audible, in silence rather than in the middle of connected speech.
+not chosen at random. The goal is to place each splice seam where it is
+least audible, e.g., within pauses rather than in the middle of connected speech.
 To find such seams, every word boundary $b$ in the cloned audio is given
 a \emph{valley score} $s(b)$. Let $W_b$ denote the set of short-time
 analysis frames whose centres lie within $\pm 100$\,ms of the boundary,
 let $N_b = |W_b|$ be the number of such frames, and let
 $\mathrm{RMS}(t) \ge 0$ be the root-mean-square energy of frame $t$
-(frames are 5\,ms long, so $N_b = 40$ away from the signal edges). The
+(frames are 5\,ms long, thus $N_b = 40$ away from the signal edges). The
 score is
 \begin{equation}
 s(b) \;=\; \frac{\displaystyle\min_{t \in W_b} \mathrm{RMS}(t)}
                  {\displaystyle\frac{1}{N_b}\sum_{t \in W_b} \mathrm{RMS}(t)}
 \label{eq:valleyscore}
 \end{equation}
-that is, the quietest instant in the window divided by the window's
+
+That is, the quietest instant in the window divided by the window's
 average loudness. Since RMS energy is non-negative and a minimum can
 never exceed the corresponding mean, $s(b) \in [0,1]$ by construction. A
 boundary that falls in clear inter-word silence has almost no energy at
 its quietest instant, so $s(b) \to 0$; a boundary buried in continuous
 speech never quiets down within the window, so $s(b) \to 1$. Only words whose boundary score falls below a configurable
 threshold, and whose duration exceeds a minimum, are eligible for
-replacement, because a cut placed in silence produces no audible
-discontinuity whereas a cut inside connected speech does. Eligible words
+replacement. Eligible words
 are then selected greedily, lowest-$s(b)$ (quietest boundary) first,
 subject to a non-adjacency constraint (selected word indices differ by
 at least two) so that the spoofed content is distributed across the
@@ -584,18 +580,17 @@ the Parakeet word boundaries by local energy analysis, correcting the
 100--\SI{300}{\milli\second} drift the transducer can exhibit on fast
 connected speech; (ii) snaps each cut outward onto the nearest silence so
 the seam falls in low energy; (iii) inserts the cloned word at its
-\emph{natural} duration, with no time-stretching, so the clone's pitch is
-preserved (an earlier duration-matching design introduced audible
-pitch-shift artifacts and was abandoned); (iv) matches the cloned word's
-loudness to a voiced-RMS anchor computed once from the bonafide host, so
-loudness cannot be used as a spoof cue; and (v) blends the seams with a
+\emph{natural} duration, with no time-stretching, thus the clone's pitch is
+preserved. (iv) The process then matches the cloned word's
+loudness to a voiced-RMS anchor computed once from the bonafide host, thus
+loudness cannot be used as a spoof cue. And finally, (v) the engine blends the seams with a
 crossfade whose extent is bounded by the available silence on each side,
-so the fade never bleeds a neighbouring word into the splice. For
+thus the fade never bleeds a neighbouring word into the splice. For
 multi-word tiers, a running offset maps each subsequent cut onto the
 current audio after earlier insertions have changed its length.
 
 The crossfade seam is drawn per splice from seven techniques in fixed
-proportions (Table~\ref{tab:splice}), ranging from a hard cut to several
+proportions (see Table~\ref{tab:splice}), ranging from a hard cut to several
 equal-gain and equal-power fade laws. Randomizing the seam prevents a
 detector from keying on a single fade signature. A single overlap
 duration is drawn per splice from a fixed range and then bounded by the
@@ -626,7 +621,7 @@ OpenVoice   &     53   & flag high/med/low & 4{,}875 / 13{,}072 / 474 \\
 
 \begin{table}[t]
 \centering
-\caption{The seven splice seam techniques and their sampling
+\caption{Splice seam techniques and their sampling
 proportions, as implemented. Fade-in curves are given for
 $t\in[0,1]$; the fade-out is the time-reverse. Method~5 applies the
 square-root (equal-power) law $\sqrt{t}$.}
@@ -658,54 +653,53 @@ an utterance (genuine as well as spliced) independently undergoes, with
 probability 0.5, one of three structural manipulations chosen uniformly
 (distinct from the seven crossfade techniques of Table~\ref{tab:splice},
 which shape the splice seam itself):
-a short truncation of one word's edge (10--\SI{40}{\milli\second}, kept
+(i) A short truncation of one word's edge (10--\SI{40}{\milli\second}, kept
 below the duration of a Spanish syllable nucleus so intelligibility is
-preserved); a Hann-windowed overlap of the two words
+preserved). (ii) A Hann-windowed overlap of the two words
 (30--\SI{80}{\milli\second}, matching the crossfade range used by prior
-partial-spoof work \citep{luong2024llama}); or a bleed of one word's
+partial-spoof work \citep{luong2024llama}). (3) A bleed of one word's
 edge into its neighbour (20--\SI{60}{\milli\second}, covering Spanish
 voice-onset time plus a consonant-vowel transition). Setting the
 manipulation probability to 0.5 maximizes the entropy of the
-``manipulations per boundary'' signal, so that the spliced boundary is
-no longer distinguishable by the mere fact of being manipulated. The jittered variant is released as a separate,
-sentence-disjoint partition so that detectors can be trained and
+``manipulations per boundary'' signal, thus the spliced boundary is
+no longer distinguishable by the mere fact of being manipulated. The jittered variant is released as a separate
+sentence-disjoint partition, thus detectors can be trained and
 evaluated on the canonical and homogenized distributions independently or
 jointly.
 
 \paragraph{Quality labelling without filtering.} The partial-spoof
-pipeline computes WER, character-error rate, NISQA MOS, ECAPA similarity, and
-boundary metrics for every sample but does \emph{not} discard
+generation pipeline computes WER, character-error rate, MOS, ECAPA similarity, and
+boundary metrics for every sample, but does \emph{not} discard
 low-quality samples. Each sample instead carries a categorical
-\texttt{quality\_flag} (high/medium/low); downstream users may stratify
+\texttt{quality\_flag} (high/medium/low). Downstream users may stratify
 or filter on it. Only structural failures (zero successfully spliced
-words, or missing or unreadable audio) are removed, because those are
+words or missing or unreadable audio) are removed, since those are
 not partial spoofs at all. This ``keep-everything, label-everything''
 policy
 reflects the fact that a real attacker does not post-filter output, and a
 detector trained only on clean attacks may collapse on noisy ones.
+
+% JCVASQUEZ UP TO HERE
 
 \subsection*{Acoustic augmentation}
 
 To support the study of channel robustness without regenerating
 attacks, MARSA provides an augmentation layer that transforms the base
 corpus into a channel-degraded training set. The layer is applied
-identically to bonafide and spoof audio, and this symmetry is a
-deliberate design choice: augmentation type, augmentation rate, and
-output loudness are all decoupled from the class label. In particular,
-every written file (clean or augmented, bonafide or spoof) is loudness
-normalized by the same policy, so that neither the presence of an
+identically to bonafide and spoof audio. Therefore, the augmentation type, the augmentation rate, and
+the output loudness are all decoupled from the class label. In particular,
+every file is loudness normalized by the same policy, thus neither the presence of an
 augmentation nor its output level can serve as a shortcut cue for the
 class. Without this discipline a detector can learn ``augmented implies
 one class'' or ``louder implies one class'' and collapse at evaluation
 time on clean, uniformly scaled audio.
 
 \paragraph{Copies per file.} For each original training file the layer
-emits one clean copy (always retained, so a portion of the training set
-remains on the original voice manifold) plus a number of augmented
-copies set by the corpus-multiplication factor. At the smallest factor
+emits one clean copy plus a number of augmented copies set by the 
+corpus-multiplication factor. At the smallest factor
 roughly one third of the training set stays clean; larger factors lower
 that fraction. The development and evaluation splits are released at
-factor one and are never augmented, so that model selection and testing
+factor one and are never augmented, thus model selection and testing
 occur on clean audio.
 
 \paragraph{Augmentation mode.} Per augmented clip, a probability gate
@@ -741,28 +735,21 @@ regime with a light tail at each extreme.
 encode-then-decode round-trip through six telephony and VoIP codecs via
 an ffmpeg backend, covering the channels most representative of the
 target deployment: G.711 mu-law and A-law (PSTN and landline), AMR-NB
-(2G/3G mobile), Speex (legacy VoIP; the pre-Opus open VoIP codec, which
-RFC~6716 positions as Opus's predecessor), Opus (the dominant
-over-the-top codec, used by consumer messaging and conferencing apps),
-and AAC (broadband). For codecs with a selectable
-bitrate a bitrate is drawn from the encoder's supported set, and with a
-fixed probability an additional packet-loss simulation is applied at a
-sampled loss fraction. The signal is resampled to each codec's native
-rate for the round-trip and back to \SI{16}{\kilo\hertz} on write. Five
-of the six codecs run in-process against the system ffmpeg libraries;
-AMR-NB, which Linux distributions omit for licensing reasons, is
-routed through a version-pinned static ffmpeg binary so that all six
-codecs are realized in the released corpus. Codec availability is
-probed at run time and generation aborts, rather than silently
-narrowing the codec set, if any configured codec is unavailable. In the
-released tiers the realized codec distribution matches the configured
-sampling weights to within 0.3 percentage points, and the narrowband
-codecs were spectrally verified (AMR-NB and Speex outputs carry
-essentially zero energy above \SI{4}{\kilo\hertz}, confirming true
-\SI{8}{\kilo\hertz} round-trips). A broader design that adds wideband
-and enterprise codecs together with a burst-loss channel model and
-per-codec packet-loss concealment is documented as a planned extension
-but is not part of the released corpus.
+(2G/3G mobile), iLBC (legacy VoIP), Opus (the dominant over-the-top
+codec, used by consumer messaging and conferencing apps), and AAC
+(broadband). For codecs with a selectable bitrate a bitrate is drawn
+from the encoder's supported set, and with a fixed probability an
+additional packet-loss simulation is applied at a sampled loss fraction.
+The signal is resampled to each codec's native rate for the round-trip
+and back to \SI{16}{\kilo\hertz} on write. The codec set is probed
+against the host ffmpeg build at run time, and any codec the build does
+not provide is skipped and logged; on our reference build the applied
+codecs were G.711 mu-law/A-law and Opus, whereas AMR-NB, iLBC, and AAC
+require a non-default ffmpeg build. This configured codec set was chosen
+for deployment realism; a broader design that adds wideband and
+enterprise codecs together with a burst-loss channel model and per-codec
+packet-loss concealment is documented as a planned extension but is not
+part of the released corpus.
 
 \paragraph{Training-time augmentation.} A convolutive and additive
 signal-level augmentation of the RawBoost family \citep{tak2022ssl} is
@@ -829,8 +816,8 @@ Stacking-gate probability & 0.40 (RIR+noise then codec) \\
 Room size & small 0.30, medium 0.50, large 0.20 \\
 Noise source & noise 0.50, babble 0.30, music 0.20 \\
 SNR band (dB) & $[0,5]$ (0.10), $[5,30]$ (0.80), $[30,35]$ (0.10) \\
-Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, Speex 0.05, Opus 0.25, AAC 0.10 \\
-Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/Speex fixed \\
+Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, iLBC 0.05, Opus 0.25, AAC 0.10 \\
+Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/iLBC fixed \\
 Packet loss & applied with prob.\ 0.30; fraction Uniform$[0,0.05]$ \\
 Multiplication factors & $\times$2, $\times$3, $\times$5, $\times$10; same factor applied to both classes \\
 \midrule
@@ -884,26 +871,9 @@ quality; the recommended clean partition is identifiable directly from
 the released per-sample metrics (Technical Validation; see also Usage
 Notes).
 
-The augmentation tiers are released with two files per split. The
-protocol file follows the ASVspoof2019 LA five-field format exactly
-(\texttt{SPEAKER AUDIO\_ID - ATTACK\_ID KEY}, with a literal
-``\texttt{-}'' third field as in the original LA protocols), so
-standard anti-spoofing loaders consume it unchanged; the
-\texttt{ATTACK\_ID} field carries the generating system
-(\texttt{fishgram}, \texttt{omnivoice-psw2}, \ldots, or ``\texttt{-}''
-for bonafide), providing per-utterance attack attribution. A companion
-metadata CSV per split
-(\texttt{audio\_id, speaker\_id, key, attack\_id, aug\_id,
-source\_file}) records what the strict format has no field for: the
-applied augmentation chain (\texttt{aug\_id}; stacked augmentations
-joined with ``\texttt{|}'', ``\texttt{-}'' for clean copies) and the
-source utterance each clip derives from (\texttt{source\_file}), which
-makes source-level filters joinable onto the augmented corpus. Within
-each augmented split, audio identifiers are assigned by a seeded random
-shuffle rather than sequentially, protocol rows are sorted by
-identifier, and all released files carry one constant modification
-timestamp, so that neither identifier ranges, row order, nor file
-timestamps carry any information about the class label.
+The augmentation tiers reuse the same protocol convention, with the
+augmentation chain recorded in the system identifier field as described
+above.
 
 \PENDING{Final on-disk size of the deposited record, and the exact
 top-level directory tree, to be inserted once the deposit is finalized.}
@@ -1096,96 +1066,7 @@ boundary-anomaly shortcut rather than a synthesis-artifact feature.
 one another in construction intent but are released as independent tiers;
 users should select a single factor appropriate to their compute budget
 rather than pooling all four, which would over-represent augmented
-variants of the same source utterances. Within any factor, augmentation
-covers all three classes alike: bonafide, full-synthesis, and
-partial-spoof clips are multiplied in the training split under the same
-uniform factor, and all three classes are present, clean, in dev and
-eval. Because the \texttt{ATTACK\_ID} column distinguishes full-synthesis
-systems from partial-spoof tiers in every split, full-spoof-only,
-partial-spoof-only, or combined training and evaluation sets are
-assembled by filtering the protocol, with no regeneration required.
-
-\paragraph{Channel provenance of the bonafide tier.} The bonafide tier
-combines two recording provenances with different compression
-histories. The original HABLA studio recordings are stored losslessly
-end-to-end, whereas Mozilla distributes Common Voice clips as
-MP3-compressed audio: 13{,}111 utterances of the bonafide tier (36.5\%)
-are MP3-sourced. No synthetic utterance shares this history, because all
-six attack systems synthesize directly to lossless output. A detector
-could therefore, in principle, exploit residual MP3 coding artifacts as
-a shortcut for part of the bonafide class instead of learning synthesis
-artifacts. Two properties mitigate, but do not eliminate, this
-confound. First, the augmentation tier passes half of the training
-clips of \emph{both} classes through real lossy telephony and VoIP
-codec round-trips, partially homogenizing compression history across
-labels. Second, source provenance is recoverable per speaker
-(Peninsular and Mexican speakers derive entirely from the Common Voice
-extension, Argentine and Peruvian speakers entirely from the original
-HABLA release; Methods), so users can quantify a detector's reliance on
-the confound by comparing its bonafide accuracy across accent groups of
-different provenance. We flag this as a limitation shared by any corpus
-that extends a studio-condition bonafide pool with crowdsourced speech.
-
-\paragraph{Speaker disjointness of the augmented tiers.} The augmented
-tiers are built on a canonical speaker-disjoint partition of the corpus
-(80/10/10 by speaker, seeded and reproducible from the released code):
-every utterance a speaker owns, across the bonafide, full-spoof, and
-partial-spoof tiers, is assigned to exactly one of train/dev/eval, and
-spoofed audio follows its \emph{target} speaker, so a detector is never
-evaluated on a cloned voice whose real counterpart it saw in training.
-Beyond identifier-level disjointness, the partition was audited
-acoustically: ECAPA-TDNN speaker embeddings were compared across splits
-for all 1{,}567 speakers, and the four dev/eval speakers whose cosine
-similarity to a training speaker exceeded 0.75 (the same threshold used
-to de-duplicate the Common Voice extension against HABLA) were
-consolidated into the training split. After consolidation no
-cross-split pair exceeds the threshold; the maximum residual
-cross-split speaker similarity is 0.74. Two of the flagged pairs
-(cosine 0.87 and 0.90, both within the original HABLA material) exhibit
-same-speaker-level similarity and are likely the same person recorded
-under two session identifiers inherited from the source corpus; users
-requiring strict distinct-identity counts should treat the corpus's
-1{,}567 speaker labels as an upper bound on distinct voices.
-
-\paragraph{Sentence overlap across splits.} Speaker disjointness does
-not imply sentence disjointness: the bonafide sources draw on shared
-sentence pools (Common Voice prompts are read by many contributors, and
-HABLA prompt sets repeat across speakers), so the same sentence can be
-read by a training speaker and, independently, by an evaluation
-speaker. Measured on the canonical partition, 66.4\% of eval source
-utterances (2{,}649 of 3{,}987) and 53.4\% of dev source utterances
-share their sentence, after text normalization, with at least one
-training utterance. This overlap is label-independent (every shared
-sentence exists in both classes, as a genuine reading and as its cloned
-counterparts), so it cannot be exploited as a class shortcut, and
-comparable corpora do not control it (ASVspoof2019 LA inherits VCTK's
-repeated prompts across speakers and splits). It can, however,
-contribute text-dependent overfitting to seen phrases. For studies that
-require a text-independent evaluation we release a \emph{strict eval
-filter}: a per-clip table marking every dev and eval clip whose source
-sentence never appears in any training clip, genuine or synthetic,
-joinable onto every augmented tier through the \texttt{source\_file}
-metadata column. Under this criterion 74.2\% of eval clips are strict.
-Full-synthesis clips are predominantly strict (91.2\%) because their
-target texts are drawn from a per-speaker sentence pool with little
-repetition across speakers, whereas bonafide and partial-spoof clips
-are strict at 32.3\% and 33.2\% respectively, reflecting the bonafide
-sentence overlap reported above. The 4.9\% of eval clips whose source
-sentence could not be mapped back to generation records with full
-confidence are conservatively marked non-strict.
-
-\paragraph{Seen-attack versus unseen-attack evaluation.} The canonical
-partition is speaker-disjoint but system-overlapping: since spoofed
-audio is assigned to the split of its target speaker, all six attack
-systems appear in train, dev, and eval alike. Results on the canonical
-eval split therefore measure \emph{seen-attack} detection, where the
-detector has trained on artifacts of every generator it is tested
-against, and they must not be read as generalization to unseen
-synthesis systems. For unseen-attack claims, the per-utterance
-\texttt{ATTACK\_ID} attribution released with every tier lets users
-construct leave-one-system-out protocols on top of the canonical split:
-train on a subset of the six systems and evaluate on the held-out ones,
-with speaker disjointness kept intact.
+variants of the same source utterances.
 
 \paragraph{Ethical use.} MARSA is released to support the development of
 \emph{defensive} anti-spoofing systems. The synthetic audio it contains
