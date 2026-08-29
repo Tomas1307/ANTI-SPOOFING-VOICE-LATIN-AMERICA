@@ -17,6 +17,12 @@ from app.pipeline.training.lcnn_fixedcrop.lcnn_fixedcrop_detector import (
 from app.pipeline.training.lcnn_fixedcrop.settings import (
     settings as lcnn_fixedcrop_settings,
 )
+from app.pipeline.training.lcnn_selfattn.lcnn_selfattn_detector import (
+    LCNNSelfAttnDetector,
+)
+from app.pipeline.training.lcnn_selfattn.settings import (
+    settings as lcnn_selfattn_settings,
+)
 from app.pipeline.training.schemas.pipeline_config import DetectorTrainingConfig
 
 
@@ -46,6 +52,7 @@ class DetectorFactory:
             "dfarena": self._build_dfarena,
             "lcnn": self._build_lcnn,
             "lcnn_fixedcrop": self._build_lcnn_fixedcrop,
+            "lcnn_selfattn": self._build_lcnn_selfattn,
         }
 
     def execute(self) -> BaseSpoofDetector:
@@ -107,4 +114,16 @@ class DetectorFactory:
         return LCNNFixedCropDetector(
             checkpoint_path=self.config.model_id
             or lcnn_fixedcrop_settings.CHECKPOINT_PATH
+        )
+
+    def _build_lcnn_selfattn(self) -> BaseSpoofDetector:
+        """Construct the self-weighted-pooling LCNN detector.
+
+        Returns:
+            An initialised LCNNSelfAttnDetector, with the published
+            checkpoint loaded.
+        """
+        return LCNNSelfAttnDetector(
+            checkpoint_path=self.config.model_id
+            or lcnn_selfattn_settings.CHECKPOINT_PATH
         )
