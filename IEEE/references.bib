@@ -499,3 +499,48 @@
 }  % [TODO-AUTH] Audio-LLM (Qwen2.5-Omni-7B Thinker + LoRA); emits spoof /
    % method / region / semantic-impact as text. 7B base -> heaviest to
    % fine-tune. License unverified. Full author list to be pulled.
+
+% ---------------------------------------------------------------------
+% Spoofing-aware speaker verification and recent SOTA / motivation
+% (added 2026-08-29, verified against arXiv abstracts)
+% ---------------------------------------------------------------------
+@misc{sasvevalplan2022,
+  author = {Jung, Jee-weon and others},
+  title  = {{SASV} Challenge 2022: A Spoofing Aware Speaker Verification Challenge Evaluation Plan},
+  howpublished = {arXiv preprint},
+  year   = {2022},
+  eprint = {2201.10283}
+}  % [VERIFIED] Evaluation-plan paper for the first SASV special session,
+   % Interspeech 2022. Joint ASV+CM protocol; top system reduced EER from
+   % 23.83% to 0.13% on the joint trial set.
+
+@inproceedings{sasv2022,
+  author    = {Jung, Jee-weon and others},
+  title     = {{SASV} 2022: The First Spoofing-Aware Speaker Verification Challenge},
+  booktitle = {Proc. Interspeech},
+  year      = {2022},
+  note      = {arXiv:2203.14732}
+}  % [VERIFIED] Results/summary paper for the same challenge as sasvevalplan2022.
+
+@misc{dowerah2025speechdfarena,
+  author       = {Dowerah, Sandipana and Kulkarni, Atharva and Kulkarni, Ajinkya and Tran, Hoan My and Kalda, Joonas and Fedorchenko, Artem and Fauve, Benoit and Lolive, Damien and Alum{\"a}e, Tanel and Magimai Doss, Mathew},
+  title        = {Speech {DF} Arena: A Leaderboard for Speech DeepFake Detection Models},
+  howpublished = {arXiv preprint},
+  year         = {2025},
+  eprint       = {2509.02859}
+}  % [VERIFIED] Introduces the Speech DF Arena benchmark/leaderboard (14
+   % eval sets, 12 open-source + 3 proprietary systems). This is the
+   % project the DF_Arena_1B_V_1 checkpoint (see `dfarena` entry above)
+   % is hosted under; this paper does not itself detail that checkpoint's
+   % architecture.
+
+@misc{muller2026erodingtrust,
+  author       = {M{\"u}ller, Nicolas M. and Choong, Wei Herng},
+  title        = {Eroding Trust in Real Speech: A Large-Scale Study of Human Audio Deepfake Perception},
+  howpublished = {arXiv preprint},
+  year         = {2026},
+  eprint       = {2605.26136}
+}  % [VERIFIED] 35,532 human judgments, 1,768 participants, 138 synthesis
+   % systems. Key finding: human accuracy on REAL speech fell from 72.7%
+   % to 64.1% as synthesis quality improved, faster than fake-detection
+   % accuracy changed (72.9% -> 71.2%). ML detectors stayed >94.5% accurate.
