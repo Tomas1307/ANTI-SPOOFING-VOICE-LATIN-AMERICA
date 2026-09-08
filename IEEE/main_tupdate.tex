@@ -64,14 +64,13 @@ enable voice-based fraud, impersonation, and disinformation, extending
 well beyond defeating automatic speaker verification (ASV) systems. The
 same technology drives identity theft, fraudulent phone calls that
 impersonate a trusted contact, fabricated audio misattributed to public
-figures, and cloned voice messages circulated on messaging platforms.
-Yet the datasets used to build and benchmark spoofing countermeasures
-are predominantly English or Mandarin. Spanish (the world's second
-most-spoken native language, distributed across two continents and
+figures, and cloned voice messages circulated on messaging platforms. However, the datasets used to build and benchmark spoofing countermeasures
+are predominantly English or Mandarin, whereas Spanish (the world's second
+most-spoken native language, with approximately 485 million native
+speakers \citep{ethnologue2025} distributed across two continents and
 numerous mutually intelligible but acoustically distinct varieties) has
 had no large-scale, openly available anti-spoofing corpus that captures
-both full-utterance synthesis and partial (word-level) manipulation. We
-introduced \textbf{MARSA} (Multi-accent Audio Recordings for Spanish
+both full-utterance synthesis and partial (word-level) manipulation. We introduced \textbf{MARSA} (Multi-accent Audio Recordings for Spanish
 Anti-spoofing), a corpus of 240{,}995 utterances built
 from 35{,}927 bonafide recordings spanning seven Spanish accents across
 Spain and Latin America. MARSA comprises three tiers. The first tier holds 186{,}647 full-spoof
@@ -80,14 +79,9 @@ systems. The second tier holds 18{,}421 partial-spoof utterances, in
 which one to three words of an otherwise bonafide recording are replaced
 by cloned speech using an energy-aware splicing engine with seven fade
 techniques and an optional boundary-homogenization variant that removes
-a known detector shortcut. The third tier is an acoustic-augmentation
-layer (reverberation, additive noise, and telephony/VoIP codecs, applied
-singly and in stacked combination) at four multiplicative factors. All
-data are released in the ASVspoof2019 Logical Access protocol format,
-with frame-level spoof labels for the partial-spoof tier and
-system-level identifiers that trace every spoofed utterance to its
-specific generating algorithm, and, for partial spoof, to its
-replacement tier and splice variant. These identifiers give MARSA
+a known detector shortcut. The third tier is an
+acoustic-augmentation layer (reverberation, additive noise, and telephony/VoIP codecs, applied
+singly and in stacked combination) at four multiplicative factors. All data is released in the ASVspoof2019 Logical Access protocol format, including frame-level spoof labels for the partial spoof tier, as well as system-level identifiers that link each spoofed utterance to its generating algorithm and, for partial spoof samples, to the corresponding replacement tier and splice variant. These identifiers give MARSA
 support for multi-class attack-type attribution and source-tracing
 identification in addition to bonafide vs. spoof detection, for
 cross-condition benchmarking of Spanish anti-spoofing detectors, and,
@@ -98,84 +92,17 @@ generalization of spoofing countermeasures.
 % =====================================================================
 \section*{Background \& Summary}
 
-Voice cloning is not solely a threat to biometric authentication.
-The same underlying technology enables identity theft and
-impersonation of private individuals, fabricated audio misattributed to
-public figures for disinformation and fake news, fraudulent phone calls
-that impersonate a trusted contact to extract money or information
-\citep{forbes2019ceofraud,destefano2023testimony,europol2022deepfakes},
-and cloned voice messages circulated on messaging platforms
-\citep{infobae2026whatsapp}. These threats
-are especially well documented in Latin America, where official police
-statistics and journalistic reporting describe a rising pattern of
-voice-cloning extortion and family-impersonation scams
-\citep{infobae2025colombia,infobae2026whatsapp}. The damage extends
-beyond cases where a listener is actively deceived. A large-scale
-listening study across 138 synthesis systems found that as synthetic
-speech has improved, human accuracy at correctly identifying genuine
-recordings has fallen even faster than accuracy at catching fakes has
-risen, an erosion of trust in authentic audio that compounds the direct
-fraud risk \citep{muller2026erodingtrust}. Automatic Speaker Verification (ASV) bypass is nonetheless the
-best-studied instance of this threat, because it is the one setting with
-standardized, large-scale benchmarks. A related line of work,
-Spoofing-Aware Speaker Verification (SASV), jointly optimizes speaker
-verification and spoof detection rather than treating them as
-independent subsystems \citep{sasvevalplan2022,sasv2022}. The underlying
-synthesis technology and the countermeasures needed to detect it are
-shared across all of these settings. A corpus built for ASV-focused
-detection therefore transfers directly to detecting synthetic or
-manipulated speech in these other, non-biometric contexts.
+Voice cloning is not solely a threat to biometric authentication. The same underlying technology enables identity theft and impersonation of private individuals, fabricated audio misattributed to public figures for disinformation and fake news, fraudulent phone calls that impersonate a trusted contact to extract money or information \citep{forbes2019ceofraud,destefano2023testimony,europol2022deepfakes}, and cloned voice messages circulated on messaging platforms \citep{infobae2026whatsapp}. These threats are especially well documented in Latin America, where official police statistics and journalistic reporting describe a rising pattern of voice-cloning extortion and family-impersonation scams \citep{infobae2025colombia,infobae2026whatsapp}. The damage extends beyond cases where a listener is actively deceived. A large-scale listening study spanning 35{,}532 human judgments across 138 synthesis systems found that, as synthetic speech has improved, human accuracy at correctly identifying genuine recordings fell sharply (72.7\% to 64.1\%) while accuracy at catching fakes stayed comparatively stable (72.9\% to 71.2\%). This erosion of trust in authentic audio compounds the direct fraud risk \citep{muller2026erodingtrust}.
 
-Within this broader threat landscape, this Descriptor focuses on ASV,
-which is deployed at scale for authentication in banking, telephony, and
-access control. Its principal security threat is voice spoofing: an
-attacker synthesizes or clones a target speaker's voice to defeat the
-verifier. The ASVspoof challenge series established the standard datasets and
-evaluation protocols for this problem
-\citep{asvspoof2019,asvspoof2021,asvspoof5}, and a large body of work has
-since developed neural countermeasures such as RawNet2, wav2vec\,2.0
-front-ends, and graph-attention detectors
-\citep{rawnet2,tak2022ssl,aasist}. More recent work has moved toward
-larger self-supervised backbones and dedicated benchmarking
-infrastructure for comparing them, including compact-backbone studies
-such as RAPTOR \citep{raptor2026} and the Speech DF Arena leaderboard
-\citep{dowerah2025speechdfarena}. This body of work almost universally
-casts the problem as binary detection (bonafide vs. spoof), leaving a
-second, practically important question comparatively unaddressed. Once a
-signal is flagged as spoofed, which generation algorithm produced it.
-Attack-type attribution matters for forensic response and for tracking
-which synthesis methods are actively being weaponized. Datasets built
-around a single generation family, most notably ASVspoof2019 itself
-\citep{asvspoof2019}, already assign a system-level label to each
-full-utterance attack, but this granularity has not extended to partial,
-word-level splices, where the generating system, replacement tier, and
-splice technique of each edit are rarely all recorded together. MARSA's
-protocol format encodes this information for every spoofed utterance,
-full or partial (Data Records), extending multi-class attack-type
-classification to the partial-spoof setting alongside standard binary
-detection.
+Automatic Speaker Verification (ASV) bypass is nonetheless the best-studied instance of this threat, because it is the one setting with standardized, large-scale benchmarks. A related line of work, Spoofing-Aware Speaker Verification (SASV), jointly optimizes speaker verification and spoof detection rather than treating them as independent subsystems \citep{sasvevalplan2022,sasv2022}. The underlying synthesis technology and the countermeasures needed to detect it are shared across all of these settings. A corpus built for ASV-focused detection therefore transfers directly to detecting synthetic or manipulated speech in these other, non-biometric contexts.
 
-A recurring and well-documented failure of these countermeasures is poor
-generalization. A detector that performs near-perfectly on its training
-distribution degrades sharply on unseen synthesis systems, recording
-conditions, or corpora \citep{muller2022generalize,muller2024harder}.
-The datasets that anchor this research are, with few exceptions, English
-(the ASVspoof Logical Access sets derive from English source speech) or
-Mandarin (the Half-Truth partial-fake corpus \citep{yi2021had}). Recent
-large multilingual corpora such as MLAAD \citep{mlaad} and SpeechFake
-\citep{speechfake} do include Spanish, but only as one of dozens of
-languages, with a single accent per language and without a partial-spoof
-or dialect-stratified design. The one dedicated Spanish resource,
-HISPASpoof \citep{hispaspoof}, provides real and fully synthesized speech
-across six accents, but is limited to full-utterance synthesis, with no
-partial-spoof tier, no boundary-shortcut control, and no
-acoustic-augmentation layer. The original HABLA dataset \citep{habla} was
-an early step toward Latin American Spanish anti-spoofing but is limited
-in speaker count, accent coverage, and attack diversity, and it does not
-address partial spoofing. No existing resource combines large-scale,
-cross-continental Spanish coverage with both full and partial spoofing
-and a channel-augmentation layer, which is the gap MARSA fills.
-Table~\ref{tab:corpuscompare} summarizes these resources side by side.
+Within this broader threat landscape, this Descriptor focuses on ASV, which is deployed at scale for authentication in banking, telephony, and access control. Its principal security threat is voice spoofing, in which an attacker synthesizes or clones a target speaker's voice to defeat the verifier. The ASVspoof challenge series established the standard datasets and evaluation protocols for this problem \citep{asvspoof2019,asvspoof2021,asvspoof5}, and a large body of work has since developed neural countermeasures such as RawNet2, wav2vec\,2.0 front-ends, and graph-attention detectors \citep{rawnet2,tak2022ssl,aasist}. More recent work has moved toward larger self-supervised backbones and dedicated benchmarking infrastructure for comparing them, including compact-backbone studies such as RAPTOR \citep{raptor2026} and the Speech DF Arena leaderboard \citep{dowerah2025speechdfarena}.
+
+This body of work almost universally casts the problem as binary detection (bonafide vs.\ spoof). Once a signal is flagged as spoofed, identifying which generation algorithm produced it is rarely addressed. Attack-type attribution matters for the forensic response and for tracking which synthesis methods are actively being weaponized. Datasets built around a single generation family, most notably ASVspoof2019 itself \citep{asvspoof2019}, already assign a system-level label to each full-utterance attack, but this granularity has not extended to partial, word-level splices, where the generating system, replacement tier, and splice technique of each edit are rarely all recorded together. MARSA's protocol format encodes this information for every spoofed utterance, full or partial (Data Records), extending multi-class attack-type classification to the partial-spoof setting alongside standard binary detection.
+
+A recurring and well-documented failure of these countermeasures is poor generalization. A detector that performs near-perfectly on its training distribution degrades sharply on unseen synthesis systems, recording conditions, or corpora \citep{muller2022generalize,muller2024harder}.
+
+The datasets that anchor this research are, with few exceptions, English (the ASVspoof Logical Access sets derive from English source speech) or Mandarin (the Half-Truth partial-fake corpus \citep{yi2021had}). Recent large multilingual corpora such as MLAAD \citep{mlaad} and SpeechFake \citep{speechfake} do include Spanish, but only as one of dozens of languages, with a single accent per language and without a partial-spoof or dialect-stratified design. The one dedicated Spanish resource, HISPASpoof \citep{hispaspoof}, provides real and fully synthesized speech in six accents, but is limited to full-utterance synthesis, with no partial-spoof tier, no boundary-shortcut control, and no acoustic-augmentation layer. The original HABLA dataset \citep{habla} was an early step toward Latin American Spanish anti-spoofing, but is limited in speaker count, accent coverage, and attack diversity, and does not address partial spoofing. No existing resource combines large-scale, cross-continental Spanish coverage with both full and partial spoofing and a channel-augmentation layer, which is the gap MARSA fills. Table~\ref{tab:corpuscompare} summarizes these resources side by side.
 
 \begin{table}[t]
 \centering
@@ -201,49 +128,17 @@ SpeechFake \citep{speechfake} & 1 of 46 languages & -- & \multicolumn{1}{c}{\par
 \end{tabular}
 \end{table}
 
-Language is not a neutral variable for spoofing detection.
-Cross-dialectal acoustic variation within Spanish is large enough to
-degrade the performance of state-of-the-art speech models
-non-uniformly. Word-error rates for a single automatic speech
-recognition system differ by several absolute points across Argentine,
-Chilean, Colombian, Mexican, Peninsular, and Peruvian Spanish
-\citep{kantharuban2023dialectgap,nacimiento2024biases}, and Spanish
-varieties are separable into distinct dialect macrozones from raw
-acoustics alone \citep{zuluaga2023commonaccent}. A spoofing detector
-that must decide whether a signal is genuine (and, for partial
-spoofing, which segments are genuine) cannot be assumed to transfer
-across these varieties. Building a corpus that spans them is therefore a
-prerequisite for dialect-robust Spanish anti-spoofing, not a convenience.
+Language is not a neutral variable for spoofing detection. Cross-dialectal acoustic variation within Spanish is large enough to degrade the performance of state-of-the-art speech models non-uniformly. Word-error rates for a single automatic speech recognition system differ by several absolute points across Argentine, Chilean, Colombian, Mexican, Peninsular, and Peruvian Spanish \citep{kantharuban2023dialectgap,nacimiento2024biases}, and Spanish varieties are separable into distinct dialect macrozones from raw acoustics alone \citep{zuluaga2023commonaccent}. A spoofing detector that must decide whether a signal is genuine (and, for partial spoofing, which segments are genuine) cannot be assumed to transfer across these varieties. Building a corpus that spans them is therefore necessary for dialect-robust Spanish anti-spoofing.
 
-Partial spoofing, that is, replacing a short span of an otherwise
-genuine utterance with synthetic speech, is a distinct and harder
-threat than
-full synthesis, because the overwhelming majority of the signal is
-authentic \citep{zhang2023partialspoof}, and it has been the focus of
-dedicated challenges such as the partially-fake track of ADD 2022
-\citep{add2022}. It is also the threat for which Spanish resources are
-scarcest. The only existing multilingual partial-spoof benchmark that
-includes Spanish, HQ-MPSD \citep{li2025hqmpsd}, provides on the order of
-$1.3\times10^{4}$ Spanish partial-spoof utterances generated by a single
-TTS system from a single-accent source, with one splice method and only
-a single added noisy condition. Prior forensic work
-has further shown that partial-spoof detectors can exploit a shortcut:
-because only the boundaries flanking the spliced segment are anomalous,
-a detector can learn to ``find the discontinuous boundary'' rather than
-the synthesis artifact itself, achieving low error with no training at
-all \citep{negroni2024splicing,huang2024detectable}. A corpus intended
-to drive robust detection must therefore control for this shortcut.
+Partial spoofing---replacing a short span of an otherwise genuine utterance with synthetic speech---is a distinct and harder threat than full synthesis, because the overwhelming majority of the signal is authentic \citep{zhang2023partialspoof}, and it has been the focus of dedicated challenges such as the partially-fake track of ADD 2022 \citep{add2022}. It is also the threat for which Spanish resources are scarcest. The only existing multilingual partial-spoof benchmark that includes Spanish, HQ-MPSD \citep{li2025hqmpsd}, provides on the order of $1.3\times10^{4}$ Spanish partial-spoof utterances generated by a single TTS system from a single-accent source, with one splice method and only a single added noisy condition. Prior forensic work has further shown that partial-spoof detectors can exploit a shortcut. Because only the boundaries flanking the spliced segment are anomalous, a detector can learn to ``find the discontinuous boundary'' rather than the synthesis artifact itself, achieving low error with no training at all \citep{negroni2024splicing,huang2024detectable}. A corpus intended to drive robust detection must therefore control for this shortcut.
 
-MARSA addresses these gaps simultaneously. Its contributions as a data
-resource are:
-
+MARSA addresses these gaps simultaneously. Its contributions as a data resource are:
 \begin{enumerate}
   \item \textbf{Scale and accent coverage.} 35{,}927 bonafide
   utterances from 1{,}567 speakers across seven Spanish accents spanning
   two continents (Peninsular Spanish and six Latin American varieties),
   paired with 186{,}647 full-spoof utterances from six independent,
   open-source neural TTS voice-cloning systems.
-
   \item \textbf{A diverse, richly parameterized partial-spoof tier.}
   18{,}421 partial-spoof utterances that, while comparable in scale to
   the Spanish portion of the closest prior resource, are far more
@@ -253,20 +148,17 @@ resource are:
   the acoustic placement of cuts, and the boundary fade technique, and
   that offers a boundary-homogenization variant explicitly designed to
   suppress the splice-boundary detector shortcut.
-
   \item \textbf{An acoustic-augmentation layer} modeling reverberation,
   environmental noise, and real telephony/VoIP codec degradation, applied
   both singly and in stacked combination at four corpus-multiplication
   factors. Channel robustness can thus be studied without regenerating
   attacks.
-
   \item \textbf{Attack-type attribution labels.} Every spoofed
   utterance's protocol entry identifies its specific generating system
-  (and, for partial spoof, its replacement tier and splice variant)
-  rather than a generic \texttt{spoof} label. MARSA therefore supports
-  multi-class attack-type classification and attribution research, not
-  only binary detection.
-
+  rather than a generic \texttt{spoof} label. Partial-spoof utterances
+  additionally record their replacement tier and splice variant. MARSA
+  therefore supports multi-class attack-type classification and
+  attribution research, not only binary detection.
   \item \textbf{Standardized release format.} All audio follows the
   ASVspoof2019 Logical Access protocol convention, and the partial-spoof
   tier ships frame-level spoof labels. Existing anti-spoofing training
@@ -286,21 +178,22 @@ practical guidance for reuse (Usage Notes).
 separate tiers, each a full copy of the base corpus at the stated
 multiplication factor (for example, the $\times$5 tier holds five times
 the base utterance count and five times the base hours); a user selects
-one factor rather than combining them (Usage Notes). \PENDING{Std.\ of
-utterance duration per tier, from the deposited per-sample metadata.}}
+one factor rather than combining them (Usage Notes). Std.\ dur.\ is not
+meaningful for the Base total row, which pools three tiers with
+different duration distributions rather than describing a single one.}
 \label{tab:overview}
 \small
-\begin{tabular}{lrrrp{3.4cm}}
+\begin{tabular}{lrrrrp{3.1cm}}
 \toprule
-\textbf{Tier} & \textbf{Utt.} & \textbf{Hours} & \textbf{Avg.\ dur.\ (s)} & \textbf{Description} \\
+\textbf{Tier} & \textbf{Utt.} & \textbf{Hours} & \textbf{Avg.\ dur.\ (s)} & \textbf{Std.\ dur.} & \textbf{Description} \\
 \midrule
-Bonafide            & 35{,}927  & 53.8  & 5.39 & Source corpus, 7 accents, 1{,}567 speakers \\
-Full spoof          & 186{,}647 & 218.6 & 4.22 & 6 TTS voice-cloning systems \\
-Partial spoof       & 18{,}421  & 30.2  & 5.90 & 1--3 word replacements (15{,}641 clean) \\
+Bonafide            & 35{,}927  & 53.8  & 5.39 & 1.62  & Source corpus, 7 accents, 1{,}567 speakers \\
+Full spoof          & 186{,}647 & 218.6 & 4.22 & 1.19  & 6 TTS voice-cloning systems \\
+Partial spoof       & 18{,}421  & 30.2  & 5.90 & 1.61  & 1--3 word replacements (15{,}641 clean) \\
 \midrule
-\textbf{Base total} & \textbf{240{,}995} & \textbf{302.6} & 4.52 & Pre-augmentation \\
+\textbf{Base total} & \textbf{240{,}995} & \textbf{302.6} & 4.52 & --- & Pre-augmentation \\
 \midrule
-Augmented tiers & \multicolumn{3}{l}{$\times$2 / $\times$3 / $\times$5 / $\times$10 the base row above} & Released separately per factor \\
+Augmented tiers & \multicolumn{4}{l}{$\times$2 / $\times$3 / $\times$5 / $\times$10 the base row above} & Released separately per factor \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -332,11 +225,14 @@ Peninsular (European) Spanish is the single largest accent group
 the distribution is markedly imbalanced. The three largest accents
 (Peninsular, Mexican, Colombian) account for 82\% of the speakers, while
 the three smallest (Argentine, Peruvian, Venezuelan) together account
-for 6.6\% (Table~\ref{tab:accents} reports speaker counts; per-accent
-utterance counts follow the same ordering and are provided with the
-deposited metadata). The Common Voice extension could not correct the
-Venezuelan group specifically. Common Voice's Spanish locale contains
-very few self-tagged Venezuelan-accent speakers, and only one passed the
+for 6.6\% of speakers (Table~\ref{tab:accents}). Utterance counts do not
+track this speaker imbalance. Six of the seven accents land within a
+narrow band of 5{,}446--5{,}460 utterances regardless of how many
+speakers contribute to that band, consistent with each accent being
+built toward a roughly fixed utterance total rather than a fixed speaker
+count; only Venezuelan falls well short of that band (3{,}221). The
+Common Voice extension could not close that gap: its Spanish locale
+contains very few self-tagged Venezuelan-accent speakers, and only one passed the
 speaker-similarity filter. The group's size (23 speakers) is therefore
 almost entirely inherited from the original HABLA release (22 of 23).
 This imbalance is a property of the source data and is preserved, not
@@ -347,58 +243,49 @@ strategy.
 \centering
 \caption{Accent composition of the bonafide source corpus. Codes: es~=~Peninsular
 (Spain), mx~=~Mexican, co~=~Colombian, cl~=~Chilean, ar~=~Argentine,
-pe~=~Peruvian, ve~=~Venezuelan. \PENDING{Per-accent utterance counts,
-from the deposited per-sample metadata; speaker counts are not a valid
-proxy since utterances per speaker are not constant across accents.}}
+pe~=~Peruvian, ve~=~Venezuelan. Speaker share is not a valid proxy for
+utterance share, since utterances per speaker are not constant across
+accents (Bonafide source corpus).}
 \label{tab:accents}
 \small
 \begin{tabular}{lrrr}
 \toprule
-\textbf{Accent} & \textbf{Speakers} & \textbf{Utterances} & \textbf{Share} \\
+\textbf{Accent} & \textbf{Speakers} & \textbf{Utterances} & \textbf{Speaker Share} \\
 \midrule
-es (Peninsular, Spain) & 528 & \PENDING{} & 33.7\% \\
-mx (Mexican)           & 406 & \PENDING{} & 25.9\% \\
-co (Colombian)         & 357 & \PENDING{} & 22.8\% \\
-cl (Chilean)           & 173 & \PENDING{} & 11.0\% \\
-ar (Argentine)         & 42  & \PENDING{} & 2.7\% \\
-pe (Peruvian)          & 38  & \PENDING{} & 2.4\% \\
-ve (Venezuelan)        & 23  & \PENDING{} & 1.5\% \\
+es (Peninsular, Spain) & 528 & 5{,}450 & 33.7\% \\
+mx (Mexican)           & 406 & 5{,}450 & 25.9\% \\
+co (Colombian)         & 357 & 5{,}450 & 22.8\% \\
+cl (Chilean)           & 173 & 5{,}450 & 11.0\% \\
+ar (Argentine)         & 42  & 5{,}460 & 2.7\% \\
+pe (Peruvian)          & 38  & 5{,}446 & 2.4\% \\
+ve (Venezuelan)        & 23  & 3{,}221 & 1.5\% \\
 \midrule
 \textbf{Total}         & \textbf{1{,}567} & \textbf{35{,}927} & \textbf{100\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-All audio is processed at \SI{16}{\kilo\hertz}, mono, 16-bit. Every
-bonafide utterance is transcribed with the Parakeet TDT multilingual
-transducer \citep{tdt,parakeet}, which emits word-level start and end
-timestamps natively through its token-and-duration architecture. A
-forced aligner (for example the Montreal Forced Aligner \citep{mfa}) is
-not a substitute here. Forced alignment requires an independent
-ground-truth transcript to align against, and only the Common
-Voice-origin fraction of the bonafide corpus has one (Bonafide source
-corpus); the original HABLA recordings carry no transcript at all.
-Applying transcription-based timestamps uniformly to every bonafide
-utterance, rather than forced-aligning the Common Voice subset and
-transcribing the rest, keeps the timestamping method itself independent
-of bonafide origin, avoiding a spurious cue that a detector could
-otherwise exploit. The accuracy of this transcription stage is validated
-in Technical Validation. These word boundaries are consumed by both the
-partial-spoof selection stage and the intelligibility metric of the
-quality screen. Utterances shorter than four words are excluded from the
-partial-spoof tier, because four words is the minimum sentence length at
-which even the smallest replacement tier can operate while keeping the
-spoofed fraction of the utterance below one quarter.
+All audio is processed at \SI{16}{\kilo\hertz}, mono, 16-bit. Every bonafide utterance is transcribed with the Parakeet TDT multilingual transducer \citep{tdt,parakeet}, which natively emits word-level start and end timestamps through its token-and-duration architecture. Transcription accuracy is validated in Technical Validation.
+
+A forced aligner (for example, the Montreal Forced Aligner \citep{mfa}) is not a substitute here. Forced alignment requires an independent ground-truth transcript to align against, and only the Common Voice-origin fraction of the bonafide corpus has one (Bonafide source corpus). The original HABLA recordings carry no transcript at all. Transcribing every bonafide utterance with the same method, rather than forced-aligning the Common Voice subset and transcribing the rest separately, keeps the timestamping method independent of bonafide origin and avoids a spurious cue that a detector could otherwise exploit.
+
+Both the partial-spoof selection stage and the intelligibility metric of the quality screen draw on these word boundaries.
+Utterances shorter than four words are excluded from the partial-spoof tier, because four words is the minimum sentence length at which even the smallest replacement tier can operate while keeping the spoofed fraction of the utterance below one quarter.
 
 \subsection*{Full-spoof attack pipelines}
 
 Each bonafide utterance is the cloning target for six independent,
 open-source neural TTS voice-cloning systems, selected against four
-criteria: (i) open availability, for reproducibility; (ii) demonstrated
-Spanish synthesis capability; (iii) architectural diversity, ensuring
-the corpus does not encode the artifacts of a single synthesis family; and
-(iv) release within the 2024--2026 window, representing current
-practice. The six systems are Fish-Speech \citep{fishspeech}, Qwen3-TTS
+criteria:
+\begin{enumerate}
+  \item \textbf{Open availability}, for reproducibility.
+  \item \textbf{Demonstrated Spanish synthesis capability}.
+  \item \textbf{Architectural diversity}, ensuring the corpus does not
+  encode the artifacts of a single synthesis family.
+  \item \textbf{Release within the 2024--2026 window}, representing
+  current practice.
+\end{enumerate}
+The six systems are Fish-Speech \citep{fishspeech}, Qwen3-TTS
 \citep{qwen3tts}, OpenVoice v2 \citep{openvoice}, Chatterbox
 \citep{chatterbox}, OuteTTS \citep{outetts}, and OmniVoice
 \citep{omnivoice}. They span autoregressive language-models, diffusion
@@ -432,9 +319,9 @@ OmniVoice & Diffusion language model & Native \SI{24}{\kilo\hertz} decoder resam
 \end{tabular}
 \end{table}
 
-The six systems were chosen to cover distinct generation families so
-that the corpus does not encode the fingerprint of a single synthesis
-paradigm. Fish-Speech and Qwen3-TTS are autoregressive language models (LMs)
+The six systems were chosen to cover distinct generation families,
+ensuring the corpus does not encode the fingerprint of a single
+synthesis paradigm. Fish-Speech and Qwen3-TTS are autoregressive language models (LMs)
 that predict acoustic tokens, decoded by a GAN vocoder and an
 x-vector-conditioned decoder respectively; Fish-Speech runs as a
 separate inference server, and Qwen3-TTS is driven in
@@ -494,22 +381,21 @@ separately in Technical Validation (Table~\ref{tab:fullspoof}).
 system. Utterances are post-screening counts, identical to
 Table~\ref{tab:fullspoof}. Avg.\ duration and avg.\ words describe the
 generated audio and its Common Voice target text, respectively; hours
-are total generated-audio duration. \PENDING{Std.\ of duration and word
-count per system, from the deposited per-sample metadata.}}
+are total generated-audio duration.}
 \label{tab:fullspoofdesc}
 \small
 \begin{tabular}{lrcccc}
 \toprule
 \textbf{System} & \textbf{Utterances} & \textbf{Avg.\ dur.\ (s)} & \textbf{Std.\ dur.} & \textbf{Avg.\ words (Std.)} & \textbf{Hours} \\
 \midrule
-Fish-Speech (FishGram) & 34{,}197 & 3.80 & \PENDING{} & 10.4 (\PENDING{}) & 36.1 \\
-Qwen3-TTS              & 31{,}568 & 4.57 & \PENDING{} & 10.4 (\PENDING{}) & 40.1 \\
-OpenVoice v2           & 29{,}796 & 4.52 & \PENDING{} & 10.4 (\PENDING{}) & 37.5 \\
-Chatterbox             & 31{,}701 & 3.96 & \PENDING{} & 10.4 (\PENDING{}) & 34.8 \\
-OuteTTS                & 25{,}642 & 4.33 & \PENDING{} & 10.4 (\PENDING{}) & 30.9 \\
-OmniVoice              & 33{,}743 & 4.19 & \PENDING{} & 10.3 (\PENDING{}) & 39.3 \\
+Fish-Speech (FishGram) & 34{,}197 & 3.80 & 1.05 & 10.4 (2.6) & 36.1 \\
+Qwen3-TTS              & 31{,}568 & 4.57 & 1.22 & 10.4 (2.6) & 40.1 \\
+OpenVoice v2           & 29{,}796 & 4.52 & 0.98 & 10.4 (2.6) & 37.5 \\
+Chatterbox             & 31{,}701 & 3.96 & 1.13 & 10.4 (2.6) & 34.8 \\
+OuteTTS                & 25{,}642 & 4.33 & 1.11 & 10.4 (2.6) & 30.9 \\
+OmniVoice              & 33{,}743 & 4.19 & 1.38 & 10.3 (2.6) & 39.3 \\
 \midrule
-\textbf{Total}         & \textbf{186{,}647} & 4.22 & \PENDING{} & 10.4 (\PENDING{}) & \textbf{218.6} \\
+\textbf{Total}         & \textbf{186{,}647} & 4.22 & 1.19 & 10.4 (2.6) & \textbf{218.6} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -628,7 +514,7 @@ splice harder to detect. Only utterances whose ECAPA-TDNN similarity to the
 target speaker is at least 0.60 proceed to splicing. Below-threshold
 clones do not resemble the target and are treated as generation
 failures, not attacks. A consequence of this gate is that systems whose
-clones sit well below 0.60 contribute little to the partial-spoof tier:
+clones sit well below 0.60 contribute little to the partial-spoof tier.
 OpenVoice (mean similarity 0.388) is effectively absent from it,
 contributing only 53 of the 18{,}421 partial-spoof samples, while the
 higher-similarity systems dominate (OmniVoice alone accounts for
@@ -641,7 +527,7 @@ not chosen at random. The goal is to place each splice seam where it is
 least audible, e.g., within pauses rather than in the middle of connected speech.
 To find such seams, every word boundary $b$ in the cloned audio is given
 a \emph{valley score} $s(b)$. Let $W_b$ denote the set of short-time
-analysis frames whose centres lie within $\pm 100$\,ms of the boundary,
+analysis frames whose centers lie within $\pm 100$\,ms of the boundary,
 let $N_b = |W_b|$ be the number of such frames, and let
 $\mathrm{RMS}(t) \ge 0$ be the root-mean-square energy of frame $t$
 (frames are 5\,ms long, thus $N_b = 40$ away from the signal edges). The
@@ -662,7 +548,7 @@ words whose boundary score falls below a configurable threshold, and
 whose duration exceeds a minimum, are eligible for replacement. Eligible
 words are then selected greedily, lowest-$s(b)$ (quietest boundary)
 first, subject to a non-adjacency constraint (selected word indices
-differ by at least two): this distributes the spoofed content across
+differ by at least two). This distributes the spoofed content across
 the utterance rather than forming a single contiguous block that would
 resemble a segment-level rather than a word-level attack.
 
@@ -771,11 +657,11 @@ probability 0.5, one of three structural manipulations chosen uniformly
 (distinct from the seven crossfade techniques of Table~\ref{tab:splice},
 which shape the splice seam itself):
 (i) A short truncation of one word's edge (10--\SI{40}{\milli\second}, kept
-below the duration of a Spanish syllable nucleus so intelligibility is
-preserved). (ii) A Hann-windowed overlap of the two words
+below the duration of a Spanish syllable nucleus to preserve
+intelligibility). (ii) A Hann-windowed overlap of the two words
 (30--\SI{80}{\milli\second}, matching the crossfade range used by prior
 partial-spoof work \citep{luong2024llama}). (3) A bleed of one word's
-edge into its neighbour (20--\SI{60}{\milli\second}, covering Spanish
+edge into its neighbor (20--\SI{60}{\milli\second}, covering Spanish
 voice-onset time plus a consonant-vowel transition). Setting the
 manipulation probability to 0.5 maximizes the entropy of the
 ``manipulations per boundary'' signal, thus the spliced boundary is
@@ -827,13 +713,13 @@ reverberation and noise first and then a codec round-trip on the result,
 which models the common real-world case of a reverberant, noisy source
 transmitted over a lossy channel. The augmentation chain is recorded in
 the sample's system identifier, with a pipe separator for stacked clips
-(for example \texttt{RIR\_SMALL\_NOI\_SNR15|CODEC\_OPUS\_LOSS3PCT}), so
-that the full history is recoverable from the protocol file and no
-directory restructuring is required. The layer is released at four
+(for example \texttt{RIR\_SMALL\_NOI\_SNR15|CODEC\_OPUS\_LOSS3PCT}),
+keeping the full history recoverable from the protocol file and
+requiring no directory restructuring. The layer is released at four
 corpus-multiplication factors ($\times$2, $\times$3, $\times$5,
-$\times$10). The same factor is applied to bonafide and spoof alike, so
-the clean fraction is identical across classes and augmentation does not
-shift the class balance. Rebalancing the (naturally spoof-heavy) corpus
+$\times$10). The same factor is applied to bonafide and spoof alike. The
+clean fraction is therefore identical across classes, and augmentation
+does not shift the class balance. Rebalancing the (naturally spoof-heavy) corpus
 is deliberately left to the user at training time rather than baked into
 the data (see Usage Notes), which keeps augmentation from becoming a
 class cue.
@@ -1064,8 +950,35 @@ under the resulting \texttt{quality\_flag} the 18{,}421 spliced samples
 divide into 4{,}875 high, 13{,}072 medium, and 474 low, and 15{,}641
 (84.9\%) pass the full-spoof intelligibility gate (WER $\leq 0.15$,
 CER $\leq 0.10$) that defines the recommended clean partition.
-\PENDING{per-tier WER/NISQA/SIM/boundary-drift statistics to be
-tabulated here from the released per-sample metrics.}
+Table~\ref{tab:pstierquality} reports WER, CER, NISQA, and speaker
+similarity broken down by replacement tier, computed over the released
+per-sample metrics.
+
+\begin{table}[t]
+\centering
+\caption{Partial-spoof quality by replacement tier, computed from the
+released per-sample metrics. WER and CER are against the target
+transcript; NISQA is the no-reference perceptual-quality score; SIM is
+ECAPA-TDNN cosine similarity between the spliced result and the target
+speaker, naturally higher than full-spoof SIM (Table~\ref{tab:fullspoof})
+since most of a partial-spoof utterance is genuine audio. The splice
+engine does not record a boundary-drift measurement directly; the
+closest released quantity is the effective crossfade duration applied at
+each seam, reported here instead.}
+\label{tab:pstierquality}
+\small
+\begin{tabular}{lrccccc}
+\toprule
+\textbf{Tier} & \textbf{Utt.} & \textbf{WER (\%)} & \textbf{CER (\%)} & \textbf{NISQA} & \textbf{SIM} & \textbf{Crossfade (ms)} \\
+\midrule
+W1 (1 word)  & 10{,}276 & 4.61 & 2.36 & 3.53 & 0.781 & 4.87 \\
+W2 (2 words) &  5{,}991 & 6.08 & 3.25 & 3.28 & 0.799 & 4.31 \\
+W3 (3 words) &  2{,}154 & 6.80 & 3.74 & 3.14 & 0.820 & 3.89 \\
+\midrule
+\textbf{Total} & \textbf{18{,}421} & 5.34 & 2.81 & 3.40 & 0.791 & 4.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection*{Bonafide transcription reliability}
 
@@ -1178,7 +1091,7 @@ through a differing clean fraction.
 tier (18{,}421 samples) is released unfiltered, retaining the noisier
 tail for studies that need it. For most training use we recommend the
 subset that passes the same intelligibility gate applied to the
-full-spoof tier, WER $\leq 0.15$ and CER $\leq 0.10$: this retains
+full-spoof tier, WER $\leq 0.15$ and CER $\leq 0.10$. This retains
 15{,}641 samples (84.9\%) and can be selected directly from the released
 per-sample \texttt{wer} and \texttt{cer} columns. Using it also makes the
 intelligibility criterion consistent across the full-spoof and
@@ -1210,11 +1123,11 @@ variants of the same source utterances.
 is generated from open TTS systems applied to a consenting-speaker
 research corpus. It must not be used to impersonate real individuals.
 Note that the released audio is deliberately \emph{not} watermarked (see
-Methods): the two systems that watermark by default were reverted to
+Methods). The two systems that watermark by default were reverted to
 watermark-free generation, making the corpus test synthesis-artifact
 detection rather than watermark detection. \PENDING{Confirm the licensing
 terms of each constituent TTS system permit redistribution of generated
-audio, and state the corpus licence.}
+audio, and state the corpus license.}
 
 % =====================================================================
 \section*{Code Availability}
@@ -1251,11 +1164,11 @@ The bonafide recordings originate from the HABLA corpus of
 consenting-speaker Spanish speech \citep{habla}, and MARSA introduces no
 new human-subjects data collection beyond that source. \PENDING{State the
 consent and ethics basis of the upstream bonafide corpus, its
-redistribution licence, and confirm the derivative-redistribution chain
+redistribution license, and confirm the derivative-redistribution chain
 end to end.} The synthetic tiers are produced by applying open
 text-to-speech systems to this corpus for the express purpose of
 \emph{defensive} anti-spoofing research. To keep that purpose intact,
-the released audio is watermark-free by design (see Methods): the two
+the released audio is watermark-free by design (see Methods). The two
 systems that watermark by default were reverted to watermark-free
 generation, forcing detectors to learn synthesis artifacts rather than
 watermarks. This is a dual-use resource; it must not be used to
