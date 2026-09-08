@@ -20,14 +20,18 @@ that is where the already-published averages came from.
 
 FIELD-NAME ROBUSTNESS
 ----------------------
-This script does not assume the exact key names in generation_metadata.json
-or partial_spoof_metadata.json, since they were not re-verified against live
-files before writing this script. It tries a short list of plausible key
-names per field and reports which one matched. If none match for a given
-file, that file's stats are skipped and counted as unmatched, and the final
-report states how many were skipped, so a silent wrong answer cannot result
-from a wrong guess: either the numbers are computed from confirmed fields, or
-the script visibly tells you it could not find them.
+An earlier version of this script guessed at the key names in
+generation_metadata.json and matched nothing (confirmed on ml-server03,
+2026-09-08: every one of 215,045 full-spoof records came back unmatched).
+The real schema, verified directly against one record per attack, is
+``{speaker_id, text_id, text, audio_path, duration_seconds,
+generation_time_seconds, rtf, split}`` (Qwen3-TTS and OmniVoice also carry
+a boolean ``skipped_existing``). There is no explicit word-count field in
+any of the six pipelines; word count is derived from ``text`` by
+whitespace tokenization. DURATION_KEYS and the word-count fallback below
+reflect this confirmed schema; the multi-candidate lookup is kept as a
+defensive fallback for any future pipeline with different field names, and
+still reports unmatched records rather than silently skipping them.
 
 USAGE
 -----
@@ -62,8 +66,11 @@ FULLSPOOF_SYSTEMS = {
 }
 PARTIAL_SPOOF_ROOT = Path("data/partial_spoof_output")
 
-DURATION_KEYS = ("duration_s", "duration", "audio_duration_s", "dur", "duration_sec")
+DURATION_KEYS = (
+    "duration_seconds", "duration_s", "duration", "audio_duration_s", "dur", "duration_sec"
+)
 WORD_COUNT_KEYS = ("word_count", "n_words", "num_words", "target_words", "words")
+TEXT_KEYS = ("text",)
 
 
 def _accent_from_speaker_dir(name: str) -> Optional[str]:
@@ -154,6 +161,31 @@ def _find_field(record: dict, candidates: Tuple[str, ...]) -> Optional[float]:
     return None
 
 
+def _word_count(record: dict) -> Optional[float]:
+    """Return a record's target-text word count.
+
+    No pipeline's generation_metadata.json carries an explicit word-count
+    field; every record instead carries the full target sentence under
+    ``text``. Word count is the whitespace-token count of that sentence,
+    the same convention used elsewhere in this repo for reporting average
+    words per system.
+
+    Args:
+        record: A single sample's metadata dict.
+
+    Returns:
+        The word count, or None if neither an explicit field nor a usable
+        ``text`` field is present.
+    """
+    explicit = _find_field(record, WORD_COUNT_KEYS)
+    if explicit is not None:
+        return explicit
+    text = _find_field(record, TEXT_KEYS)
+    if isinstance(text, str) and text.strip():
+        return float(len(text.split()))
+    return None
+
+
 def compute_fullspoof_stats() -> Tuple[List[SystemDurationWordStats], TierDurationStats]:
     """Compute per-system and overall full-spoof duration/word statistics.
 
@@ -181,7 +213,7 @@ def compute_fullspoof_stats() -> Tuple[List[SystemDurationWordStats], TierDurati
             if not isinstance(record, dict):
                 continue
             duration = _find_field(record, DURATION_KEYS)
-            words = _find_field(record, WORD_COUNT_KEYS)
+            words = _word_count(record)
             if duration is None or words is None:
                 unmatched += 1
                 continue
