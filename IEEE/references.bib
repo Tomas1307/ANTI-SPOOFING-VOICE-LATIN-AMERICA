@@ -492,15 +492,25 @@
    % variant = WavLM_Nes2Net_X_SeLU). Evaluated on CtrSVDD, ASVspoof2021,
    % ASVspoof5, PartialSpoof, In-the-Wild. Lightweight -> easiest to fine-tune.
 
-@misc{dfarena,
+@misc{raptor2026,
   author       = {Kulkarni, Ajinkya and Dowerah, Sandipana and Kulkarni, Atharva and Alum{\"a}e, Tanel and Magimai-Doss, Mathew},
   title        = {Do Compact {SSL} Backbones Matter for Audio Deepfake Detection? A Controlled Study with {RAPTOR}},
-  howpublished = {arXiv preprint; model \url{https://huggingface.co/Speech-Arena-2025/DF_Arena_1B_V_1}},
+  howpublished = {arXiv preprint},
   year         = {2026},
   eprint       = {2603.06164}
-}  % [VERIFIED] RAPTOR system; SSL (mHuBERT/WavLM) + pairwise-gated
-   % transformer. NON-COMMERCIAL license. NOTE: "1B" is the checkpoint
-   % identifier, NOT a verified param count (paper argues for ~100M backbones).
+}  % [VERIFIED, corrected 2026-09-08] Read in full, not just abstract.
+   % This is NOT the DF_Arena_1B_V_1 paper: RAPTOR is a different
+   % architecture (HuBERT/mHuBERT/WavLM backbones + pairwise-gated
+   % fusion, all ~100M params). It cites "DF-Arena 100M-V1" and
+   % "DF-Arena 500M" only as external comparison baselines (via its own
+   % ref [7], Dowerah et al., which is our `dowerah2025speechdfarena`
+   % entry) -- it never mentions a 1B variant at all. Previously this
+   % entry was miskeyed `dfarena` and wrongly linked to the
+   % DF_Arena_1B_V_1 HuggingFace model URL; that link is removed. The
+   % correct citation for the DF-Arena model family is
+   % `dowerah2025speechdfarena`, even though that paper does not itself
+   % detail the 1B checkpoint's architecture (verified independently
+   % from the model's own source code instead; see decision-log).
 
 @misc{holiantispoof,
   author       = {{HoliAntiSpoof authors}},
@@ -537,14 +547,56 @@
 @misc{dowerah2025speechdfarena,
   author       = {Dowerah, Sandipana and Kulkarni, Atharva and Kulkarni, Ajinkya and Tran, Hoan My and Kalda, Joonas and Fedorchenko, Artem and Fauve, Benoit and Lolive, Damien and Alum{\"a}e, Tanel and Magimai Doss, Mathew},
   title        = {Speech {DF} Arena: A Leaderboard for Speech DeepFake Detection Models},
-  howpublished = {arXiv preprint},
+  howpublished = {arXiv preprint; model \url{https://huggingface.co/Speech-Arena-2025/DF_Arena_1B_V_1}},
   year         = {2025},
   eprint       = {2509.02859}
-}  % [VERIFIED] Introduces the Speech DF Arena benchmark/leaderboard (14
-   % eval sets, 12 open-source + 3 proprietary systems). This is the
-   % project the DF_Arena_1B_V_1 checkpoint (see `dfarena` entry above)
-   % is hosted under; this paper does not itself detail that checkpoint's
-   % architecture.
+}  % [VERIFIED, corrected 2026-09-08 after reading the full v1 PDF, not
+   % just the abstract] This paper's own 15 benchmarked systems (Table 1)
+   % are Whispeak/Syntra.io/Resemble AI plus 12 open-source detectors
+   % (XLSR+SLS, TCM, Nes2Net(X), WavLM/HuBERT/Wav2Vec2-ECAPA, AASIST,
+   % RawGAT-ST, RawNet-2, Whisper-MesoNet). It does NOT name, train, or
+   % evaluate any system called "DF-Arena" -- "DF Arena" here is the
+   % leaderboard platform's name, not a model. Separately, the RAPTOR
+   % paper (`raptor2026`) cites "DF-Arena 100M-V1" and "DF-Arena 500M"
+   % as external comparison points sourced from this paper's IEEE OJSP
+   % 2026 journal version (not the arXiv v1 read here), with no
+   % description of their training data; RAPTOR explicitly did not train
+   % those two itself. The DF_Arena_1B_V_1 checkpoint we evaluate is a
+   % third artifact again: hosted on HuggingFace under the same
+   % Speech-Arena-2025 org, architecture confirmed independently from its
+   % own source code (decision-log, 2026-08-25), but its specific
+   % training data is not documented in any paper we have located. Do
+   % not attribute RAPTOR's own training protocol (Section 3.1: ASVspoof
+   % 2019 alone, or ASVspoof2019+ASVspoof2024+CodecFake+LibriSeVoc+
+   % DFADD+CTRSVDD+SpoofCeleb+MLAAD+EnvSDD) to DF-Arena; that protocol is
+   % for RAPTOR's own trained systems only.
+
+@inproceedings{babu2022xlsr,
+  author    = {Babu, Arun and Wang, Changhan and Tjandra, Andros and Lakhotia, Kushal and Xu, Qiantong and Goyal, Naman and Singh, Kritika and von Platen, Patrick and Saraf, Yatharth and Pino, Juan and Baevski, Alexei and Conneau, Alexis and Auli, Michael},
+  title     = {{XLS-R}: Self-Supervised Cross-Lingual Speech Representation Learning at Scale},
+  booktitle = {Proc. Interspeech},
+  pages     = {2278--2282},
+  year      = {2022},
+  doi       = {10.21437/Interspeech.2022-143}
+}  % [VERIFIED] DF-Arena's backbone. Pretrained on ~436k hours across 128
+   % languages (CommonVoice, Multilingual LibriSpeech, VoxPopuli, BABEL,
+   % VoxLingua107); Spanish is present via CommonVoice/MLS/VoxPopuli. Used
+   % to correct an overclaim that DF-Arena "never saw Spanish speech" --
+   % true only of its anti-spoofing fine-tuning data (ASVspoof2019 +
+   % SpoofCeleb, both English, per the RAPTOR paper arXiv:2603.06164),
+   % not of the backbone's own pretraining.
+
+@inproceedings{wang2021comparative,
+  author    = {Wang, Xin and Yamagishi, Junichi},
+  title     = {A Comparative Study on Recent Neural Spoofing Countermeasures for Synthetic Speech Detection},
+  booktitle = {Proc. Interspeech},
+  pages     = {4259--4263},
+  year      = {2021},
+  doi       = {10.21437/Interspeech.2021-702}
+}  % [VERIFIED] Source of the LFCC-LCNN architecture family (LSTM-sum,
+   % fixed-length trim/pad, self-attention pooling back-ends) with
+   % P2SGrad loss, used as the classical-baseline checkpoints in our
+   % zero-shot cross-corpus evaluation.
 
 @misc{muller2026erodingtrust,
   author       = {M{\"u}ller, Nicolas M. and Choong, Wei Herng},
