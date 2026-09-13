@@ -45,12 +45,20 @@ from app.schemas.partial_spoof_system_quality_report import (
 CORPUS_SAMPLES_CSV = Path("data/partial_spoof_output/corpus_samples.csv")
 SYSTEM_DISPLAY_NAMES: Dict[str, str] = {
     "omnivoice": "OmniVoice",
-    "qwen": "Qwen3-TTS",
+    "qwen3tts": "Qwen3-TTS",
     "chatterbox": "Chatterbox",
     "fishgram": "Fish-Speech (FishGram)",
     "outetts": "OuteTTS",
     "openvoice": "OpenVoice v2",
 }
+# NOTE: partial-spoof's corpus_samples.csv 'attack' column still carries
+# 'qwen3tts' for Qwen, unlike the ASVspoof-style protocol files, which
+# were normalized to 'qwen' corpus-wide (normalize_attack_ids.py,
+# app/scripts, and docs/thesis-wiki/decisions/decision-log.md,
+# 2026-08-25 entry). Confirmed directly against the real CSV on
+# ml-server03 (2026-09-13) rather than assumed from the protocol-level
+# fix. This is a real, separate inconsistency worth closing at the
+# source at some point; this script works around it rather than fixes it.
 
 
 def _parse_float(raw: str) -> Optional[float]:
