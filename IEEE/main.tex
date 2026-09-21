@@ -196,10 +196,11 @@ Augmented tiers & \multicolumn{3}{l}{$\times$2 / $\times$3 / $\times$5 / $\times
 The genuine-speech foundation of MARSA combines the original HABLA
 Latin American Spanish anti-spoofing dataset \citep{habla} with
 additional speakers drawn from Mozilla Common Voice \citep{commonvoice} added to fill the accent groups HABLA under-represents. Candidate
-Common Voice speakers whose voice closely matched an existing HABLA
-speaker were excluded to avoid near-duplicate voices across the two
-sources. The speaker-embedding method and similarity threshold used for
-this de-duplication are reported in the Technical Validation Section. 
+Common Voice speakers were embedded with the same ECAPA-TDNN model used
+throughout MARSA for speaker-similarity screening \citep{ecapa}
+(Technical Validation), and any candidate whose cosine similarity to an
+existing HABLA speaker reached 0.75 or higher was excluded, to avoid
+admitting near-duplicate voices across the two sources.
 Peninsular and Mexican Spanish speakers are drawn entirely from this Common Voice extension. Colombian and Chilean speakers are a blend of both sources.
 Argentine and Peruvian speakers are unchanged from the original HABLA
 release.
@@ -255,6 +256,29 @@ All audio is processed at \SI{16}{\kilo\hertz}, mono, 16-bit. Every bonafide utt
 
 %Both the partial-spoof selection stage and the intelligibility metric of the quality screen draw on these word boundaries.
 Utterances shorter than four words are excluded from the partial-spoof tier, because four words is the minimum sentence length at which even the smallest replacement tier can operate while keeping the spoofed fraction of the utterance below one quarter.
+
+The 1{,}567 bonafide speakers are partitioned into speaker-disjoint
+train, development, and evaluation splits (1{,}257~/~155~/~155
+speakers), matching the ASVspoof2019 Logical Access train/dev/eval
+convention the release format follows (Data Records). The
+de-duplication above only compares a Common Voice candidate against
+existing HABLA speakers at admission time. It does not check
+already-admitted speakers against each other, and two speakers who
+each individually cleared that gate could therefore still be
+near-duplicates of one another. To close this gap, the same 0.75 ECAPA-TDNN similarity
+threshold was applied a second time, exhaustively, across every pair
+of the 1{,}567 already-admitted bonafide speakers, to catch any such
+pair that had landed on opposite sides of the train/dev/eval split.
+Six pairs exceeded the threshold: two HABLA pairs at 0.87 and 0.90
+cosine similarity, consistent with the same voice recorded under two
+session identifiers, and a five-speaker Common Voice cluster at
+0.77--0.78. Four speakers sitting on the dev or eval side of these
+pairs were moved into train to remove the leak. Re-auditing the
+rebuilt partition confirms the fix: the maximum cross-split similarity
+anywhere in the corpus falls to 0.74, below the 0.75 threshold itself.
+Every synthetic tier inherits this same partition, since each generated
+utterance is keyed to the bonafide speaker it was cloned from. No
+speaker appears in more than one split anywhere in the corpus.
 
 \FloatBarrier
 \subsection*{Full-spoof Generation Pipeline}
@@ -346,30 +370,7 @@ To enforce a balanced bonafide-to-spoof ratio, each
 system generates as many attacks per speaker as that speaker has
 bonafide recordings.
 Table~\ref{tab:fullspoofdesc} describes the resulting content by system
-(utterance count, duration, target-text length).
-
-\begin{table}[H]
-\centering
-\caption{Generated full spoof content, detailed by
-TTS system. \textbf{Duration} and \textbf{Words} describe the
-duration (in seconds) of the generated audio and its Common Voice target text, respectively. \textbf{Hours} refers to total generated-audio duration.}
-\label{tab:fullspoofdesc}
-\small
-\begin{tabular}{lrccc}
-\toprule
-\textbf{System} & \textbf{Utterances} & \textbf{Duration ($\sigma$)}  & \textbf{Words ($\sigma$)} & \textbf{Hours} \\
-\midrule
-Fish-Speech (FishGram) & 34{,}197 & 3.80 (1.05) & 10.4 (2.6) & 36.1 \\
-Qwen3-TTS              & 31{,}568 & 4.57 (1.22) & 10.4 (2.6) & 40.1 \\
-OpenVoice v2           & 29{,}796 & 4.52 (0.98) & 10.4 (2.6) & 37.5 \\
-Chatterbox             & 31{,}701 & 3.96 (1.13) & 10.4 (2.6) & 34.8 \\
-OuteTTS                & 25{,}642 & 4.33 (1.11) & 10.4 (2.6) & 30.9 \\
-OmniVoice              & 33{,}743 & 4.19 (1.38) & 10.3 (2.6) & 39.3 \\
-\midrule
-\textbf{Total}         & \textbf{186{,}647} & 4.22 (1.19) & 10.4 (2.6) & \textbf{218.6} \\
-\bottomrule
-\end{tabular}
-\end{table}
+(utterance count, duration, target-text length), in Data Records.
 
 \paragraph{OmniVoice reference handling.} During validation,
 OmniVoice occasionally emitted a 200--\SI{600}{\milli\second} fragment of
@@ -611,30 +612,9 @@ words or missing or unreadable audio) are removed, since those are
 not partial spoofs at all. This ``keep-everything, label-everything''
 policy reflects the fact that a real attacker does not post-filter output, and a
 detector trained only on clean attacks may collapse on noisy ones.
-Table~\ref{tab:pscomp} summarizes the generated partial spoof data, for the different TTS systems. Additional details are given in the following sections.
-
-\begin{table}[H]
-\centering
-\caption{Partial-spoof tier composition (18{,}421 spliced utterances),
-by generating system, replacement tier, boundary-jitter partition, and
-quality flag.}
-\label{tab:pscomp}
-\small
-\begin{tabular}{lr@{\hskip 1.5em}lr}
-\toprule
-\textbf{System} & \textbf{Count} & \textbf{Breakdown} & \textbf{Count} \\
-\midrule
-OmniVoice   & 10{,}990 & W1 (1 word)       & 10{,}276 \\
-Qwen3-TTS   &  1{,}565 & W2 (2 words)      &  5{,}991 \\
-Chatterbox  &  3{,}423 & W3 (3 words)      &  2{,}154 \\
-FishGram    &  1{,}317 & \emph{canonical}  &  8{,}456 \\
-OuteTTS     &  1{,}073 & \emph{jittered}   &  9{,}965 \\
-OpenVoice   &     53   & flag high/med/low & 4{,}875 / 13{,}072 / 474 \\
-\midrule
-\textbf{Total} & \textbf{18{,}421} & & \\
-\bottomrule
-\end{tabular}
-\end{table}
+The generated partial-spoof data are summarized by system, replacement
+tier, boundary-jitter partition, and quality flag in
+Table~\ref{tab:pscomp} (Data Records).
 
 
 \FloatBarrier
@@ -813,8 +793,8 @@ Stacking-gate probability & 0.40 (RIR+noise then codec) \\
 Room size & small 0.30, medium 0.50, large 0.20 \\
 Noise source & noise 0.50, babble 0.30, music 0.20 \\
 SNR band (dB) & $[0,5]$ (0.10), $[5,30]$ (0.80), $[30,35]$ (0.10) \\
-Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, iLBC 0.05, Opus 0.25, AAC 0.10 \\
-Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/iLBC fixed \\
+Codec weights & G.711$\mu$ 0.25, G.711A 0.15, AMR-NB 0.20, Speex 0.05, Opus 0.25, AAC 0.10 \\
+Codec bitrates (kbps) & AMR-NB $\{4.75\text{--}12.2\}$; Opus $\{8,12,16,24,32\}$; AAC $\{24,32,48,64\}$; G.711/Speex fixed \\
 Packet loss & applied with prob.\ 0.30; fraction Uniform$[0,0.05]$ \\
 Multiplication factors & $\times$2, $\times$3, $\times$5, $\times$10; same factor applied to both classes \\
 \bottomrule
@@ -870,9 +850,60 @@ technique used. These constitute the frame-level spoof labels. Per-sample
 metadata (the acoustic-quality metrics and \texttt{quality\_flag}
 described in Methods Section) are provided as CSV tables aggregated across all pipelines.
 
+The full-spoof tier's content, by generating system, is given in
+Table~\ref{tab:fullspoofdesc}.
+
+\begin{table}[H]
+\centering
+\caption{Generated full spoof content, detailed by
+TTS system. \textbf{Duration} and \textbf{Words} describe the
+duration (in seconds) of the generated audio and its Common Voice target text, respectively. \textbf{Hours} refers to total generated-audio duration.}
+\label{tab:fullspoofdesc}
+\small
+\begin{tabular}{lrccc}
+\toprule
+\textbf{System} & \textbf{Utterances} & \textbf{Duration ($\sigma$)}  & \textbf{Words ($\sigma$)} & \textbf{Hours} \\
+\midrule
+Fish-Speech (FishGram) & 34{,}197 & 3.80 (1.05) & 10.4 (2.6) & 36.1 \\
+Qwen3-TTS              & 31{,}568 & 4.57 (1.22) & 10.4 (2.6) & 40.1 \\
+OpenVoice v2           & 29{,}796 & 4.52 (0.98) & 10.4 (2.6) & 37.5 \\
+Chatterbox             & 31{,}701 & 3.96 (1.13) & 10.4 (2.6) & 34.8 \\
+OuteTTS                & 25{,}642 & 4.33 (1.11) & 10.4 (2.6) & 30.9 \\
+OmniVoice              & 33{,}743 & 4.19 (1.38) & 10.3 (2.6) & 39.3 \\
+\midrule
+\textbf{Total}         & \textbf{186{,}647} & 4.22 (1.19) & 10.4 (2.6) & \textbf{218.6} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The composition of the partial-spoof tier is given in
-Table~\ref{tab:pscomp}. TTS systems whose
-clones are below 0.60 speaker similarity contribute less to the partial-spoof .
+Table~\ref{tab:pscomp}.
+
+\begin{table}[H]
+\centering
+\caption{Partial-spoof tier composition (18{,}421 spliced utterances),
+by generating system, replacement tier, boundary-jitter partition, and
+quality flag.}
+\label{tab:pscomp}
+\small
+\begin{tabular}{lr@{\hskip 1.5em}lr}
+\toprule
+\textbf{System} & \textbf{Count} & \textbf{Breakdown} & \textbf{Count} \\
+\midrule
+OmniVoice   & 10{,}990 & W1 (1 word)       & 10{,}276 \\
+Qwen3-TTS   &  1{,}565 & W2 (2 words)      &  5{,}991 \\
+Chatterbox  &  3{,}423 & W3 (3 words)      &  2{,}154 \\
+FishGram    &  1{,}317 & \emph{canonical}  &  8{,}456 \\
+OuteTTS     &  1{,}073 & \emph{jittered}   &  9{,}965 \\
+OpenVoice   &     53   & flag high/med/low & 4{,}875 / 13{,}072 / 474 \\
+\midrule
+\textbf{Total} & \textbf{18{,}421} & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+TTS systems whose
+clones are below 0.60 speaker similarity contribute less to the partial-spoof tier.
 OpenVoice (mean similarity 0.388) is effectively absent from it,
 contributing only 53 of the 18{,}421 partial-spoof samples, while the
 higher-similarity systems dominate (OmniVoice alone accounts for
@@ -992,6 +1023,42 @@ W3 (3 words) &  2{,}154 & 6.80 & 3.74 & 3.14 & 0.820 & 3.89 \\
 \end{tabular}
 \end{table}
 
+The same per-sample metrics, broken down instead by generating system,
+are given in Table~\ref{tab:pssystemquality}, the direct partial-spoof
+companion to Table~\ref{tab:fullspoof}.
+
+\begin{table}[H]
+\centering
+\caption{Quality assessment of the partial spoof data by generating
+system. Columns follow Table~\ref{tab:pstierquality}; systems are
+ordered as in Table~\ref{tab:fullspoof} for direct comparison across
+the full-spoof and partial-spoof tiers.}
+\label{tab:pssystemquality}
+\small
+\begin{tabular}{lrcccc}
+\toprule
+\textbf{System} & \textbf{Utt.} & \textbf{WER (\%)} & \textbf{CER (\%)} & \textbf{NISQA} & \textbf{SIM} \\
+\midrule
+Fish-Speech (FishGram) & 1{,}317  & 6.03 & 3.12 & 3.39 & 0.863 \\
+Qwen3-TTS               & 1{,}565  & 4.62 & 2.37 & 3.32 & 0.850 \\
+OpenVoice v2            &    53   & 3.49 & 1.50 & 3.09 & 0.898 \\
+Chatterbox              & 3{,}423  & 5.85 & 3.17 & 3.40 & 0.807 \\
+OuteTTS                 & 1{,}073  & 4.70 & 2.38 & 3.35 & 0.869 \\
+OmniVoice               & 10{,}990 & 5.27 & 2.77 & 3.42 & 0.762 \\
+\midrule
+\textbf{Total}          & \textbf{18{,}421} & 5.34 & 2.81 & 3.40 & 0.791 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+OpenVoice shows the highest partial-spoof SIM (0.898) despite being the
+weakest full-spoof cloner by a wide margin (0.388, Table~\ref{tab:fullspoof}).
+This reflects a selection effect. Only 53 of
+OpenVoice's clones ever clear the 0.60 ECAPA gate that admits a clone
+into the partial-spoof tier at all (Methods). The samples that
+survive are its best clones by construction, not a representative
+sample of its output.
+
 \FloatBarrier
 \subsection*{Bonafide transcription reliability}
 
@@ -1051,13 +1118,36 @@ Venezuelan ($n{=}4$) &   4 & 8.33 & 1.61 \\
 \subsection*{Augmentation fidelity}
 
 The performed codec-based augmentation process was verified against its
-configured target weights (Parameter summary) on the released corpus:
-every one of the six codecs occurs within 0.2 percentage points of its
-target proportion. AMR-NB and Speex, the two narrowband codecs in the
-mix, were additionally confirmed spectrally to carry no energy above
-\SI{4}{\kilo\hertz}, consistent with their native encoding bandwidth and
-confirming that the codec round-trip degrades the signal as intended
-rather than passing it through unaltered.
+configured target weights (Parameter summary) on the released corpus.
+Table~\ref{tab:codecfidelity} reports the target and realized
+proportion for each of the six codecs; the largest observed gap is
+\SI{0.2}{percentage points} (G.711 $\mu$-law), every other codec lands
+within \SI{0.1}{percentage points} of its target. AMR-NB and Speex, the
+two narrowband codecs in the mix, were additionally confirmed
+spectrally to carry no energy above \SI{4}{\kilo\hertz}, consistent
+with their native encoding bandwidth and confirming that the codec
+round-trip degrades the signal as intended rather than passing it
+through unaltered.
+
+\begin{table}[H]
+\centering
+\caption{Realized versus configured codec mix weights on the released
+corpus (Parameter summary lists the configured targets).}
+\label{tab:codecfidelity}
+\small
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Codec} & \textbf{Target (\%)} & \textbf{Realized (\%)} & \textbf{Gap (pp)} \\
+\midrule
+G.711 $\mu$-law & 25.0 & 24.8 & $-0.2$ \\
+G.711 A-law     & 15.0 & 14.9 & $-0.1$ \\
+AMR-NB          & 20.0 & 20.1 & $+0.1$ \\
+Speex           &  5.0 &  5.1 & $+0.1$ \\
+Opus            & 25.0 & 24.9 & $-0.1$ \\
+AAC             & 10.0 & 10.1 & $+0.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \FloatBarrier
 \subsection*{Baseline anti-spoofing detection}
@@ -1072,14 +1162,19 @@ classification head, released on Hugging Face under the
 Speech-Arena-2025 organization behind the Speech DF Arena leaderboard
 \citep{dowerah2025speechdfarena}. Its backbone's self-supervised
 pretraining is multilingual and includes Spanish among its 128
-pretraining languages. No published source documents what data this
-specific checkpoint's anti-spoofing classification head was fine-tuned
-on. What is verifiable is that the fourteen benchmark datasets the
-Speech DF Arena leaderboard is built around are exclusively English or
-Chinese, with no Spanish-language set among them, and that MARSA's
-six TTS systems postdate every attack-generation method named in
-those fourteen datasets. Whatever this checkpoint saw during
-anti-spoofing fine-tuning, it was not fine-tuned on MARSA. The
+pretraining languages. No published source states this specific
+checkpoint's own anti-spoofing training data directly. The closest
+documented proxy is a related paper from the same research group,
+which describes a training recipe explicitly built to follow the
+Speech DF Arena approach: ASVspoof2019, ASVspoof2024, CodecFake,
+LibriSeVoc, DFADD, CTRSVDD, SpoofCeleb, MLAAD, and EnvSDD
+\citep{raptor2026}. Of these nine, only MLAAD includes Spanish, at a
+single accent out of its 54 languages; the remaining eight are English
+or Chinese. None of the nine include any of MARSA's six TTS systems,
+all released in 2024 or later. Whatever this checkpoint saw during
+anti-spoofing fine-tuning, it did not see MARSA, and at most a thin,
+single-accent slice of Spanish through MLAAD, nothing resembling the
+seven-accent, cross-continental design this corpus targets. The
 other three models correspond to LFCC-LCNN detectors with P2SGrad loss
 \citep{wang2021comparative}, differing only in their pooling back-end
 (LSTM-sum, fixed-length trim/pad, and self-attention), trained by a
@@ -1090,11 +1185,16 @@ All four are evaluated using the $\times$2 augmentation tier's
 speaker-disjoint development (30{,}808 clips, 155 speakers) and
 evaluation (27{,}808 clips, 155 speakers) splits, with zero speaker
 overlap against the training partition (corpus audit, this section).
-Every detector scores the same \SI{4.0375}{\second} (64{,}600-sample)
-window per clip, DF-Arena's own architecture-mandated input length. This
-ensures architectures with no fixed-length requirement of their own are
-compared under one protocol rather than each choosing its most
-favorable crop. Table~\ref{tab:baseline} reports pooled Equal Error rates (EER) (every
+DF-Arena's own feature extractor requires an input of exactly
+\SI{4.0375}{\second} (64{,}600 samples). It truncates a longer clip to
+a centered window of that length and tiles a shorter clip to fill it.
+The three LCNN detectors carry no such requirement on their own and
+could in principle score each clip in full. Applying DF-Arena's fixed
+window to all four detectors instead, rather than letting the LCNN
+models see more of the clip than DF-Arena does, keeps the input every
+detector receives identical. A difference in EER across detectors then
+reflects a difference in the detectors, not a difference in how much of
+each clip they were allowed to see. Table~\ref{tab:baseline} reports pooled Equal Error rates (EER) (every
 clip) and strict EER (restricted to test clips whose source sentence
 does not appear in training, joined via \texttt{source\_file}) for both
 splits.
@@ -1124,8 +1224,10 @@ LCNN LSTM-sum \citep{wang2021comparative} & 45.826\% & 56.151\% & 41.208\% & 60.
 Two patterns emerge from the results. First, the modern self-supervised detector
 generalizes far better than the classical hand-crafted-feature family.
 DF-Arena's eval EER (10.166\%) highly outperforms the best LCNN
-variant's (18.761\%), despite never having seen Spanish speech or any of these
-six TTS systems during training. Despite the superior performance of the DF-Arena-based model, the results are still far to what is required for a secure production-ready SASV~\citep{Wu2026wildspoof} or anti-spoofing system~\citep{dowerah2025speechdfarena}. 
+variant's (18.761\%), despite no confirmed exposure to Spanish
+anti-spoofing data beyond, at most, MLAAD's single-accent slice, and no
+exposure at all to any of these six TTS systems during training.
+Despite the superior performance of the DF-Arena-based model, the results are still far to what is required for a secure production-ready SASV~\citep{Wu2026wildspoof} or anti-spoofing system~\citep{dowerah2025speechdfarena}.
 
 Second, regarding the LCNN back-ends, self-attention pooling was the strongest of the three architectures on
 its own matched Spanish test set, and it remains the strongest here,
@@ -1141,28 +1243,36 @@ speaker similarity (0.720) and the lowest WER (1.46\%) of the six
 attacks, consistent with attack realism
 predicting detectability rather than any system-specific artifact.
 
-Partial-spoof EER is higher for every detector than the observed one for full spoof utterances, as expected. The results range from 28 to 51\%
-across tiers and detectors on clips with at least 30 samples, close
-enough to chance that the corpus's design should be used to interrogate
-why rather than let the number stand unexamined. Measuring directly
-from the released splice-boundary metadata: \SI{7.7}{\percent} of
-partial-spoof clips have no spliced word overlapping the
-\SI{4.0375}{\second} evaluation window at all, rising to
-\SI{12.4}{\percent} for the single-word W1 tier (one splice, one chance
-of falling inside the window) and falling to \SI{0.5}{\percent} for W3
-(three splices, three chances). These clips cannot be correctly
-classified as spoof by any detector, independent of quality. This
-crop-miss fraction does not account for the full magnitude of the
-near-chance result on its own. Genuine attack difficulty and
-scoring-window artifact therefore both contribute. Separating the two needs a
-sliding-window or whole-utterance scoring protocol, standard practice
-for inputs longer than a model's native window, which is left to future
-evaluation work on this corpus, alongside training a detector on MARSA
-itself, broken down by attack system, partial-spoof tier, accent group,
-and augmentation condition, together with a cross-condition matrix
-(train on one condition, test on another) that would isolate whether a
-detector has learned the boundary-jitter shortcut or the underlying
-synthesis artifact.
+Partial-spoof EER is higher for every detector than the corresponding
+full-spoof EER, as expected. Across tiers and detectors, on clips with
+at least 30 samples, the results range from 28\% to 51\%, close enough
+to chance that the corpus's design should be used to investigate why
+rather than let the number stand unexamined.
+
+Part of the answer is measurable directly from the released
+splice-boundary metadata. A partial-spoof clip can only be correctly
+classified as spoof if the spliced word actually falls inside the
+window a detector scores. Overall, \SI{7.7}{\percent} of partial-spoof
+clips have no spliced word overlapping the \SI{4.0375}{\second}
+evaluation window at all. This crop-miss rate is not uniform across
+tiers. It rises to \SI{12.4}{\percent} for the single-word W1 tier,
+where one splice gives only one chance of landing inside the window,
+and falls to \SI{0.5}{\percent} for W3, where three splices give three
+chances. A clip in the crop-miss group cannot be correctly classified
+as spoof by any detector, independent of its quality.
+
+This crop-miss fraction alone does not account for the full magnitude
+of the near-chance result. Genuine attack difficulty and the
+scoring-window artifact therefore both contribute, in proportions this
+evaluation cannot separate. Doing so needs a sliding-window or
+whole-utterance scoring protocol, standard practice for inputs longer
+than a model's native window. That measurement, together with training
+a detector on MARSA itself, broken down by attack system,
+partial-spoof tier, accent group, and augmentation condition, and a
+cross-condition matrix (train on one condition, test on another) that
+would isolate whether a detector has learned the boundary-jitter
+shortcut or the underlying synthesis artifact, is left to future
+evaluation work on this corpus.
 
 % =====================================================================
 \FloatBarrier
@@ -1215,9 +1325,17 @@ research corpus. It must not be used to impersonate real individuals.
 Note that the released audio is deliberately \emph{not} watermarked (see
 Methods). The two systems that watermark by default were reverted to
 watermark-free generation, making the corpus test synthesis-artifact
-detection rather than watermark detection. \PENDING{Confirm the licensing
-terms of each constituent TTS system permit redistribution of generated
-audio, and state the corpus license.}
+detection rather than watermark detection. MARSA is released under a
+Creative Commons Attribution 4.0 International (CC~BY~4.0) license,
+matching the license of the upstream HABLA corpus \citep{habla} it
+partly derives from. Part of the bonafide pool additionally derives
+from Mozilla Common Voice \citep{commonvoice}, released under CC0;
+Mozilla's own data-stewardship guidance asks that Common Voice audio
+not be mirrored independently of a derivative use such as this one, a
+request this release respects by distributing that audio only as part
+of the processed MARSA corpus, not as a standalone re-export.
+\PENDING{Confirm the licensing terms of each of the six constituent TTS
+systems permit redistribution of their generated audio.}
 
 % =====================================================================
 \FloatBarrier
@@ -1247,20 +1365,36 @@ unprocessed bonafide audio should additionally consult that resource.
 % =====================================================================
 \FloatBarrier
 \section*{Acknowledgements}
-\PENDING{Funding sources, compute provider, and advisor acknowledgement.}
+This work was supported by Universidad de los Andes, which also
+provided the computing infrastructure used to construct and validate
+the corpus. The authors additionally thank the Vicomtech Foundation for
+its support in reviewing this manuscript.
 
 \FloatBarrier
 \section*{Author Contributions}
-\PENDING{Per-author contribution statement (CRediT taxonomy).}
+T.A.B.\ conceived the study, designed and implemented the corpus
+construction pipeline, conducted the technical validation and baseline
+experiments, and wrote the original draft. J.C.V.C.\ and R.F.M.\
+contributed to the methodology and corpus design and reviewed the
+manuscript. M.D.C.A.\ contributed to data preparation and analysis and
+reviewed the manuscript. All authors reviewed and approved the final
+manuscript.
 
 \FloatBarrier
 \section*{Ethics Declaration}
 The bonafide recordings originate from the HABLA corpus of
 consenting-speaker Spanish speech \citep{habla}, and MARSA introduces no
-new human-subjects data collection beyond that source. \PENDING{State the
-consent and ethics basis of the upstream bonafide corpus, its
-redistribution license, and confirm the derivative-redistribution chain
-end to end.} The synthetic tiers are produced by applying open
+new human-subjects data collection beyond that source.
+\PENDING{State the consent and ethics basis of the upstream bonafide
+corpus.} The redistribution chain has been verified end to end. The
+Argentine, Peruvian, and part of the Colombian and Chilean recordings
+trace to OpenSLR, each released under a Creative Commons Attribution
+license. HABLA itself repackages and redistributes that material under
+CC~BY~4.0 \citep{habla}. The remaining bonafide speakers were added by
+this project from Mozilla Common Voice \citep{commonvoice}, released
+under CC0. MARSA is released under CC~BY~4.0, satisfying the
+attribution requirement HABLA's own license imposes; CC0 material may
+freely be incorporated into a more restrictive downstream license. The synthetic tiers are produced by applying open
 text-to-speech systems to this corpus for the express purpose of
 \emph{defensive} anti-spoofing research. To keep that purpose intact,
 the released audio is watermark-free by design (see Methods). The two
@@ -1321,6 +1455,10 @@ evaluation plan,'' \emph{arXiv:2201.10283}, 2022.
 J.-w.~Jung \emph{et al.},
 ``SASV 2022: The first spoofing-aware speaker verification challenge,''
 in \emph{Proc. Interspeech}, 2022. \emph{arXiv:2203.14732}.
+
+\bibitem{Wu2026wildspoof}
+Y.~Wu, J.-w.~Jung, H.-j.~Shim, X.~Cheng, and X.~Wang,
+``WildSpoof challenge evaluation plan,'' \emph{arXiv:2508.16858}, 2025.
 
 \bibitem{raptor2026}
 A.~Kulkarni, S.~Dowerah, A.~Kulkarni, T.~Alum\"{a}e, and M.~Magimai~Doss,
