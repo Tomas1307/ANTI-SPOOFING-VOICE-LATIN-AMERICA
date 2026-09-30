@@ -2,9 +2,10 @@
 % MARSA: Multi-accent Audio Recordings for Spanish Anti-spoofing
 % Data Descriptor manuscript. Target venue: Scientific Data (Nature).
 %
-% SELF-CONTAINED single file: the bibliography is embedded below as a
-% manual thebibliography environment, so this compiles in Overleaf with
-% ONE paste and ONE run of pdflatex (no bibtex/biber step required).
+% The bibliography is read from a single external BibTeX file (see the
+% \bibliography command at the end), so compilation needs the usual
+% pdflatex, bibtex, pdflatex, pdflatex sequence (Overleaf does this
+% automatically).
 %
 % Structure follows the Scientific Data Data Descriptor template:
 %   Background & Summary / Methods / Data Records / Technical Validation
@@ -1117,11 +1118,11 @@ Venezuelan ($n{=}4$) &   4 & 8.33 & 1.61 \\
 \FloatBarrier
 \subsection*{Augmentation fidelity}
 
-The performed codec-based augmentation process was verified against its
-configured target weights (Parameter summary) on the released corpus.
-Table~\ref{tab:codecfidelity} reports the target and realized
-proportion for each of the six codecs; the largest observed gap is
-\SI{0.2}{percentage points} (G.711 $\mu$-law), every other codec lands
+The realized codec mix of the augmented corpus was verified against its
+configured target weights (Parameter summary).
+Table~\ref{tab:codecfidelity} reports the target and realized proportion
+of each of the six codecs. The largest observed gap is
+\SI{0.2}{percentage points} (G.711 $\mu$-law), and every other codec lands
 within \SI{0.1}{percentage points} of its target. AMR-NB and Speex, the
 two narrowband codecs in the mix, were additionally confirmed
 spectrally to carry no energy above \SI{4}{\kilo\hertz}, consistent
@@ -1367,8 +1368,7 @@ unprocessed bonafide audio should additionally consult that resource.
 \section*{Acknowledgements}
 This work was supported by Universidad de los Andes, which also
 provided the computing infrastructure used to construct and validate
-the corpus. The authors additionally thank the Vicomtech Foundation for
-its support in reviewing this manuscript.
+the corpus. This paper was also partially funded by the Department of Economic Development and Competitiveness of the Basque Government (Spri Group) through funding for the VOILET project (ZL-2026/00411).
 
 \FloatBarrier
 \section*{Author Contributions}
@@ -1409,282 +1409,8 @@ deception, and it is released to strengthen detection, not evasion.
 The authors declare no competing interests.
 
 % =====================================================================
-% Embedded bibliography (self-contained; no external .bib needed).
+% Bibliography (single external .bib file).
 % =====================================================================
 \FloatBarrier
-\begin{thebibliography}{99}
-
-\bibitem{asvspoof2019}
-M.~Todisco \emph{et al.},
-``ASVspoof 2019: Future horizons in spoofed and fake audio detection,''
-in \emph{Proc. Interspeech}, 2019, pp.~1008--1012.
-
-\bibitem{asvspoof2021}
-J.~Yamagishi \emph{et al.},
-``ASVspoof 2021: Accelerating progress in spoofed and deepfake speech
-detection,'' in \emph{Proc. ASVspoof 2021 Workshop}, 2021.
-
-\bibitem{asvspoof5}
-X.~Wang \emph{et al.},
-``ASVspoof 5: Crowdsourced speech data, deepfakes, and adversarial
-attacks at scale,'' in \emph{Proc. ASVspoof Workshop}, 2024.
-\emph{arXiv:2408.08739}.
-
-\bibitem{rawnet2}
-H.~Tak \emph{et al.},
-``End-to-end anti-spoofing with RawNet2,''
-in \emph{Proc. ICASSP}, 2021.
-
-\bibitem{tak2022ssl}
-H.~Tak \emph{et al.},
-``Automatic speaker verification spoofing and deepfake detection using
-wav2vec 2.0 and data augmentation,''
-in \emph{Proc. Odyssey}, 2022, pp.~112--119.
-
-\bibitem{aasist}
-J.-w.~Jung \emph{et al.},
-``AASIST: Audio anti-spoofing using integrated spectro-temporal graph
-attention networks,'' in \emph{Proc. ICASSP}, 2022.
-
-\bibitem{sasvevalplan2022}
-J.-w.~Jung \emph{et al.},
-``SASV challenge 2022: A spoofing aware speaker verification challenge
-evaluation plan,'' \emph{arXiv:2201.10283}, 2022.
-
-\bibitem{sasv2022}
-J.-w.~Jung \emph{et al.},
-``SASV 2022: The first spoofing-aware speaker verification challenge,''
-in \emph{Proc. Interspeech}, 2022. \emph{arXiv:2203.14732}.
-
-\bibitem{Wu2026wildspoof}
-Y.~Wu, J.-w.~Jung, H.-j.~Shim, X.~Cheng, and X.~Wang,
-``WildSpoof challenge evaluation plan,'' \emph{arXiv:2508.16858}, 2025.
-
-\bibitem{raptor2026}
-A.~Kulkarni, S.~Dowerah, A.~Kulkarni, T.~Alum\"{a}e, and M.~Magimai~Doss,
-``Do compact SSL backbones matter for audio deepfake detection? A
-controlled study with RAPTOR,'' in \emph{Proc. Interspeech}, 2026.
-\emph{arXiv:2603.06164}.
-
-\bibitem{dowerah2025speechdfarena}
-S.~Dowerah \emph{et al.},
-``Speech DF Arena: A leaderboard for speech deepfake detection models,''
-\emph{arXiv:2509.02859}, 2025.
-
-\bibitem{babu2022xlsr}
-A.~Babu \emph{et al.},
-``XLS-R: Self-supervised cross-lingual speech representation learning
-at scale,'' in \emph{Proc. Interspeech}, 2022, pp.~2278--2282.
-
-\bibitem{wang2021comparative}
-X.~Wang and J.~Yamagishi,
-``A comparative study on recent neural spoofing countermeasures for
-synthetic speech detection,'' in \emph{Proc. Interspeech}, 2021,
-pp.~4259--4263.
-
-\bibitem{muller2026erodingtrust}
-N.~M.~M\"uller and W.~H.~Choong,
-``Eroding trust in real speech: A large-scale study of human audio
-deepfake perception,'' \emph{arXiv:2605.26136}, 2026.
-
-\bibitem{muller2022generalize}
-N.~M.~M\"uller \emph{et al.},
-``Does audio deepfake detection generalize?''
-in \emph{Proc. Interspeech}, 2022, pp.~2783--2787.
-
-\bibitem{muller2024harder}
-N.~M.~M\"uller \emph{et al.},
-``Harder or different? Understanding generalization of audio deepfake
-detection,'' in \emph{Proc. Interspeech}, 2024.
-
-\bibitem{habla}
-P.~A.~Tamayo-Fl\'orez, R.~Manrique, and B.~Pereira Nunes,
-``HABLA: A dataset of Latin American Spanish accents for voice
-anti-spoofing,'' in \emph{Proc. Interspeech}, 2023, pp.~1963--1967.
-
-\bibitem{commonvoice}
-R.~Ardila \emph{et al.},
-``Common Voice: A massively-multilingual speech corpus,''
-in \emph{Proc. 12th Language Resources and Evaluation Conf. (LREC)},
-2020, pp.~4218--4222.
-
-\bibitem{forbes2019ceofraud}
-J.~Damiani,
-``A voice deepfake was used to scam a CEO out of \$243,000,''
-\emph{Forbes}, Sep. 2019.
-\url{https://www.forbes.com/sites/jessedamiani/2019/09/03/a-voice-deepfake-was-used-to-scam-a-ceo-out-of-243000/}
-
-\bibitem{europol2022deepfakes}
-Europol Innovation Lab,
-``Facing reality? Law enforcement and the challenge of deepfakes,''
-Europol, 2022.
-\url{https://www.europol.europa.eu/cms/sites/default/files/documents/Europol_Innovation_Lab_Facing_Reality_Law_Enforcement_And_The_Challenge_Of_Deepfakes.pdf}
-
-\bibitem{destefano2023testimony}
-J.~DeStefano,
-``Written testimony,''
-U.S. Senate Judiciary Committee, Subcommittee on Human Rights and the
-Law, Jun. 2023.
-\url{https://www.judiciary.senate.gov/imo/media/doc/2023-06-13\%20PM\%20-\%20Testimony\%20-\%20DeStefano.pdf}
-
-\bibitem{infobae2026whatsapp}
-Infobae,
-``\,`Mam\'a, necesito ayuda': la nueva estafa con IA que clona la voz de
-tus hijos con solo 3 segundos de audio,''
-Mar. 2026.
-\url{https://www.infobae.com/tecno/2026/03/26/mama-necesito-ayuda-la-nueva-estafa-con-ia-que-clona-la-voz-de-tus-hijos-con-solo-3-segundos-de-audio/}
-
-\bibitem{infobae2025colombia}
-Infobae,
-``Incrementan las estafas con voces clonadas con inteligencia
-artificial en diciembre: cinco claves para detectarlas,''
-Dec. 2025.
-\url{https://www.infobae.com/colombia/2025/12/03/incrementan-las-estafas-con-voces-clonadas-con-inteligencia-artificial-en-diciembre-cinco-claves-para-detectarlas/}
-
-\bibitem{yi2021had}
-J.~Yi \emph{et al.},
-``Half-truth: A partially fake audio detection dataset,''
-in \emph{Proc. Interspeech}, 2021, pp.~1654--1658.
-
-\bibitem{add2022}
-J.~Yi \emph{et al.},
-``ADD 2022: The first audio deep synthesis detection challenge,''
-in \emph{Proc. ICASSP}, 2022. \emph{arXiv:2202.08433}.
-
-\bibitem{kantharuban2023dialectgap}
-A.~Kantharuban, I.~Vuli\'c, and A.~Korhonen,
-``Quantifying the dialect gap and its correlates across languages,''
-in \emph{Findings of EMNLP}, 2023.
-
-\bibitem{nacimiento2024biases}
-E.~Nacimiento-Garc\'ia, H.~S.~D\'iaz-Kaas-Nielsen, and
-C.~S.~Gonz\'alez-Gonz\'alez,
-``Gender and accent biases in AI-based tools for Spanish,''
-\emph{Applied Sciences}, vol.~14, no.~11, p.~4734, 2024.
-
-\bibitem{zuluaga2023commonaccent}
-J.~Zuluaga-Gomez, S.~Ahmed, D.~Visockas, and C.~Subakan,
-``CommonAccent: Exploring large acoustic pretrained models for accent
-classification based on Common Voice,''
-in \emph{Proc. Interspeech}, 2023, pp.~5291--5295.
-
-\bibitem{zhang2023partialspoof}
-L.~Zhang, X.~Wang, E.~Cooper, N.~Evans, and J.~Yamagishi,
-``The PartialSpoof database and countermeasures for the detection of
-short fake speech segments embedded in an utterance,''
-\emph{IEEE/ACM Trans. Audio, Speech, Lang. Process.}, vol.~31,
-pp.~813--825, 2023.
-
-\bibitem{li2025hqmpsd}
-M.~Li \emph{et al.},
-``HQ-MPSD: A multilingual artifact-controlled benchmark for partial
-deepfake speech detection,'' \emph{arXiv:2512.13012}, 2025.
-
-\bibitem{hispaspoof}
-M.~Risques, K.~Bhagtani, A.~K.~S.~Yadav, and E.~J.~Delp,
-``HISPASpoof: A new dataset for Spanish speech forensics,''
-in \emph{Proc. ICASSP}, 2026. \emph{arXiv:2509.09155}.
-
-\bibitem{mlaad}
-N.~M.~M\"uller \emph{et al.},
-``MLAAD: The multi-language audio anti-spoofing dataset,''
-in \emph{Proc. IJCNN}, 2024. \emph{arXiv:2401.09512}.
-
-\bibitem{speechfake}
-W.~Huang, Y.~Gu, Z.~Wang, H.~Zhu, and Y.~Qian,
-``SpeechFake: A large-scale multilingual speech deepfake dataset
-incorporating cutting-edge generation methods,''
-in \emph{Proc. ACL}, 2025. \emph{arXiv:2507.21463}.
-
-\bibitem{negroni2024splicing}
-V.~Negroni, D.~Salvi, P.~Bestagini, and S.~Tubaro,
-``Analyzing the impact of splicing artifacts in partially fake speech
-signals,'' in \emph{Proc. ASVspoof 5 Workshop}, 2024.
-
-\bibitem{huang2024detectable}
-S.-F.~Huang \emph{et al.},
-``Detecting the undetectable: Assessing the efficacy of current spoof
-detection methods against seamless speech edits,''
-in \emph{Proc. IEEE SLT}, 2024.
-
-\bibitem{luong2024llama}
-H.-T.~Luong, H.~Li, L.~Zhang, K.~A.~Lee, and E.~S.~Chng,
-``LlamaPartialSpoof: An LLM-driven fake speech dataset simulating
-disinformation generation,'' in \emph{Proc. ICASSP}, 2025.
-
-\bibitem{fishspeech}
-S.~Liao \emph{et al.},
-``Fish-Speech: Leveraging large language models for advanced
-multilingual text-to-speech synthesis,'' \emph{arXiv:2411.01156}, 2024.
-
-\bibitem{qwen3tts}
-Qwen Team, Alibaba Group,
-``Qwen3-TTS technical report,'' \emph{arXiv:2601.15621}, 2026.
-
-\bibitem{openvoice}
-Z.~Qin, W.~Zhao, X.~Yu, and X.~Sun,
-``OpenVoice: Versatile instant voice cloning,''
-\emph{arXiv:2312.01479}, 2024.
-
-\bibitem{chatterbox}
-Resemble AI,
-``Chatterbox: Open-source text-to-speech with neural watermarking,''
-software release, 2025.
-\url{https://github.com/resemble-ai/chatterbox}
-
-\bibitem{outetts}
-OuteAI,
-``OuteTTS: LLM-based text-to-speech via discrete audio tokens,''
-software release, 2025. \url{https://huggingface.co/OuteAI}
-
-\bibitem{omnivoice}
-H.~Zhu \emph{et al.},
-``OmniVoice: Towards omnilingual zero-shot text-to-speech with diffusion
-language models,'' \emph{arXiv:2604.00688}, 2026.
-
-\bibitem{cosyvoice}
-Z.~Du \emph{et al.},
-``CosyVoice 3: Towards in-the-wild speech generation via scaling-up and
-post-training,'' \emph{arXiv:2505.17589}, 2025.
-
-\bibitem{ecapa}
-B.~Desplanques, J.~Thienpondt, and K.~Demuynck,
-``ECAPA-TDNN: Emphasized channel attention, propagation and aggregation
-in TDNN based speaker verification,''
-in \emph{Proc. Interspeech}, 2020, pp.~3830--3834.
-
-\bibitem{nisqa}
-G.~Mittag, B.~Naderi, A.~Chehadi, and S.~M\"oller,
-``NISQA: A deep CNN-self-attention model for multidimensional speech
-quality prediction with crowdsourced datasets,''
-in \emph{Proc. Interspeech}, 2021, pp.~2127--2131.
-
-\bibitem{tdt}
-H.~Xu, F.~Jia, S.~Majumdar, S.~Watanabe, and B.~Ginsburg,
-``Efficient sequence transduction by jointly predicting tokens and
-durations,'' in \emph{Proc. ICML}, 2023.
-
-\bibitem{parakeet}
-NVIDIA NeMo Team,
-``Parakeet-TDT-0.6B-v3: Multilingual token-and-duration transducer ASR,''
-model release, 2024.
-\url{https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3}
-
-\bibitem{mfa}
-M.~McAuliffe, M.~Socolof, S.~Mihuc, M.~Wagner, and M.~Sonderegger,
-``Montreal Forced Aligner: Trainable text-speech alignment using Kaldi,''
-in \emph{Proc. Interspeech}, 2017, pp.~498--502.
-
-\bibitem{musan}
-D.~Snyder, G.~Chen, and D.~Povey,
-``MUSAN: A music, speech, and noise corpus,''
-\emph{arXiv:1510.08484}, 2015.
-
-\bibitem{ko2017rir}
-T.~Ko, V.~Peddinti, D.~Povey, M.~L.~Seltzer, and S.~Khudanpur,
-``A study on data augmentation of reverberant speech for robust speech
-recognition,'' in \emph{Proc. ICASSP}, 2017.
-
-\end{thebibliography}
-
+\bibliography{bibliografia}
 \end{document}

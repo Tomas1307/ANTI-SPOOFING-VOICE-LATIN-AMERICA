@@ -8,8 +8,10 @@ Covers the three base tiers (bonafide, full-spoof, partial-spoof):
     six attack pipelines' validated_samples.json (falling back to
     generation_metadata.json), both of which already carry these fields
     per sample -- no re-computation needed.
-  - Partial-spoof: duration read from the released samples.csv files
-    (total_duration_s column), one per (attack, partition) cell.
+  - Partial-spoof: duration and word count read from the released
+    samples.csv files (total_duration_s and total_words columns), one per
+    (attack, partition) cell, grouped by the 'attack' column to produce a
+    per-system breakdown alongside the tier aggregate.
 
 Augmentation tiers are not scanned: augmentation (RIR/noise addition,
 codec re-encoding) does not change utterance duration, so augmented-tier
@@ -35,7 +37,7 @@ import argparse
 import csv
 import json
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import soundfile as sf
 from loguru import logger
@@ -62,6 +64,22 @@ FULLSPOOF_SYSTEMS: List[Tuple[Path, str]] = [
 ]
 
 PARTIAL_SPOOF_SAMPLES_GLOB = "*/*/samples.csv"
+
+# Display names for the six generating systems contributing to the
+# partial-spoof tier, keyed by the raw 'attack' column value written by
+# OutputFormatter (step_07_format_output.py). NOTE: unlike the ASVspoof-style
+# protocol files (normalized corpus-wide by normalize_attack_ids.py), the
+# 'attack' column here still carries 'qwen3tts' for Qwen rather than 'qwen'.
+# Confirmed directly against samples.csv on ml-server03, matching the same
+# inconsistency documented in compute_partial_spoof_quality_by_system.py.
+PARTIAL_SPOOF_SYSTEM_SLUGS: Dict[str, str] = {
+    "fishgram": "Fish-Speech (FishGram)",
+    "qwen3tts": "Qwen3-TTS",
+    "openvoice": "OpenVoice v2",
+    "chatterbox": "Chatterbox",
+    "outetts": "OuteTTS",
+    "omnivoice": "OmniVoice",
+}
 
 
 class CorpusDurationStatsComputer:
@@ -109,7 +127,7 @@ class CorpusDurationStatsComputer:
         """
         bonafide_stat = self._compute_bonafide_stats()
         fullspoof_systems, fullspoof_tier = self._compute_fullspoof_stats()
-        partial_spoof_stat = self._compute_partial_spoof_stats()
+        partial_spoof_systems, partial_spoof_stat = self._compute_partial_spoof_stats()
 
         per_tier = [bonafide_stat, fullspoof_tier, partial_spoof_stat]
         base_total_hours = sum(t.total_hours for t in per_tier)
@@ -117,6 +135,7 @@ class CorpusDurationStatsComputer:
         report = CorpusDurationReport(
             per_tier=per_tier,
             per_fullspoof_system=fullspoof_systems,
+            per_partial_spoof_system=partial_spoof_systems,
             base_corpus_total_hours=base_total_hours,
             notes=[
                 "Augmentation tiers (x2, x3, x5, x10) are not scanned: "
@@ -238,29 +257,76 @@ class CorpusDurationStatsComputer:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    def _compute_partial_spoof_stats(self) -> TierDurationStat:
-        """Compute aggregate partial-spoof duration from released samples.csv files.
+    def _compute_partial_spoof_stats(
+        self,
+    ) -> Tuple[List[SystemDescriptionStat], TierDurationStat]:
+        """Compute per-system and aggregate partial-spoof statistics.
+
+        Reads every released samples.csv file once, grouping rows by the
+        'attack' column (PARTIAL_SPOOF_SYSTEM_SLUGS) to produce a per-system
+        breakdown alongside the tier aggregate, mirroring
+        _compute_fullspoof_stats.
 
         Returns:
-            TierDurationStat for the partial-spoof tier.
+            Tuple of (per-system stats list, aggregate TierDurationStat).
         """
         csv_paths = sorted(self.partial_spoof_root.glob(PARTIAL_SPOOF_SAMPLES_GLOB))
         logger.info(f"Partial spoof: found {len(csv_paths)} samples.csv files under {self.partial_spoof_root}.")
 
-        durations: List[float] = []
+        durations_by_slug: Dict[str, List[float]] = {
+            slug: [] for slug in PARTIAL_SPOOF_SYSTEM_SLUGS
+        }
+        word_counts_by_slug: Dict[str, List[int]] = {
+            slug: [] for slug in PARTIAL_SPOOF_SYSTEM_SLUGS
+        }
+        unmatched = 0
+
         for csv_path in csv_paths:
             with open(csv_path, "r", encoding="utf-8") as f:
                 for row in csv.DictReader(f):
-                    if "total_duration_s" in row and row["total_duration_s"]:
-                        durations.append(float(row["total_duration_s"]))
+                    slug = row.get("attack", "")
+                    if slug not in durations_by_slug:
+                        unmatched += 1
+                        continue
+                    if row.get("total_duration_s"):
+                        durations_by_slug[slug].append(float(row["total_duration_s"]))
+                    if row.get("total_words"):
+                        word_counts_by_slug[slug].append(int(row["total_words"]))
 
-        return TierDurationStat(
+        if unmatched:
+            logger.warning(
+                f"Partial spoof: {unmatched} samples.csv rows had an unrecognized "
+                "'attack' value and were excluded from the per-system breakdown."
+            )
+
+        per_system: List[SystemDescriptionStat] = []
+        all_durations: List[float] = []
+        all_word_counts: List[int] = []
+
+        for slug, display_name in PARTIAL_SPOOF_SYSTEM_SLUGS.items():
+            durations = durations_by_slug[slug]
+            word_counts = word_counts_by_slug[slug]
+            all_durations.extend(durations)
+            all_word_counts.extend(word_counts)
+
+            per_system.append(
+                SystemDescriptionStat(
+                    system=display_name,
+                    utterance_count=len(durations),
+                    avg_duration_seconds=(sum(durations) / len(durations)) if durations else 0.0,
+                    avg_word_count=(sum(word_counts) / len(word_counts)) if word_counts else 0.0,
+                    total_hours=sum(durations) / 3600.0,
+                )
+            )
+
+        tier_stat = TierDurationStat(
             tier="Partial spoof",
-            utterance_count=len(durations),
-            total_hours=sum(durations) / 3600.0,
-            avg_duration_seconds=(sum(durations) / len(durations)) if durations else 0.0,
-            avg_word_count=None,
+            utterance_count=len(all_durations),
+            total_hours=sum(all_durations) / 3600.0,
+            avg_duration_seconds=(sum(all_durations) / len(all_durations)) if all_durations else 0.0,
+            avg_word_count=(sum(all_word_counts) / len(all_word_counts)) if all_word_counts else None,
         )
+        return per_system, tier_stat
 
     def _save_report(self, report: CorpusDurationReport) -> None:
         """Write the report to disk as JSON.
@@ -293,6 +359,15 @@ class CorpusDurationStatsComputer:
         logger.info("-" * 70)
         logger.info("Per full-spoof system:")
         for stat in report.per_fullspoof_system:
+            logger.info(
+                f"  {stat.system:24s} n={stat.utterance_count:7d}  "
+                f"hours={stat.total_hours:7.2f}  "
+                f"avg_dur_s={stat.avg_duration_seconds:6.2f}  "
+                f"avg_words={stat.avg_word_count:.1f}"
+            )
+        logger.info("-" * 70)
+        logger.info("Per partial-spoof system:")
+        for stat in report.per_partial_spoof_system:
             logger.info(
                 f"  {stat.system:24s} n={stat.utterance_count:7d}  "
                 f"hours={stat.total_hours:7.2f}  "

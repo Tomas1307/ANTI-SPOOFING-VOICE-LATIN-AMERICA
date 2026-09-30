@@ -1,623 +1,563 @@
-% =====================================================================
-% HABLA-Spoof -- Verified Reference Library
-% Target venue: IEEE/ACM Transactions on Audio, Speech and Language
-%                Processing (TASLP)
-% Verification pass: 2026-05-25 (every entry checked against arXiv /
-%                    DOI / ISCA archive / publisher). See
-%                    docs/thesis-wiki/decisions/decision-log.md.
-% Status legend in trailing comments:
-%   [VERIFIED]  full metadata confirmed against a primary source
-%   [SOFTWARE]  no formal paper; cite as software/model release
-%   [TODO-AUTH] paper confirmed, full author list still to be pulled
-% =====================================================================
+%1
 
-% ---------------------------------------------------------------------
-% Bonafide corpus foundation
-% ---------------------------------------------------------------------
+
+@misc{asvspoof2019,
+      title={ASVspoof 2019: Future Horizons in Spoofed and Fake Audio Detection}, 
+      author={Massimiliano Todisco and Xin Wang and Ville Vestman and Md Sahidullah and Hector Delgado and Andreas Nautsch and Junichi Yamagishi and Nicholas Evans and Tomi Kinnunen and Kong Aik Lee},
+      year={2019},
+      eprint={1904.05441},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/1904.05441},
+}
+
+
+%2
+
+@misc{asvspoof2021,
+      title={ASVspoof 2021: accelerating progress in spoofed and deepfake speech detection}, 
+      author={Junichi Yamagishi and Xin Wang and Massimiliano Todisco and Md Sahidullah and Jose Patino and Andreas Nautsch and Xuechen Liu and Kong Aik Lee and Tomi Kinnunen and Nicholas Evans and Héctor Delgado},
+      year={2021},
+      eprint={2109.00537},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2109.00537}, 
+}
+
+%3
+@misc{asvspoof5,
+      title={ASVspoof 5: Crowdsourced Speech Data, Deepfakes, and Adversarial Attacks at Scale}, 
+      author={Xin Wang and Hector Delgado and Hemlata Tak and Jee-weon Jung and Hye-jin Shim and Massimiliano Todisco and Ivan Kukanov and Xuechen Liu and Md Sahidullah and Tomi Kinnunen and Nicholas Evans and Kong Aik Lee and Junichi Yamagishi},
+      year={2024},
+      eprint={2408.08739},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2408.08739}, 
+}
+
+%4
+@misc{rawnet2,
+      title={End-to-end anti-spoofing with RawNet2}, 
+      author={Hemlata Tak and Jose Patino and Massimiliano Todisco and Andreas Nautsch and Nicholas Evans and Anthony Larcher},
+      year={2021},
+      eprint={2011.01108},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2011.01108}, 
+}
+
+%5
+@misc{tak2022ssl,
+      title={Automatic speaker verification spoofing and deepfake detection using wav2vec 2.0 and data augmentation}, 
+      author={Hemlata Tak and Massimiliano Todisco and Xin Wang and Jee-weon Jung and Junichi Yamagishi and Nicholas Evans},
+      year={2022},
+      eprint={2202.12233},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2202.12233},
+}
+
+%6
+@misc{aasist,
+      title={AASIST: Audio Anti-Spoofing using Integrated Spectro-Temporal Graph Attention Networks}, 
+      author={Jee-weon Jung and Hee-Soo Heo and Hemlata Tak and Hye-jin Shim and Joon Son Chung and Bong-Jin Lee and Ha-Jin Yu and Nicholas Evans},
+      year={2021},
+      eprint={2110.01200},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2110.01200}, 
+}
+
+%7
+@misc{sasvevalplan2022,
+      title={SASV Challenge 2022: A Spoofing Aware Speaker Verification Challenge Evaluation Plan}, 
+      author={Jee-weon Jung and Hemlata Tak and Hye-jin Shim and Hee-Soo Heo and Bong-Jin Lee and Soo-Whan Chung and Hong-Goo Kang and Ha-Jin Yu and Nicholas Evans and Tomi Kinnunen},
+      year={2022},
+      eprint={2201.10283},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2201.10283}, 
+}
+
+%8
+@misc{sasv2022,
+      title={SASV 2022: The First Spoofing-Aware Speaker Verification Challenge}, 
+      author={Jee-weon Jung and Hemlata Tak and Hye-jin Shim and Hee-Soo Heo and Bong-Jin Lee and Soo-Whan Chung and Ha-Jin Yu and Nicholas Evans and Tomi Kinnunen},
+      year={2022},
+      eprint={2203.14732},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2203.14732}, 
+}
+
+%9
+@misc{Wu2026wildspoof,
+      title={WildSpoof Challenge Evaluation Plan}, 
+      author={Yihan Wu and Jee-weon Jung and Hye-jin Shim and Xin Cheng and Xin Wang},
+      year={2025},
+      eprint={2508.16858},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2508.16858}, 
+}
+
+%10
+@misc{raptor2026,
+      title={Do Compact SSL Backbones Matter for Audio Deepfake Detection? A Controlled Study with RAPTOR}, 
+      author={Ajinkya Kulkarni and Sandipana Dowerah and Atharva Kulkarni and Tanel Alumäe and Mathew Magimai Doss},
+      year={2026},
+      eprint={2603.06164},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2603.06164}, 
+}
+
+%11
+@misc{dowerah2025speechdfarena,
+      title={Speech DF Arena: A Leaderboard for Speech DeepFake Detection Models}, 
+      author={Sandipana Dowerah and Atharva Kulkarni and Ajinkya Kulkarni and Hoan My Tran and Joonas Kalda and Artem Fedorchenko and Benoit Fauve and Damien Lolive and Tanel Alumäe and Matthew Magimai Doss},
+      year={2025},
+      eprint={2509.02859},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2509.02859}, 
+}
+
+%12
+
+@misc{babu2022xlsr,
+      title={XLS-R: Self-supervised Cross-lingual Speech Representation Learning at Scale}, 
+      author={Arun Babu and Changhan Wang and Andros Tjandra and Kushal Lakhotia and Qiantong Xu and Naman Goyal and Kritika Singh and Patrick von Platen and Yatharth Saraf and Juan Pino and Alexei Baevski and Alexis Conneau and Michael Auli},
+      year={2021},
+      eprint={2111.09296},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2111.09296},
+}
+
+% 13
+@misc{wang2021comparative,
+      title={A Comparative Study on Recent Neural Spoofing Countermeasures for Synthetic Speech Detection}, 
+      author={Xin Wang and Junichi Yamagishi},
+      year={2021},
+      eprint={2103.11326},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2103.11326},
+}
+
+% 14
+@misc{muller2026erodingtrust,
+      title={Eroding Trust in Real Speech: A Large-Scale Study of Human Audio Deepfake Perception}, 
+      author={Nicolas M. Müller and Wei Herng Choong},
+      year={2026},
+      eprint={2605.26136},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2605.26136}, 
+}
+
+% 15
+@misc{muller2022generalize,
+      title={Does Audio Deepfake Detection Generalize?}, 
+      author={Nicolas M. Müller and Pavel Czempin and Franziska Dieckmann and Adam Froghyar and Konstantin Böttinger},
+      year={2022},
+      eprint={2203.16263},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2203.16263}, 
+}
+
+% 16
+@misc{muller2024harder,
+      title={Harder or Different? Understanding Generalization of Audio Deepfake Detection}, 
+      author={Nicolas M. Müller and Nicholas Evans and Hemlata Tak and Philip Sperl and Konstantin Böttinger},
+      year={2024},
+      eprint={2406.03512},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2406.03512}, 
+}
+
+% 17
 @inproceedings{habla,
-  author    = {Tamayo-Fl{\'o}rez, Pablo Andr{\'e}s and Manrique, Rub{\'e}n and Pereira Nunes, Bernardo},
-  title     = {{HABLA}: A Dataset of Latin American Spanish Accents for Voice Anti-Spoofing},
-  booktitle = {Proc. Interspeech},
+  title     = {{HABLA: A Dataset of Latin American Spanish Accents for Voice Anti-spoofing}},
+  author    = {Pablo Andrés {Tamayo Flórez} and Rubén Manrique and Bernardo {Pereira Nunes}},
+  year      = {2023},
+  booktitle = {{Interspeech 2023}},
   pages     = {1963--1967},
-  year      = {2023},
-  doi       = {10.21437/Interspeech.2023-2272}
-}  % [VERIFIED] Advisor (Manrique) is a co-author. NOTE: this paper describes
-   % 5 nations / ~22k bonafide samples; the thesis uses "HABLA v2" with 7 accents /
-   % 1,567 speakers. v2 must be described as our own extension (no v2 paper exists).
+  doi       = {10.21437/Interspeech.2023-2272},
+  issn      = {2958-1796},
+}
 
-@inproceedings{commonvoice,
-  author    = {Ardila, Rosana and Branson, Megan and Davis, Kelly and Henretty, Michael and Kohler, Michael and Meyer, Josh and Morais, Reuben and Saunders, Lindsay and Tyers, Francis M. and Weber, Gregor},
-  title     = {Common Voice: A Massively-Multilingual Speech Corpus},
-  booktitle = {Proceedings of the 12th Language Resources and Evaluation Conference (LREC)},
-  pages     = {4218--4222},
-  year      = {2020}
-}  % [VERIFIED] Source of the HABLA v2 bonafide extension (Spanish locale,
-   % speaker-similarity-filtered against existing HABLA speakers).
+% 18
 
-@book{ethnologue2025,
-  editor    = {Eberhard, David M. and Simons, Gary F. and Fennig, Charles D.},
-  title     = {Ethnologue: Languages of the World},
-  edition   = {Twenty-eighth},
-  publisher = {SIL International},
-  address   = {Dallas, Texas},
-  year      = {2025},
-  note      = {Online version: \url{http://www.ethnologue.com}}
-}  % [VERIFIED] Standard academic source for native-speaker counts;
-   % Spanish reported at approximately 485 million L1 speakers, second
-   % only to Mandarin Chinese.
+@misc{commonvoice,
+      title={Common Voice: A Massively-Multilingual Speech Corpus}, 
+      author={Rosana Ardila and Megan Branson and Kelly Davis and Michael Henretty and Michael Kohler and Josh Meyer and Reuben Morais and Lindsay Saunders and Francis M. Tyers and Gregor Weber},
+      year={2020},
+      eprint={1912.06670},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/1912.06670}, 
+}
 
-% ---------------------------------------------------------------------
-% Real-world voice-cloning fraud and disinformation (motivation)
-% Verified via deep-research workflow, 2026-07-29: adversarial 3-vote
-% claim verification against primary/independent sources. Facts below
-% are the confirmed subset; several adjacent claims (Colombia "17%/
-% second-most-affected", GAULA arrest counts, a Madrid case, a Yucat\'an
-% kidnapping cluster, the specific viral Massa deepfake video) were
-% explicitly REFUTED during verification and must not be cited.
-% ---------------------------------------------------------------------
+%% 19 a 23 IGUAL
+
+% 19
 @misc{forbes2019ceofraud,
-  author       = {Damiani, Jesse},
-  title        = {A Voice Deepfake Was Used to Scam a {CEO} Out of \$243,000},
-  howpublished = {Forbes, \url{https://www.forbes.com/sites/jessedamiani/2019/09/03/a-voice-deepfake-was-used-to-scam-a-ceo-out-of-243000/}},
-  year         = {2019}
-}  % [VERIFIED] 3-0 adversarial verification. Corroborated by WSJ (original),
-   % Sophos, Avast, Gizmodo. AI-cloned CEO voice, EUR 220k / \$243k wired
-   % to Hungary, Mar. 2019. Victim company never publicly named.
-
+  author = {J. Damiani},
+  title = {A voice deepfake was used to scam a {CEO} out of \$243,000},
+  howpublished = {Forbes},
+  month = sep,
+  year = {2019},
+  url = {https://www.forbes.com/sites/jessedamiani/2019/09/03/a-voice-deepfake-was-used-to-scam-a-ceo-out-of-243000/}
+}
+% 20
 @misc{europol2022deepfakes,
-  author       = {{Europol Innovation Lab}},
-  title        = {Facing Reality? Law Enforcement and the Challenge of Deepfakes},
-  howpublished = {Europol, \url{https://www.europol.europa.eu/cms/sites/default/files/documents/Europol_Innovation_Lab_Facing_Reality_Law_Enforcement_And_The_Challenge_Of_Deepfakes.pdf}},
-  year         = {2022}
-}  % [VERIFIED] Official EU law-enforcement report; corroborates the
-   % \$35M AI-voice-clone bank fraud (Hong Kong/UAE, occurred 2020,
-   % disclosed by Forbes Oct. 2021).
-
+  author = {{Europol Innovation Lab}},
+  title = {Facing reality? Law enforcement and the challenge of deepfakes},
+  howpublished = {Europol},
+  year = {2022},
+  url = {https://www.europol.europa.eu/cms/sites/default/files/documents/Europol_Innovation_Lab_Facing_Reality_Law_Enforcement_And_The_Challenge_Of_Deepfakes.pdf}
+}
+% 21
 @misc{destefano2023testimony,
-  author       = {DeStefano, Jennifer},
-  title        = {Written Testimony},
-  howpublished = {U.S. Senate Judiciary Committee, Subcommittee on Human
-                  Rights and the Law,
-                  \url{https://www.judiciary.senate.gov/imo/media/doc/2023-06-13\%20PM\%20-\%20Testimony\%20-\%20DeStefano.pdf}},
-  year         = {2023}
-}  % [VERIFIED] Primary source. 3-0 adversarial verification. AI-cloned
-   % voice of victim's daughter used in a fake-kidnapping extortion call,
-   % Arizona, Jan. 2023; testified before US Senate, Jun. 2023.
-
+  author = {J. DeStefano},
+  title = {Written Testimony},
+  howpublished = {U.S. Senate Judiciary Committee, Subcommittee on Human Rights and the Law},
+  month = jun,
+  year = {2023},
+  url = {https://www.judiciary.senate.gov/imo/media/doc/2023-06-13\%20PM\%20-\%20Testimony\%20-\%20DeStefano.pdf}
+}
+% 22 
 @misc{infobae2026whatsapp,
-  author       = {{Infobae}},
-  title        = {``{M}am{\'a}, Necesito Ayuda'': La Nueva Estafa con {IA}
-                  que Clona la Voz de tus Hijos con Solo 3 Segundos de Audio},
-  howpublished = {\url{https://www.infobae.com/tecno/2026/03/26/mama-necesito-ayuda-la-nueva-estafa-con-ia-que-clona-la-voz-de-tus-hijos-con-solo-3-segundos-de-audio/}},
-  year         = {2026}
-}  % [VERIFIED] 2-1 adversarial verification (Argentine WhatsApp voice-clone
-   % case: cloned contact's voice used to solicit a money transfer;
-   % confirmed AI-generated by a specialized cybercrime prosecutor).
-   % Corroborates a wider "familiar en apuros" scam pattern reported
-   % consistently across LatAm outlets 2024-2026.
-
+  author = {{Infobae}},
+  title = {``{M}am\'a, necesito ayuda'': la nueva estafa con {IA} que clona la voz de tus hijos con solo 3 segundos de audio},
+  month = mar,
+  year = {2026},
+  url = {https://www.infobae.com/tecno/2026/03/26/mama-necesito-ayuda-la-nueva-estafa-con-ia-que-clona-la-voz-de-tus-hijos-con-solo-3-segundos-de-audio/}
+}
+% 23
 @misc{infobae2025colombia,
-  author       = {{Infobae}},
-  title        = {Incrementan las Estafas con Voces Clonadas con
-                  Inteligencia Artificial en Diciembre: Cinco Claves para
-                  Detectarlas},
-  howpublished = {\url{https://www.infobae.com/colombia/2025/12/03/incrementan-las-estafas-con-voces-clonadas-con-inteligencia-artificial-en-diciembre-cinco-claves-para-detectarlas/}},
-  year         = {2025}
-}  % [VERIFIED] 3-0 adversarial verification. Reports official Colombian
-   % National Police statistics (Bol\'ivar department): 64 extortion
-   % complaints through Sep. 2025, 24 involving digital methods (cloned
-   % voices and AI-generated images). Strongest LatAm-specific,
-   % official-source data point found.
+  author = {{Infobae}},
+  title = {Incrementan las estafas con voces clonadas con inteligencia artificial en diciembre: cinco claves para detectarlas},
+  month = dec,
+  year = {2025},
+  url = {https://www.infobae.com/colombia/2025/12/03/incrementan-las-estafas-con-voces-clonadas-con-inteligencia-artificial-en-diciembre-cinco-claves-para-detectarlas/}
+}
+% 24
+@misc{yi2021had,
+      title={Half-Truth: A Partially Fake Audio Detection Dataset}, 
+      author={Jiangyan Yi and Ye Bai and Jianhua Tao and Haoxin Ma and Zhengkun Tian and Chenglong Wang and Tao Wang and Ruibo Fu},
+      year={2021},
+      eprint={2104.03617},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2104.03617}, 
+}
 
-% ---------------------------------------------------------------------
-% Foundational anti-spoofing benchmarks
-% ---------------------------------------------------------------------
-@inproceedings{asvspoof2019,
-  author    = {Todisco, Massimiliano and Wang, Xin and Vestman, Ville and Sahidullah, Md and Delgado, H{\'e}ctor and Nautsch, Andreas and Yamagishi, Junichi and Evans, Nicholas and Kinnunen, Tomi and Lee, Kong Aik},
-  title     = {{ASVspoof} 2019: Future Horizons in Spoofed and Fake Audio Detection},
-  booktitle = {Proc. Interspeech},
-  pages     = {1008--1012},
-  year      = {2019},
-  eprint    = {1904.05441}
-}  % [VERIFIED] arXiv:1904.05441
+% 25
+@misc{add2022,
+      title={ADD 2022: the First Audio Deep Synthesis Detection Challenge}, 
+      author={Jiangyan Yi and Ruibo Fu and Jianhua Tao and Shuai Nie and Haoxin Ma and Chenglong Wang and Tao Wang and Zhengkun Tian and Xiaohui Zhang and Ye Bai and Cunhang Fan and Shan Liang and Shiming Wang and Shuai Zhang and Xinrui Yan and Le Xu and Zhengqi Wen and Haizhou Li and Zheng Lian and Bin Liu},
+      year={2022},
+      eprint={2202.08433},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2202.08433}, 
+}
 
-@inproceedings{asvspoof2021,
-  author    = {Yamagishi, Junichi and Wang, Xin and Todisco, Massimiliano and Sahidullah, Md and Patino, Jose and Nautsch, Andreas and Liu, Xuechen and Lee, Kong Aik and Kinnunen, Tomi and Evans, Nicholas and Delgado, H{\'e}ctor},
-  title     = {{ASVspoof} 2021: Accelerating Progress in Spoofed and Deepfake Speech Detection},
-  booktitle = {Proc. ASVspoof 2021 Workshop},
-  year      = {2021},
-  eprint    = {2109.00537}
-}  % [VERIFIED] arXiv:2109.00537
+% 26
 
-@inproceedings{asvspoof5,
-  author    = {Wang, Xin and Delgado, H{\'e}ctor and Tak, Hemlata and others},
-  title     = {{ASVspoof} 5: Crowdsourced Speech Data, Deepfakes, and Adversarial Attacks at Scale},
-  booktitle = {Proc. ASVspoof Workshop},
-  year      = {2024},
-  eprint    = {2408.08739}
-}  % [VERIFIED 2026-07-13] Current ASVspoof flagship; journal version arXiv:2502.08857.
+@misc{kantharuban2023dialectgap,
+      title={Quantifying the Dialect Gap and its Correlates Across Languages}, 
+      author={Anjali Kantharuban and Ivan Vulić and Anna Korhonen},
+      year={2023},
+      eprint={2310.15135},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2310.15135}, 
+}
 
-% ---------------------------------------------------------------------
-% Generalization crisis
-% ---------------------------------------------------------------------
-@inproceedings{muller2022generalize,
-  author    = {M{\"u}ller, Nicolas M. and Czempin, Pavel and Diekmann, Franziska and Froghyar, Adam and B{\"o}ttinger, Konstantin},
-  title     = {Does Audio Deepfake Detection Generalize?},
-  booktitle = {Proc. Interspeech},
-  pages     = {2783--2787},
-  year      = {2022},
-  eprint    = {2203.16263}
-}  % [VERIFIED] arXiv:2203.16263
-
-@inproceedings{muller2024harder,
-  author    = {M{\"u}ller, Nicolas M. and Evans, Nicholas and Tak, Hemlata and Sperl, Philip and B{\"o}ttinger, Konstantin},
-  title     = {Harder or Different? Understanding Generalization of Audio Deepfake Detection},
-  booktitle = {Proc. Interspeech},
-  year      = {2024},
-  eprint    = {2406.03512}
-}  % [VERIFIED] arXiv:2406.03512 (was mis-cited as single-author "N. Muller 2024")
-
-% ---------------------------------------------------------------------
-% Partial-spoof canon (the four pipelines)
-% ---------------------------------------------------------------------
-@article{zhang2023partialspoof,
-  author  = {Zhang, Lin and Wang, Xin and Cooper, Erica and Evans, Nicholas and Yamagishi, Junichi},
-  title   = {The {PartialSpoof} Database and Countermeasures for the Detection of Short Fake Speech Segments Embedded in an Utterance},
-  journal = {IEEE/ACM Trans. Audio, Speech, Lang. Process.},
-  volume  = {31},
-  pages   = {813--825},
-  year    = {2023},
-  doi     = {10.1109/TASLP.2022.3233236}
-}  % [VERIFIED] arXiv:2204.05177
-
-@inproceedings{luong2024llama,
-  author    = {Luong, Hieu-Thi and Li, Haoyang and Zhang, Lin and Lee, Kong Aik and Chng, Eng Siong},
-  title     = {{LlamaPartialSpoof}: An {LLM}-Driven Fake Speech Dataset Simulating Disinformation Generation},
-  booktitle = {Proc. ICASSP},
-  year      = {2025},
-  eprint    = {2409.14743}
-}  % [VERIFIED] ICASSP 2025 (Hyderabad) confirmed; title was truncated before
-
-@inproceedings{yi2021had,
-  author    = {Yi, Jiangyan and Bai, Ye and Tao, Jianhua and Ma, Haoxin and Tian, Zhengkun and Wang, Chenglong and Wang, Tao and Fu, Ruibo},
-  title     = {Half-Truth: A Partially Fake Audio Detection Dataset},
-  booktitle = {Proc. Interspeech},
-  pages     = {1654--1658},
-  year      = {2021},
-  eprint    = {2104.03617}
-}  % [VERIFIED] arXiv:2104.03617
-
-@inproceedings{add2022,
-  author    = {Yi, Jiangyan and Fu, Ruibo and Tao, Jianhua and others},
-  title     = {{ADD} 2022: The First Audio Deep Synthesis Detection Challenge},
-  booktitle = {Proc. ICASSP},
-  year      = {2022},
-  eprint    = {2202.08433}
-}  % [VERIFIED 2026-07-13] First challenge-scale partial-fake (PF) track; MARSA partial-spoof antecedent.
-
-@article{li2025hqmpsd,
-  author  = {Li, Menglu and others},
-  title   = {{HQ-MPSD}: A Multilingual Artifact-Controlled Benchmark for Partial Deepfake Speech Detection},
-  journal = {arXiv preprint},
-  year    = {2025},
-  eprint  = {2512.13012}
-}  % [VERIFIED] First author M. Li (not "J. Li"); "Deepfake" not "spoof" in title
-
-% ---------------------------------------------------------------------
-% Third-party forensic analyses
-% ---------------------------------------------------------------------
-@inproceedings{negroni2024splicing,
-  author    = {Negroni, Viola and Salvi, Davide and Bestagini, Paolo and Tubaro, Stefano},
-  title     = {Analyzing the Impact of Splicing Artifacts in Partially Fake Speech Signals},
-  booktitle = {Proc. ASVspoof 5 Workshop (Interspeech satellite)},
-  year      = {2024},
-  eprint    = {2408.13784}
-}  % [VERIFIED] arXiv:2408.13784
-
-@inproceedings{huang2024detectable,
-  author    = {Huang, Sung-Feng and Kuo, Heng-Cheng and Chen, Zhehuai and Yang, Xuesong and Yang, Chao-Han Huck and Tsao, Yu and Wang, Yu-Chiang Frank and Lee, Hung-yi and Fu, Szu-Wei},
-  title     = {Detecting the Undetectable: Assessing the Efficacy of Current Spoof Detection Methods Against Seamless Speech Edits},
-  booktitle = {Proc. IEEE Spoken Language Technology Workshop (SLT)},
-  year      = {2024},
-  eprint    = {2501.03805}
-}  % [VERIFIED] First author S.-F. Huang (not "W. Huang")
-
-% ---------------------------------------------------------------------
-% TTS / voice-cloning systems used as attacks
-% ---------------------------------------------------------------------
-@misc{fishspeech,
-  author       = {Liao, Shijia and others},
-  title        = {Fish-Speech: Leveraging Large Language Models for Advanced Multilingual Text-to-Speech Synthesis},
-  howpublished = {arXiv preprint},
-  year         = {2024},
-  eprint       = {2411.01156}
-}  % [VERIFIED] Title was wrong before ("OpenAudio-S1 technical report")
-
-@misc{qwen3tts,
-  author       = {{Qwen Team, Alibaba Group}},
-  title        = {{Qwen3-TTS} Technical Report},
-  howpublished = {arXiv preprint},
-  year         = {2026},
-  eprint       = {2601.15621}
-}  % [VERIFIED] Year was wrong before (2025 -> 2026); title corrected
-
-@misc{openvoice,
-  author       = {Qin, Zengyi and Zhao, Wenliang and Yu, Xumin and Sun, Xin},
-  title        = {{OpenVoice}: Versatile Instant Voice Cloning},
-  howpublished = {arXiv preprint},
-  year         = {2024},
-  eprint       = {2312.01479}
-}  % [VERIFIED]
-
-@misc{chatterbox,
-  author       = {{Resemble AI}},
-  title        = {Chatterbox: Open-Source Text-to-Speech with Neural Watermarking},
-  howpublished = {Software release, \url{https://github.com/resemble-ai/chatterbox}},
-  year         = {2025}
-}  % [SOFTWARE] No formal paper; MIT-licensed release. Perth watermarker is real.
-
-@misc{outetts,
-  author       = {{OuteAI}},
-  title        = {{OuteTTS}: {LLM}-Based Text-to-Speech via Discrete Audio Tokens},
-  howpublished = {Software release, \url{https://huggingface.co/OuteAI}},
-  year         = {2025}
-}  % [SOFTWARE] No formal paper; HuggingFace/blog release. DAC codec (1.0) confirmed.
-
-@misc{omnivoice,
-  author       = {Zhu, Han and Ye, Lingxuan and Kang, Wei and Yao, Zengwei and Guo, Liyong and Kuang, Fangjun and Han, Zhifeng and Zhuang, Weiji and Lin, Long and Povey, Daniel},
-  title        = {{OmniVoice}: Towards Omnilingual Zero-Shot Text-to-Speech with Diffusion Language Models},
-  howpublished = {arXiv preprint},
-  year         = {2026},
-  eprint       = {2604.00688}
-}  % [VERIFIED] First author H. Zhu (not "K. Zhu"); k2-fsa, last author D. Povey
-
-@misc{cosyvoice,
-  author       = {Du, Zhihao and others},
-  title        = {{CosyVoice} 3: Towards In-the-Wild Speech Generation via Scaling-Up and Post-Training},
-  howpublished = {arXiv preprint},
-  year         = {2025},
-  eprint       = {2505.17589}
-}  % [VERIFIED] Excluded system; title was invented before ("conditional flow matching")
-
-% ---------------------------------------------------------------------
-% Detection / countermeasure baselines
-% ---------------------------------------------------------------------
-@inproceedings{aasist,
-  author    = {Jung, Jee-weon and Heo, Hee-Soo and Tak, Hemlata and Shim, Hye-jin and Chung, Joon Son and Lee, Bong-Jin and Yu, Ha-Jin and Evans, Nicholas},
-  title     = {{AASIST}: Audio Anti-Spoofing Using Integrated Spectro-Temporal Graph Attention Networks},
-  booktitle = {Proc. ICASSP},
-  year      = {2022},
-  doi       = {10.1109/ICASSP43922.2022.9747766},
-  eprint    = {2110.01200}
-}  % [VERIFIED]
-
-@inproceedings{rawnet2,
-  author    = {Tak, Hemlata and Patino, Jose and Todisco, Massimiliano and Nautsch, Andreas and Evans, Nicholas and Larcher, Anthony},
-  title     = {End-to-End Anti-Spoofing with {RawNet2}},
-  booktitle = {Proc. ICASSP},
-  year      = {2021},
-  eprint    = {2011.01108}
-}  % [VERIFIED]
-
-@inproceedings{tak2022ssl,
-  author    = {Tak, Hemlata and Todisco, Massimiliano and Wang, Xin and Jung, Jee-weon and Yamagishi, Junichi and Evans, Nicholas},
-  title     = {Automatic Speaker Verification Spoofing and Deepfake Detection Using {wav2vec} 2.0 and Data Augmentation},
-  booktitle = {Proc. Odyssey Speaker and Language Recognition Workshop},
-  pages     = {112--119},
-  year      = {2022},
-  eprint    = {2202.12233}
-}  % [VERIFIED]
-
-% ---------------------------------------------------------------------
-% Spanish / multilingual spoofing datasets (related work)
-% ---------------------------------------------------------------------
-@inproceedings{hispaspoof,
-  author    = {Risques, Maria and Bhagtani, Kratika and Yadav, Amit Kumar Singh and Delp, Edward J.},
-  title     = {{HISPASpoof}: A New Dataset for Spanish Speech Forensics},
-  booktitle = {Proc. ICASSP},
-  year      = {2026},
-  eprint    = {2509.09155}
-}  % [VERIFIED 2026-07-13] Purdue VIPER; accepted ICASSP 2026 (upgraded from bare
-   % arXiv). 6 accents, 6 zero-shot TTS. Author list confirmed via citation-check.
-
-@inproceedings{speechfake,
-  author    = {Huang, Wen and Gu, Yanmei and Wang, Zhiming and Zhu, Huijia and Qian, Yanmin},
-  title     = {{SpeechFake}: A Large-Scale Multilingual Speech Deepfake Dataset Incorporating Cutting-Edge Generation Methods},
-  booktitle = {Proc. Annual Meeting of the Association for Computational Linguistics (ACL)},
-  year      = {2025},
-  eprint    = {2507.21463}
-}  % [VERIFIED 2026-07-13] Author initials corrected: W. Huang / Y. Gu (were wrongly
-   % "Y. Huang / J. Gu"). 46 languages; the MD subset = "SpeechFake-MD".
-
-@inproceedings{mlaad,
-  author    = {M{\"u}ller, Nicolas M. and Kawa, Piotr and Choong, Wei Herng and others},
-  title     = {{MLAAD}: The Multi-Language Audio Anti-Spoofing Dataset},
-  booktitle = {Proc. International Joint Conference on Neural Networks (IJCNN)},
-  year      = {2024},
-  eprint    = {2401.09512}
-}  % [VERIFIED 2026-07-13] 51+ languages incl. Spanish (single accent/lang); broad-but-shallow
-   % multilingual corpus MARSA must acknowledge vs the "English/Mandarin only" framing.
-
-@inproceedings{lrlspoof,
-  author    = {Borodin, Kirill and Kudryavtsev, Vasiliy and Maslov, Maxim and Gorodnichev, Mikhail and Mkrtchian, Grach},
-  title     = {When Spoof Detectors Travel: Evaluation Across 66 Languages in the Low-Resource Language Spoofing Corpus},
-  booktitle = {Proc. Interspeech},
-  year      = {2026},
-  eprint    = {2603.02364}
-}  % [VERIFIED 2026-07-13] Author list confirmed (Moscow Tech. Univ. of
-   % Communications and Informatics); Interspeech 2026. 66 languages, 24 TTS.
-
-% ---------------------------------------------------------------------
-% Quality metrics, ASR, and forced alignment
-% ---------------------------------------------------------------------
-@inproceedings{ecapa,
-  author    = {Desplanques, Brecht and Thienpondt, Jenthe and Demuynck, Kris},
-  title     = {{ECAPA-TDNN}: Emphasized Channel Attention, Propagation and Aggregation in {TDNN} Based Speaker Verification},
-  booktitle = {Proc. Interspeech},
-  pages     = {3830--3834},
-  year      = {2020},
-  eprint    = {2005.07143}
-}  % [VERIFIED]
-
-@inproceedings{nisqa,
-  author    = {Mittag, Gabriel and Naderi, Babak and Chehadi, Assmaa and M{\"o}ller, Sebastian},
-  title     = {{NISQA}: A Deep {CNN}-Self-Attention Model for Multidimensional Speech Quality Prediction with Crowdsourced Datasets},
-  booktitle = {Proc. Interspeech},
-  pages     = {2127--2131},
-  year      = {2021},
-  eprint    = {2104.09494}
-}  % [VERIFIED]
-
-@inproceedings{tdt,
-  author    = {Xu, Hainan and Jia, Fei and Majumdar, Somshubra and Watanabe, Shinji and Ginsburg, Boris},
-  title     = {Efficient Sequence Transduction by Jointly Predicting Tokens and Durations},
-  booktitle = {Proc. International Conference on Machine Learning (ICML)},
-  year      = {2023},
-  eprint    = {2304.06795}
-}  % [VERIFIED] The actual TDT-architecture paper (replaces fabricated "Parakeet TDT report")
-
-@misc{parakeet,
-  author       = {{NVIDIA NeMo Team}},
-  title        = {{Parakeet-TDT-0.6B-v3}: Multilingual Token-and-Duration Transducer {ASR}},
-  howpublished = {Model release, \url{https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3}},
-  year         = {2024}
-}  % [SOFTWARE] The specific checkpoint used; cite alongside {tdt} for the method
-
-@inproceedings{mfa,
-  author    = {McAuliffe, Michael and Socolof, Michaela and Mihuc, Sarah and Wagner, Michael and Sonderegger, Morgan},
-  title     = {{Montreal Forced Aligner}: Trainable Text-Speech Alignment Using {Kaldi}},
-  booktitle = {Proc. Interspeech},
-  pages     = {498--502},
-  year      = {2017},
-  doi       = {10.21437/Interspeech.2017-1386}
-}  % [VERIFIED]
-
-% ---------------------------------------------------------------------
-% Acoustic augmentation resources (Pillar 3)
-% ---------------------------------------------------------------------
-@misc{musan,
-  author       = {Snyder, David and Chen, Guoguo and Povey, Daniel},
-  title        = {{MUSAN}: A Music, Speech, and Noise Corpus},
-  howpublished = {arXiv preprint},
-  year         = {2015},
-  eprint       = {1510.08484}
-}  % [VERIFIED]
-
-@inproceedings{ko2017rir,
-  author    = {Ko, Tom and Peddinti, Vijayaditya and Povey, Daniel and Seltzer, Michael L. and Khudanpur, Sanjeev},
-  title     = {A Study on Data Augmentation of Reverberant Speech for Robust Speech Recognition},
-  booktitle = {Proc. ICASSP},
-  year      = {2017},
-  doi       = {10.1109/ICASSP.2017.7953152}
-}  % [VERIFIED] Source of the RIRS_NOISES room-impulse-response set
-
-% ---------------------------------------------------------------------
-% Concatenative-synthesis classics (crossfade / splice grounding)
-% ---------------------------------------------------------------------
-@inproceedings{hunt1996,
-  author    = {Hunt, Andrew J. and Black, Alan W.},
-  title     = {Unit Selection in a Concatenative Speech Synthesis System Using a Large Speech Database},
-  booktitle = {Proc. ICASSP},
-  volume    = {1},
-  pages     = {373--376},
-  year      = {1996}
-}  % [VERIFIED]
-
-@article{moulines1990,
-  author  = {Moulines, Eric and Charpentier, Francis},
-  title   = {Pitch-Synchronous Waveform Processing Techniques for Text-to-Speech Synthesis Using Diphones},
-  journal = {Speech Communication},
-  volume  = {9},
-  number  = {5--6},
-  pages   = {453--467},
-  year    = {1990}
-}  % [VERIFIED] PSOLA
-
-@article{stylianou2001,
-  author  = {Stylianou, Yannis},
-  title   = {Applying the Harmonic Plus Noise Model in Concatenative Speech Synthesis},
-  journal = {IEEE Trans. Speech Audio Process.},
-  volume  = {9},
-  number  = {1},
-  pages   = {21--29},
-  year    = {2001}
-}  % [VERIFIED] HNM
-
-% ---------------------------------------------------------------------
-% Spanish dialect acoustic variation (added 2026-07-09 for MARSA
-% Background: grounds the "Spanish is not one language" argument)
-% ---------------------------------------------------------------------
-@inproceedings{kantharuban2023dialectgap,
-  author    = {Kantharuban, Anjali and Vuli{\'c}, Ivan and Korhonen, Anna},
-  title     = {Quantifying the Dialect Gap and Its Correlates Across Languages},
-  booktitle = {Findings of the Association for Computational Linguistics: EMNLP},
-  year      = {2023},
-  eprint    = {2310.15135}
-}  % [VERIFIED] arXiv:2310.15135. WER gap of 5+ points across 8 Spanish
-   % varieties on Common Voice with Whisper (same source as HABLA/MARSA bonafide).
-
-@inproceedings{zuluaga2023commonaccent,
-  author    = {Zuluaga-Gomez, Juan and Ahmed, Sara and Visockas, Danielius and Subakan, Cem},
-  title     = {{CommonAccent}: Exploring Large Acoustic Pretrained Models for Accent Classification Based on Common Voice},
-  booktitle = {Proc. Interspeech},
-  pages     = {5291--5295},
-  year      = {2023},
-  doi       = {10.21437/Interspeech.2023-2419}
-}  % [VERIFIED] Spanish separable into 6 dialect macrozones at 68.5% acc.
-   % from raw acoustics -- inter-dialect signal is measurable.
+% 27
 
 @article{nacimiento2024biases,
-  author  = {Nacimiento-Garc{\'i}a, Eduardo and D{\'i}az-Kaas-Nielsen, Hendrik Sebastian and Gonz{\'a}lez-Gonz{\'a}lez, Carina Soledad},
-  title   = {Gender and Accent Biases in {AI}-Based Tools for {Spanish}: A Comparative Study Between {Alexa} and {Whisper}},
-  journal = {Applied Sciences},
-  volume  = {14},
-  number  = {11},
-  pages   = {4734},
-  year    = {2024},
-  doi     = {10.3390/app14114734}
-}  % [VERIFIED] Statistically significant WER differences across Spanish
-   % accent groups on Common Voice. Peer-reviewed journal (Scopus/WoS).
+author = {Nacimiento-García, Eduardo and Díaz-Kaas-Nielsen, Holi and González González, Carina},
+year = {2024},
+month = {05},
+pages = {4734},
+title = {Gender and Accent Biases in AI-Based Tools for Spanish: A Comparative Study between Alexa and Whisper},
+volume = {14},
+journal = {Applied Sciences},
+doi = {10.3390/app14114734}
+}
 
-% ---------------------------------------------------------------------
-% Baseline anti-spoofing detectors for Tesis 2 (added 2026-07-09)
-% Three modern (2025-2026) pretrained detectors to fine-tune on MARSA.
-% ---------------------------------------------------------------------
-@article{nes2net,
-  author  = {Liu, Tianchi and Truong, Duc-Tuan and Das, Rohan Kumar and Lee, Kong Aik and Li, Haizhou},
-  title   = {{Nes2Net}: A Lightweight Nested Architecture for Foundation Model Driven Speech Anti-spoofing},
-  journal = {arXiv preprint},
-  year    = {2025},
-  eprint  = {2504.05657}
-}  % [VERIFIED] Nested Res2Net over SSL foundation-model features (WavLM
-   % variant = WavLM_Nes2Net_X_SeLU). Evaluated on CtrSVDD, ASVspoof2021,
-   % ASVspoof5, PartialSpoof, In-the-Wild. Lightweight -> easiest to fine-tune.
+% 28
+@misc{zuluaga2023commonaccent,
+      title={CommonAccent: Exploring Large Acoustic Pretrained Models for Accent Classification Based on Common Voice}, 
+      author={Juan Zuluaga-Gomez and Sara Ahmed and Danielius Visockas and Cem Subakan},
+      year={2023},
+      eprint={2305.18283},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2305.18283}, 
+}
 
-@misc{raptor2026,
-  author       = {Kulkarni, Ajinkya and Dowerah, Sandipana and Kulkarni, Atharva and Alum{\"a}e, Tanel and Magimai-Doss, Mathew},
-  title        = {Do Compact {SSL} Backbones Matter for Audio Deepfake Detection? A Controlled Study with {RAPTOR}},
-  howpublished = {arXiv preprint},
-  year         = {2026},
-  eprint       = {2603.06164}
-}  % [VERIFIED, corrected 2026-09-08] Read in full, not just abstract.
-   % This is NOT the DF_Arena_1B_V_1 paper: RAPTOR is a different
-   % architecture (HuBERT/mHuBERT/WavLM backbones + pairwise-gated
-   % fusion, all ~100M params). It cites "DF-Arena 100M-V1" and
-   % "DF-Arena 500M" only as external comparison baselines (via its own
-   % ref [7], Dowerah et al., which is our `dowerah2025speechdfarena`
-   % entry) -- it never mentions a 1B variant at all. Previously this
-   % entry was miskeyed `dfarena` and wrongly linked to the
-   % DF_Arena_1B_V_1 HuggingFace model URL; that link is removed. The
-   % correct citation for the DF-Arena model family is
-   % `dowerah2025speechdfarena`, even though that paper does not itself
-   % detail the 1B checkpoint's architecture (verified independently
-   % from the model's own source code instead; see decision-log).
+% 29
+@article{zhang2023partialspoof,
+   title={The PartialSpoof Database and Countermeasures for the Detection of Short Fake Speech Segments Embedded in an Utterance},
+   volume={31},
+   ISSN={2329-9304},
+   url={http://dx.doi.org/10.1109/TASLP.2022.3233236},
+   DOI={10.1109/taslp.2022.3233236},
+   journal={IEEE/ACM Transactions on Audio, Speech, and Language Processing},
+   publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+   author={Zhang, Lin and Wang, Xin and Cooper, Erica and Evans, Nicholas and Yamagishi, Junichi},
+   year={2023},
+   pages={813–825} 
+}
 
-@misc{holiantispoof,
-  author       = {{HoliAntiSpoof authors}},
-  title        = {{HoliAntiSpoof}: Audio {LLM} for Holistic Speech Anti-Spoofing},
-  howpublished = {arXiv preprint; model \url{https://huggingface.co/wsntxxn/HoliAntiSpoof}},
-  year         = {2026},
-  eprint       = {2602.04535}
-}  % [TODO-AUTH] Audio-LLM (Qwen2.5-Omni-7B Thinker + LoRA); emits spoof /
-   % method / region / semantic-impact as text. 7B base -> heaviest to
-   % fine-tune. License unverified. Full author list to be pulled.
+% 30
+@misc{li2025hqmpsd,
+      title={HQ-MPSD: A Multilingual Artifact-Controlled Benchmark for Partial Deepfake Speech Detection}, 
+      author={Menglu Li and Majd Alber and Ramtin Asgarianamiri and Lian Zhao and Xiao-Ping Zhang},
+      year={2025},
+      eprint={2512.13012},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2512.13012}, 
+}
 
-% ---------------------------------------------------------------------
-% Spoofing-aware speaker verification and recent SOTA / motivation
-% (added 2026-08-29, verified against arXiv abstracts)
-% ---------------------------------------------------------------------
-@misc{sasvevalplan2022,
-  author = {Jung, Jee-weon and others},
-  title  = {{SASV} Challenge 2022: A Spoofing Aware Speaker Verification Challenge Evaluation Plan},
-  howpublished = {arXiv preprint},
-  year   = {2022},
-  eprint = {2201.10283}
-}  % [VERIFIED] Evaluation-plan paper for the first SASV special session,
-   % Interspeech 2022. Joint ASV+CM protocol; top system reduced EER from
-   % 23.83% to 0.13% on the joint trial set.
+% 31
+@misc{hispaspoof,
+      title={HISPASpoof: A New Dataset For Spanish Speech Forensics}, 
+      author={Maria Risques and Kratika Bhagtani and Amit Kumar Singh Yadav and Edward J. Delp},
+      year={2025},
+      eprint={2509.09155},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2509.09155}, 
+}
 
-@inproceedings{sasv2022,
-  author    = {Jung, Jee-weon and others},
-  title     = {{SASV} 2022: The First Spoofing-Aware Speaker Verification Challenge},
-  booktitle = {Proc. Interspeech},
-  year      = {2022},
-  note      = {arXiv:2203.14732}
-}  % [VERIFIED] Results/summary paper for the same challenge as sasvevalplan2022.
+% 32
+@misc{mlaad,
+      title={MLAAD: The Multi-Language Audio Anti-Spoofing Dataset}, 
+      author={Nicolas M. Müller and Piotr Kawa and Wei Herng Choong and Edresson Casanova and Eren Gölge and Thorsten Müller and Piotr Syga and Philip Sperl and Konstantin Böttinger},
+      year={2024},
+      eprint={2401.09512},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2401.09512}, 
+}
 
-@misc{Wu2026wildspoof,
-  author = {Wu, Yihan and Jung, Jee-weon and Shim, Hye-jin and Cheng, Xin and Wang, Xin},
-  title  = {{WildSpoof} Challenge Evaluation Plan},
-  howpublished = {arXiv preprint; challenge presented at ICASSP 2026},
-  year   = {2025},
-  eprint = {2508.16858}
-}  % [VERIFIED] Evaluation plan for the WildSpoof Challenge (in-the-wild
-   % TTS + spoofing-robust SASV, ICASSP 2026, Barcelona). Cited as
-   % evidence that even state-of-the-art SASV/anti-spoofing systems
-   % remain well short of production-ready performance on in-the-wild
-   % data, the same framing sasvevalplan2022 and sasv2022 provide for
-   % the earlier SASV challenge.
+% 33
+@misc{speechfake,
+      title={SpeechFake: A Large-Scale Multilingual Speech Deepfake Dataset Incorporating Cutting-Edge Generation Methods}, 
+      author={Wen Huang and Yanmei Gu and Zhiming Wang and Huijia Zhu and Yanmin Qian},
+      year={2025},
+      eprint={2507.21463},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2507.21463}, 
+}
 
-@misc{dowerah2025speechdfarena,
-  author       = {Dowerah, Sandipana and Kulkarni, Atharva and Kulkarni, Ajinkya and Tran, Hoan My and Kalda, Joonas and Fedorchenko, Artem and Fauve, Benoit and Lolive, Damien and Alum{\"a}e, Tanel and Magimai Doss, Mathew},
-  title        = {Speech {DF} Arena: A Leaderboard for Speech DeepFake Detection Models},
-  howpublished = {arXiv preprint; model \url{https://huggingface.co/Speech-Arena-2025/DF_Arena_1B_V_1}},
-  year         = {2025},
-  eprint       = {2509.02859}
-}  % [VERIFIED, corrected 2026-09-08 after reading the full v1 PDF, not
-   % just the abstract] This paper's own 15 benchmarked systems (Table 1)
-   % are Whispeak/Syntra.io/Resemble AI plus 12 open-source detectors
-   % (XLSR+SLS, TCM, Nes2Net(X), WavLM/HuBERT/Wav2Vec2-ECAPA, AASIST,
-   % RawGAT-ST, RawNet-2, Whisper-MesoNet). It does NOT name, train, or
-   % evaluate any system called "DF-Arena" -- "DF Arena" here is the
-   % leaderboard platform's name, not a model. Separately, the RAPTOR
-   % paper (`raptor2026`) cites "DF-Arena 100M-V1" and "DF-Arena 500M"
-   % as external comparison points sourced from this paper's IEEE OJSP
-   % 2026 journal version (not the arXiv v1 read here), with no
-   % description of their training data; RAPTOR explicitly did not train
-   % those two itself. The DF_Arena_1B_V_1 checkpoint we evaluate is a
-   % third artifact again: hosted on HuggingFace under the same
-   % Speech-Arena-2025 org, architecture confirmed independently from its
-   % own source code (decision-log, 2026-08-25), but its specific
-   % training data is not documented in any paper we have located. Do
-   % not attribute RAPTOR's own training protocol (Section 3.1: ASVspoof
-   % 2019 alone, or ASVspoof2019+ASVspoof2024+CodecFake+LibriSeVoc+
-   % DFADD+CTRSVDD+SpoofCeleb+MLAAD+EnvSDD) to DF-Arena; that protocol is
-   % for RAPTOR's own trained systems only.
+% 34
+@misc{negroni2024splicing,
+      title={Analyzing the Impact of Splicing Artifacts in Partially Fake Speech Signals}, 
+      author={Viola Negroni and Davide Salvi and Paolo Bestagini and Stefano Tubaro},
+      year={2024},
+      eprint={2408.13784},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2408.13784}, 
+}
 
-@inproceedings{babu2022xlsr,
-  author    = {Babu, Arun and Wang, Changhan and Tjandra, Andros and Lakhotia, Kushal and Xu, Qiantong and Goyal, Naman and Singh, Kritika and von Platen, Patrick and Saraf, Yatharth and Pino, Juan and Baevski, Alexei and Conneau, Alexis and Auli, Michael},
-  title     = {{XLS-R}: Self-Supervised Cross-Lingual Speech Representation Learning at Scale},
-  booktitle = {Proc. Interspeech},
-  pages     = {2278--2282},
-  year      = {2022},
-  doi       = {10.21437/Interspeech.2022-143}
-}  % [VERIFIED] DF-Arena's backbone. Pretrained on ~436k hours across 128
-   % languages (CommonVoice, Multilingual LibriSpeech, VoxPopuli, BABEL,
-   % VoxLingua107); Spanish is present via CommonVoice/MLS/VoxPopuli. Used
-   % to correct an overclaim that DF-Arena "never saw Spanish speech" --
-   % true only of its anti-spoofing fine-tuning data (ASVspoof2019 +
-   % SpoofCeleb, both English, per the RAPTOR paper arXiv:2603.06164),
-   % not of the backbone's own pretraining.
+% 35
+@misc{huang2024detectable,
+      title={Detecting the Undetectable: Assessing the Efficacy of Current Spoof Detection Methods Against Seamless Speech Edits}, 
+      author={Sung-Feng Huang and Heng-Cheng Kuo and Zhehuai Chen and Xuesong Yang and Chao-Han Huck Yang and Yu Tsao and Yu-Chiang Frank Wang and Hung-yi Lee and Szu-Wei Fu},
+      year={2025},
+      eprint={2501.03805},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2501.03805}, 
+}
 
-@inproceedings{wang2021comparative,
-  author    = {Wang, Xin and Yamagishi, Junichi},
-  title     = {A Comparative Study on Recent Neural Spoofing Countermeasures for Synthetic Speech Detection},
-  booktitle = {Proc. Interspeech},
-  pages     = {4259--4263},
-  year      = {2021},
-  doi       = {10.21437/Interspeech.2021-702}
-}  % [VERIFIED] Source of the LFCC-LCNN architecture family (LSTM-sum,
-   % fixed-length trim/pad, self-attention pooling back-ends) with
-   % P2SGrad loss, used as the classical-baseline checkpoints in our
-   % zero-shot cross-corpus evaluation.
+% 36
+@misc{luong2024llama,
+      title={LlamaPartialSpoof: An LLM-Driven Fake Speech Dataset Simulating Disinformation Generation}, 
+      author={Hieu-Thi Luong and Haoyang Li and Lin Zhang and Kong Aik Lee and Eng Siong Chng},
+      year={2025},
+      eprint={2409.14743},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2409.14743}, 
+}
 
-@misc{muller2026erodingtrust,
-  author       = {M{\"u}ller, Nicolas M. and Choong, Wei Herng},
-  title        = {Eroding Trust in Real Speech: A Large-Scale Study of Human Audio Deepfake Perception},
-  howpublished = {arXiv preprint},
-  year         = {2026},
-  eprint       = {2605.26136}
-}  % [VERIFIED] 35,532 human judgments, 1,768 participants, 138 synthesis
-   % systems. Key finding: human accuracy on REAL speech fell from 72.7%
-   % to 64.1% as synthesis quality improved, faster than fake-detection
-   % accuracy changed (72.9% -> 71.2%). ML detectors stayed >94.5% accurate.
+% 37
+@misc{fishspeech,
+      title={Fish-Speech: Leveraging Large Language Models for Advanced Multilingual Text-to-Speech Synthesis}, 
+      author={Shijia Liao and Yuxuan Wang and Tianyu Li and Yifan Cheng and Ruoyi Zhang and Rongzhi Zhou and Yijin Xing},
+      year={2024},
+      eprint={2411.01156},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2411.01156}, 
+}
+
+% 38
+@misc{qwen3tts,
+      title={Qwen3-TTS Technical Report}, 
+      author={Hangrui Hu and Xinfa Zhu and Ting He and Dake Guo and Bin Zhang and Xiong Wang and Zhifang Guo and Ziyue Jiang and Hongkun Hao and Zishan Guo and Xinyu Zhang and Pei Zhang and Baosong Yang and Jin Xu and Jingren Zhou and Junyang Lin},
+      year={2026},
+      eprint={2601.15621},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2601.15621}, 
+}
+
+% 39
+@misc{openvoice,
+      title={OpenVoice: Versatile Instant Voice Cloning}, 
+      author={Zengyi Qin and Wenliang Zhao and Xumin Yu and Xin Sun},
+      year={2024},
+      eprint={2312.01479},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2312.01479}, 
+}
+
+% 40 IGUAL
+@misc{chatterbox,
+  author = {{Resemble AI}},
+  title = {Chatterbox: Open-source text-to-speech with neural watermarking},
+  howpublished = {Software release},
+  year = {2025},
+  url = {https://github.com/resemble-ai/chatterbox}
+}
+
+% 41 IGUAL
+
+@misc{outetts,
+  author = {{OuteAI}},
+  title = {OuteTTS: LLM-based text-to-speech via discrete audio tokens},
+  howpublished = {Software release},
+  year = {2025},
+  url = {https://huggingface.co/OuteAI}
+}
+
+% 42
+
+@misc{omnivoice,
+      title={OmniVoice: Towards Omnilingual Zero-Shot Text-to-Speech with Diffusion Language Models}, 
+      author={Han Zhu and Lingxuan Ye and Wei Kang and Zengwei Yao and Liyong Guo and Fangjun Kuang and Zhifeng Han and Weiji Zhuang and Long Lin and Daniel Povey},
+      year={2026},
+      eprint={2604.00688},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2604.00688}, 
+}
+
+% 43
+@misc{cosyvoice,
+      title={CosyVoice 3: Towards In-the-wild Speech Generation via Scaling-up and Post-training}, 
+      author={Zhihao Du and Changfeng Gao and Yuxuan Wang and Fan Yu and Tianyu Zhao and Hao Wang and Xiang Lv and Hui Wang and Chongjia Ni and Xian Shi and Keyu An and Guanrou Yang and Yabin Li and Yanni Chen and Zhifu Gao and Qian Chen and Yue Gu and Mengzhe Chen and Yafeng Chen and Shiliang Zhang and Wen Wang and Jieping Ye},
+      year={2025},
+      eprint={2505.17589},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2505.17589}, 
+}
+
+% 44
+@inproceedings{ecapa, 
+   title={ECAPA-TDNN: Emphasized Channel Attention, Propagation and Aggregation in TDNN Based Speaker Verification},
+   url={http://dx.doi.org/10.21437/Interspeech.2020-2650},
+   DOI={10.21437/interspeech.2020-2650},
+   booktitle={Interspeech 2020},
+   publisher={ISCA},
+   author={Desplanques, Brecht and Thienpondt, Jenthe and Demuynck, Kris},
+   year={2020},
+   month=Oct, pages={3830–3834}
+}
+
+% 45
+@inproceedings{nisqa,
+   title={NISQA: A Deep CNN-Self-Attention Model for Multidimensional Speech Quality Prediction with Crowdsourced Datasets},
+   url={http://dx.doi.org/10.21437/Interspeech.2021-299},
+   DOI={10.21437/interspeech.2021-299},
+   booktitle={Interspeech 2021},
+   publisher={ISCA},
+   author={Mittag, Gabriel and Naderi, Babak and Chehadi, Assmaa and Möller, Sebastian},
+   year={2021},
+   month=Aug, pages={2127–2131}
+}
+
+% 46
+
+@misc{tdt,
+      title={Efficient Sequence Transduction by Jointly Predicting Tokens and Durations}, 
+      author={Hainan Xu and Fei Jia and Somshubra Majumdar and He Huang and Shinji Watanabe and Boris Ginsburg},
+      year={2023},
+      eprint={2304.06795},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2304.06795}, 
+}
+
+% 47 IGUAL
+
+@misc{parakeet,
+  author = {{NVIDIA NeMo Team}},
+  title = {Parakeet-TDT-0.6B-v3: Multilingual token-and-duration transducer ASR},
+  howpublished = {Model release},
+  year = {2024},
+  url = {https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3}
+}
+% 48
+@inproceedings{mfa,
+  title     = {{Montreal Forced Aligner: Trainable Text-Speech Alignment Using Kaldi}},
+  author    = {Michael McAuliffe and Michaela Socolof and Sarah Mihuc and Michael Wagner and Morgan Sonderegger},
+  year      = {2017},
+  booktitle = {{Interspeech 2017}},
+  pages     = {498--502},
+  doi       = {10.21437/Interspeech.2017-1386},
+  issn      = {2958-1796},
+}
+
+% 49
+@misc{musan,
+      title={MUSAN: A Music, Speech, and Noise Corpus}, 
+      author={David Snyder and Guoguo Chen and Daniel Povey},
+      year={2015},
+      eprint={1510.08484},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/1510.08484}, 
+}
+
+% 50
+@INPROCEEDINGS{ko2017rir,
+  author={Ko, Tom and Peddinti, Vijayaditya and Povey, Daniel and Seltzer, Michael L. and Khudanpur, Sanjeev},
+  booktitle={2017 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
+  title={A study on data augmentation of reverberant speech for robust speech recognition}, 
+  year={2017},
+  volume={},
+  number={},
+  pages={5220-5224},
+  keywords={Speech;Training data;Acoustics;Databases;Data models;Training;Probability distribution;reverberation;augmentation;deep neural network;room impulse responses},
+  doi={10.1109/ICASSP.2017.7953152}}
+
+% 51 
+
+@INPROCEEDINGS{vasquez2026wildspoof,
+  author={Vásquez-Correa, Juan Camilo and Moreno-Acevedo, Santiago A. and Álvarez, Aitor},
+  booktitle={ICASSP 2026 - 2026 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 
+  title={The Vicomtech Score-Level Fusion System for the SASV Track of the WildSpoof Challenge 2026}, 
+  year={2026},
+  volume={},
+  number={},
+  pages={21898-21900},
+  keywords={Deepfakes;Videos;Computer networks;Protocols;HTTP;Internet;Storage area networks;Communication systems;Learning (artificial intelligence);Artificial neural networks;Spoofing-Aware Speaker Verification;Antispoofing;Voice cloning attacks},
+  doi={10.1109/ICASSP55912.2026.11463642}}

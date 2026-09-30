@@ -22,11 +22,14 @@ class CorpusDurationReport(BaseModel):
         per_tier: One TierDurationStat per base corpus tier.
         per_fullspoof_system: One SystemDescriptionStat per of the six
             full-spoof TTS systems.
+        per_partial_spoof_system: One SystemDescriptionStat per of the six
+            generating systems contributing to the partial-spoof tier.
         base_corpus_total_hours: Sum of total_hours across per_tier.
         notes: Caveats and methodology notes to carry into the paper text.
     """
 
     per_tier: List[TierDurationStat] = Field(default_factory=list)
     per_fullspoof_system: List[SystemDescriptionStat] = Field(default_factory=list)
+    per_partial_spoof_system: List[SystemDescriptionStat] = Field(default_factory=list)
     base_corpus_total_hours: float = Field(..., ge=0.0)
     notes: List[str] = Field(default_factory=list)
