@@ -114,14 +114,63 @@ def reconstruct_final_positions(spoofed_words: List[dict]) -> List[Tuple[float, 
     return positions
 
 
+def _overlap_seconds(
+    window_start: float, window_end: float, positions: List[Tuple[float, float]]
+) -> float:
+    """Sum the overlap between a window and every spliced-word interval.
+
+    Args:
+        window_start: Start of the candidate window, in seconds.
+        window_end: End of the candidate window, in seconds.
+        positions: Spliced-word intervals in final-file coordinates.
+
+    Returns:
+        Total overlapping duration, in seconds.
+    """
+    return sum(
+        max(0.0, min(end, window_end) - max(start, window_start))
+        for start, end in positions
+    )
+
+
+def _whole_word_count(
+    window_start: float, window_end: float, positions: List[Tuple[float, float]]
+) -> int:
+    """Count spliced words that fall entirely inside a window.
+
+    Args:
+        window_start: Start of the candidate window, in seconds.
+        window_end: End of the candidate window, in seconds.
+        positions: Spliced-word intervals in final-file coordinates.
+
+    Returns:
+        Number of intervals fully contained in the window.
+    """
+    return sum(1 for start, end in positions if start >= window_start and end <= window_end)
+
+
 def aligned_crop_window(
     positions: List[Tuple[float, float]], total_duration_s: float
 ) -> Tuple[float, float]:
-    """Compute a crop window centred on the spliced-word span.
+    """Compute the crop window that best covers the spliced words.
 
-    Unlike DF-Arena's own centre-of-clip crop, this window is centred on the
-    span covering every spliced word, clamped to the clip bounds, so the
-    splice is included with the maximum margin a 64,600-sample window allows.
+    Unlike DF-Arena's own centre-of-clip crop, this searches for the window
+    placement that keeps the most spliced content visible. When every
+    spliced word fits inside one 64,600-sample window (the common case: W1
+    is a single word, and most W2/W3 words land close together), this finds
+    the placement that contains all of them whole. When the words are spread
+    further apart than the window allows -- possible in W2/W3, whose words
+    can sit far apart in a long clip -- centring on the full span from the
+    first word's start to the last word's end is not guaranteed to be best:
+    it can clip pieces of every word instead of keeping some of them whole.
+    This instead picks the placement that keeps the most words entirely
+    inside the window, breaking ties by the placement with the largest total
+    overlap, so a left-over word is dropped whole rather than left half-cut.
+
+    The search only needs to check window starts aligned to each word's own
+    start or end, plus the two clip-edge positions: the optimal window for a
+    fixed-width overlap maximisation over intervals always has one edge
+    touching an interval endpoint, so no other placement can do better.
 
     Args:
         positions: Spliced-word intervals in final-file coordinates.
@@ -135,13 +184,41 @@ def aligned_crop_window(
     if total_duration_s <= CROP_SECONDS:
         return 0.0, total_duration_s
 
-    span_start = min(start for start, _ in positions)
-    span_end = max(end for _, end in positions)
-    span_center = (span_start + span_end) / 2.0
+    max_start = total_duration_s - CROP_SECONDS
+    candidates = {0.0, max_start}
+    for start, end in positions:
+        candidates.add(start)
+        candidates.add(end - CROP_SECONDS)
+    candidates = {max(0.0, min(candidate, max_start)) for candidate in candidates}
 
-    window_start = span_center - CROP_SECONDS / 2.0
-    window_start = max(0.0, min(window_start, total_duration_s - CROP_SECONDS))
-    return window_start, window_start + CROP_SECONDS
+    best_start = 0.0
+    best_key = (-1, -1.0)
+    for window_start in candidates:
+        window_end = window_start + CROP_SECONDS
+        whole = _whole_word_count(window_start, window_end, positions)
+        overlap = _overlap_seconds(window_start, window_end, positions)
+        key = (whole, overlap)
+        if key > best_key:
+            best_key = key
+            best_start = window_start
+
+    return best_start, best_start + CROP_SECONDS
+
+
+def coverage_stats(
+    positions: List[Tuple[float, float]], window_start: float, window_end: float
+) -> Tuple[int, int]:
+    """Report how many spliced words survive a chosen window intact.
+
+    Args:
+        positions: Spliced-word intervals in final-file coordinates.
+        window_start: Start of the chosen window, in seconds.
+        window_end: End of the chosen window, in seconds.
+
+    Returns:
+        A tuple of (whole_word_count, total_word_count).
+    """
+    return _whole_word_count(window_start, window_end, positions), len(positions)
 
 
 def load_aligned_crop(audio_path: Path, window_start_s: float, window_end_s: float) -> np.ndarray:
@@ -215,6 +292,9 @@ def collect_spoof_clips(partial_spoof_root: str) -> List[dict]:
             if not positions:
                 continue
 
+            window_start, window_end = aligned_crop_window(positions, total_duration)
+            whole_words, total_words = coverage_stats(positions, window_start, window_end)
+
             clips.append(
                 {
                     "splice_key": splice_key,
@@ -224,6 +304,10 @@ def collect_spoof_clips(partial_spoof_root: str) -> List[dict]:
                     "audio_path": audio_path,
                     "total_duration_s": total_duration,
                     "positions": positions,
+                    "window_start_s": window_start,
+                    "window_end_s": window_end,
+                    "whole_words": whole_words,
+                    "total_words": total_words,
                 }
             )
 
@@ -277,10 +361,11 @@ def score_clips(
             batch_clips = clips[start : start + batch_size]
             waveforms = []
             for clip in batch_clips:
-                window_start, window_end = aligned_crop_window(
-                    clip["positions"], clip["total_duration_s"]
+                waveforms.append(
+                    load_aligned_crop(
+                        clip["audio_path"], clip["window_start_s"], clip["window_end_s"]
+                    )
                 )
-                waveforms.append(load_aligned_crop(clip["audio_path"], window_start, window_end))
 
             batch = torch.from_numpy(np.stack(waveforms)).to(device)
             lengths = torch.full((batch.shape[0],), CROP_SAMPLES, device=device)
@@ -291,6 +376,27 @@ def score_clips(
                 logger.debug(f"  scored {start + len(batch_clips):,}/{len(clips):,} clips")
 
     return np.array(scores, dtype=np.float32)
+
+
+def report_coverage_by_tier(clips: List[dict]) -> None:
+    """Print how many clips keep every spliced word fully inside the window.
+
+    Only clips that needed cropping are reported here; clips at or under the
+    crop length are never partial, since the model tiles them whole.
+
+    Args:
+        clips: Clips collected by ``collect_spoof_clips``.
+    """
+    tiers = sorted({clip["tier"] for clip in clips})
+    for tier in tiers:
+        tier_clips = [clip for clip in clips if clip["tier"] == tier]
+        full = sum(1 for clip in tier_clips if clip["whole_words"] == clip["total_words"])
+        partial = len(tier_clips) - full
+        logger.info(
+            f"{tier}: {full:,}/{len(tier_clips):,} clips keep every spliced word "
+            f"fully inside the aligned window ({partial:,} have at least one word "
+            "partially cut or dropped because the words span more than 4.0375s)."
+        )
 
 
 def report_eer_by_tier(
@@ -357,6 +463,7 @@ def main() -> None:
     device = torch.device("cuda:0")
 
     clips = collect_spoof_clips(args.partial_spoof_root)
+    report_coverage_by_tier(clips)
     bonafide_scores = load_bonafide_scores(Path(args.bonafide_scores_file))
     logger.info(f"Loaded {bonafide_scores.size} bonafide scores from {args.bonafide_scores_file}")
 
