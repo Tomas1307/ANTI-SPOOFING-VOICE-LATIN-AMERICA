@@ -65,7 +65,6 @@ import json
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import librosa
 import numpy as np
 import soundfile as sf
 import torch
@@ -155,8 +154,19 @@ def load_aligned_crop(audio_path: Path, window_start_s: float, window_end_s: flo
 
     Returns:
         A waveform of exactly ``CROP_SAMPLES`` samples at ``SAMPLE_RATE``.
+
+    Raises:
+        ValueError: If the file's sample rate is not ``SAMPLE_RATE``. The
+            project convention is to fail loudly on a rate mismatch rather
+            than silently resample, matching ``MarsaAudioDataset``.
     """
-    waveform, _ = librosa.load(str(audio_path), sr=SAMPLE_RATE)
+    waveform, rate = sf.read(str(audio_path), dtype="float32", always_2d=False)
+    if rate != SAMPLE_RATE:
+        raise ValueError(
+            f"{audio_path.name} is {rate} Hz, expected {SAMPLE_RATE} Hz"
+        )
+    if waveform.ndim > 1:
+        waveform = waveform.mean(axis=1)
     length = waveform.shape[0]
 
     if length <= CROP_SAMPLES:
