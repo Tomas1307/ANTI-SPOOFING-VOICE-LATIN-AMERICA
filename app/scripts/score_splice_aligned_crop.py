@@ -77,6 +77,16 @@ CROP_SAMPLES = 64600
 SAMPLE_RATE = 16000
 CROP_SECONDS = CROP_SAMPLES / SAMPLE_RATE
 
+HABLA_TO_ASVSPOOF_SPLIT = {"val": "dev", "test": "eval", "train": "train"}
+"""Split-name mapping the partial-spoof pipeline applies at format time
+(``step_07_format_output.py``) when writing the ASVspoof-style protocol.
+``partial_spoof_metadata.json`` still carries the original HABLA split name
+in each entry's ``split`` field, since the mapping is applied locally in
+that step and never written back into the dumped metadata. Any script that
+needs to match a clip to its ASVspoof split (train/dev/eval), such as
+restricting a comparison to the eval population a results table reports on,
+must re-apply this same mapping rather than trust the raw field."""
+
 
 def reconstruct_final_positions(spoofed_words: List[dict]) -> List[Tuple[float, float]]:
     """Reconstruct each spliced word's position within the final spliced file.
@@ -301,6 +311,9 @@ def collect_spoof_clips(partial_spoof_root: str) -> List[dict]:
                     "system": system,
                     "partition": partition,
                     "tier": sample.get("tier", "UNKNOWN"),
+                    "split": HABLA_TO_ASVSPOOF_SPLIT.get(
+                        sample.get("split", "unknown"), sample.get("split", "unknown")
+                    ),
                     "audio_path": audio_path,
                     "total_duration_s": total_duration,
                     "positions": positions,
@@ -492,6 +505,32 @@ def report_eer_by_coverage(
             )
 
 
+def report_eer_eval_split(
+    clips: List[dict], aligned_scores: Dict[str, float], bonafide_scores: np.ndarray
+) -> None:
+    """Report aligned-crop EER restricted to the eval split only.
+
+    ``Table tab:partialspoofeer`` in the paper reports every other row's EER
+    on the eval split alone (W1/W2/W3 clip counts 1,155/631/199), while the
+    aligned-crop numbers originally computed pooled every split and both
+    boundary-jitter partitions together (16,331 clips total). Those are two
+    different populations, so the aligned-crop row did not actually belong
+    next to the others in that table. This restricts the comparison to the
+    eval-split population the rest of the table already uses, so the row can
+    be corrected to the same denominator. This needs no GPU: it re-reads a
+    score file this script already wrote.
+
+    Args:
+        clips: Clips collected by ``collect_spoof_clips``.
+        aligned_scores: Mapping of splice_key to aligned-crop score, as
+            returned by ``load_aligned_scores``.
+        bonafide_scores: Bonafide score pool from the existing zero-shot run.
+    """
+    eval_clips = [clip for clip in clips if clip["split"] == "eval"]
+    logger.info(f"Restricting to eval split: {len(eval_clips):,}/{len(clips):,} clips.")
+    report_eer_by_coverage(eval_clips, aligned_scores, bonafide_scores)
+
+
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -566,7 +605,10 @@ def main() -> None:
         )
         aligned_scores = load_aligned_scores(Path(args.analyze_scores))
         logger.info(f"Loaded {len(aligned_scores)} aligned-crop scores from {args.analyze_scores}")
+        logger.info("--- Pooled across all splits and partitions (16,331-clip population) ---")
         report_eer_by_coverage(clips, aligned_scores, bonafide_scores)
+        logger.info("--- Restricted to eval split (matches Table tab:partialspoofeer) ---")
+        report_eer_eval_split(clips, aligned_scores, bonafide_scores)
         logger.info("--analyze-scores set: skipping model load and inference.")
         return
 
