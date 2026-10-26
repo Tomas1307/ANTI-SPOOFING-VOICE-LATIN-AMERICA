@@ -420,6 +420,78 @@ def report_eer_by_tier(
     logger.info(f"OVERALL: n={len(clips):,}  aligned-crop EER={eer:.3f}%")
 
 
+def load_aligned_scores(scores_path: Path) -> Dict[str, float]:
+    """Load an already-written aligned-crop score file keyed by splice_key.
+
+    Args:
+        scores_path: Path to a file written by this script's scoring run,
+            in the ``splice_key system-tier spoof score`` convention.
+
+    Returns:
+        Mapping of splice_key to its aligned-crop score.
+    """
+    scores: Dict[str, float] = {}
+    with open(scores_path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            parts = line.strip().split()
+            if len(parts) != 4:
+                continue
+            scores[parts[0]] = float(parts[3])
+    return scores
+
+
+def report_eer_by_coverage(
+    clips: List[dict], aligned_scores: Dict[str, float], bonafide_scores: np.ndarray
+) -> None:
+    """Compare EER on fully-covered clips against the full tier, per tier.
+
+    A clip whose words were only partially cut (see ``report_coverage_by_tier``)
+    carries less acoustic evidence than one where every spliced word survived
+    whole, so pooling them together can bias a tier's EER away from its true
+    detection difficulty. This recomputes EER restricted to clips where every
+    spliced word landed fully inside the aligned window, and reports it next
+    to the full-tier number so the two can be compared directly. This needs
+    no GPU: it re-reads a score file this script already wrote.
+
+    Args:
+        clips: Clips collected by ``collect_spoof_clips``.
+        aligned_scores: Mapping of splice_key to aligned-crop score, as
+            returned by ``load_aligned_scores``.
+        bonafide_scores: Bonafide score pool from the existing zero-shot run.
+    """
+    tiers = sorted({clip["tier"] for clip in clips})
+    for tier in tiers:
+        tier_clips = [clip for clip in clips if clip["tier"] == tier]
+        scored = [clip for clip in tier_clips if clip["splice_key"] in aligned_scores]
+        missing = len(tier_clips) - len(scored)
+        if missing:
+            logger.warning(
+                f"{tier}: {missing:,}/{len(tier_clips):,} clips have no score in "
+                "the supplied file; excluded from this comparison."
+            )
+
+        full = [clip for clip in scored if clip["whole_words"] == clip["total_words"]]
+        full_scores = np.array(
+            [aligned_scores[clip["splice_key"]] for clip in full], dtype=np.float32
+        )
+        all_scores = np.array(
+            [aligned_scores[clip["splice_key"]] for clip in scored], dtype=np.float32
+        )
+
+        eer_all, _ = metrics.compute_eer(bonafide_scores, all_scores)
+        if full_scores.size:
+            eer_full, _ = metrics.compute_eer(bonafide_scores, full_scores)
+            logger.info(
+                f"{tier}: full tier EER={eer_all:.3f}% (n={all_scores.size:,})  |  "
+                f"fully-covered-only EER={eer_full:.3f}% (n={full_scores.size:,})"
+            )
+        else:
+            logger.info(
+                f"{tier}: full tier EER={eer_all:.3f}% (n={all_scores.size:,})  |  "
+                "no fully-covered clips to compare against"
+            )
+
+
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments.
 
@@ -457,8 +529,18 @@ def _parse_args() -> argparse.Namespace:
              "load, no GPU, no inference. Use this to inspect the window "
              "placement before spending GPU time on the full scoring run.",
     )
+    parser.add_argument(
+        "--analyze-scores", type=str, default=None,
+        help="Path to an aligned-crop score file this script already wrote. "
+             "Reports EER restricted to fully-covered clips next to the full "
+             "tier EER, from CPU only, no GPU and no inference. Requires "
+             "--bonafide-scores-file; ignores --output.",
+    )
     args = parser.parse_args()
-    if not args.coverage_only:
+    if args.analyze_scores:
+        if not args.bonafide_scores_file:
+            parser.error("--bonafide-scores-file is required with --analyze-scores")
+    elif not args.coverage_only:
         if not args.output:
             parser.error("--output is required unless --coverage-only is set")
         if not args.bonafide_scores_file:
@@ -475,6 +557,17 @@ def main() -> None:
 
     if args.coverage_only:
         logger.info("--coverage-only set: skipping model load and scoring.")
+        return
+
+    if args.analyze_scores:
+        bonafide_scores = load_bonafide_scores(Path(args.bonafide_scores_file))
+        logger.info(
+            f"Loaded {bonafide_scores.size} bonafide scores from {args.bonafide_scores_file}"
+        )
+        aligned_scores = load_aligned_scores(Path(args.analyze_scores))
+        logger.info(f"Loaded {len(aligned_scores)} aligned-crop scores from {args.analyze_scores}")
+        report_eer_by_coverage(clips, aligned_scores, bonafide_scores)
+        logger.info("--analyze-scores set: skipping model load and inference.")
         return
 
     if not torch.cuda.is_available():
