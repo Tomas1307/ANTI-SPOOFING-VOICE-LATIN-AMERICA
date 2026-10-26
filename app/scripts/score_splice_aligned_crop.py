@@ -434,8 +434,9 @@ def _parse_args() -> argparse.Namespace:
         help="Root of the partial-spoof output tree.",
     )
     parser.add_argument(
-        "--bonafide-scores-file", type=str, required=True,
-        help="Existing zero-shot DF-Arena score file to pull the bonafide pool from.",
+        "--bonafide-scores-file", type=str, default=None,
+        help="Existing zero-shot DF-Arena score file to pull the bonafide pool "
+             "from. Required unless --coverage-only is set.",
     )
     parser.add_argument(
         "--model-id", type=str, default="Speech-Arena-2025/DF_Arena_1B_V_1",
@@ -446,15 +447,35 @@ def _parse_args() -> argparse.Namespace:
         help="Clips scored per forward pass.",
     )
     parser.add_argument(
-        "--output", type=str, required=True,
-        help="Destination path for the aligned-crop score file.",
+        "--output", type=str, default=None,
+        help="Destination path for the aligned-crop score file. Required "
+             "unless --coverage-only is set.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--coverage-only", action="store_true",
+        help="Only report whole-word coverage by tier and exit; no model "
+             "load, no GPU, no inference. Use this to inspect the window "
+             "placement before spending GPU time on the full scoring run.",
+    )
+    args = parser.parse_args()
+    if not args.coverage_only:
+        if not args.output:
+            parser.error("--output is required unless --coverage-only is set")
+        if not args.bonafide_scores_file:
+            parser.error("--bonafide-scores-file is required unless --coverage-only is set")
+    return args
 
 
 def main() -> None:
     """Run the aligned-crop re-scoring experiment end to end."""
     args = _parse_args()
+
+    clips = collect_spoof_clips(args.partial_spoof_root)
+    report_coverage_by_tier(clips)
+
+    if args.coverage_only:
+        logger.info("--coverage-only set: skipping model load and scoring.")
+        return
 
     if not torch.cuda.is_available():
         raise RuntimeError(
@@ -462,8 +483,6 @@ def main() -> None:
         )
     device = torch.device("cuda:0")
 
-    clips = collect_spoof_clips(args.partial_spoof_root)
-    report_coverage_by_tier(clips)
     bonafide_scores = load_bonafide_scores(Path(args.bonafide_scores_file))
     logger.info(f"Loaded {bonafide_scores.size} bonafide scores from {args.bonafide_scores_file}")
 
