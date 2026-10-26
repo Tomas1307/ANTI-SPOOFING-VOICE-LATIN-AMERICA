@@ -508,17 +508,23 @@ def report_eer_by_coverage(
 def report_eer_eval_split(
     clips: List[dict], aligned_scores: Dict[str, float], bonafide_scores: np.ndarray
 ) -> None:
-    """Report aligned-crop EER restricted to the eval split only.
+    """Report aligned-crop EER restricted to the eval split, main partition only.
 
     ``Table tab:partialspoofeer`` in the paper reports every other row's EER
-    on the eval split alone (W1/W2/W3 clip counts 1,155/631/199), while the
-    aligned-crop numbers originally computed pooled every split and both
-    boundary-jitter partitions together (16,331 clips total). Those are two
-    different populations, so the aligned-crop row did not actually belong
-    next to the others in that table. This restricts the comparison to the
-    eval-split population the rest of the table already uses, so the row can
-    be corrected to the same denominator. This needs no GPU: it re-reads a
-    score file this script already wrote.
+    on the eval split of the MARSA training corpus alone (W1/W2/W3 clip
+    counts 1,155/631/199, confirmed by summing eval per-attack clip counts in
+    ``dfarena_zeroshot_v2/result.json``), while the aligned-crop numbers
+    originally computed pooled every split and both boundary-jitter
+    partitions together (16,331 clips total). Those are two different
+    populations, so the aligned-crop row did not actually belong next to the
+    others in that table. The boundary-jitter partition never fed the main
+    MARSA corpus the baseline was scored on: no ``-psw{1,2,3}j`` attack ID
+    appears anywhere in ``result.json``'s per-attack breakdown, only the
+    plain ``-psw{1,2,3}`` IDs, which the pipeline assigns exclusively to the
+    ``not_jittered`` partition (``BONAFIDE_FILE_PARTITION`` setting). This
+    restricts the comparison to that same eval-split, not_jittered
+    population, so the row can be corrected to the same denominator. This
+    needs no GPU: it re-reads a score file this script already wrote.
 
     Args:
         clips: Clips collected by ``collect_spoof_clips``.
@@ -526,8 +532,14 @@ def report_eer_eval_split(
             returned by ``load_aligned_scores``.
         bonafide_scores: Bonafide score pool from the existing zero-shot run.
     """
-    eval_clips = [clip for clip in clips if clip["split"] == "eval"]
-    logger.info(f"Restricting to eval split: {len(eval_clips):,}/{len(clips):,} clips.")
+    eval_clips = [
+        clip for clip in clips
+        if clip["split"] == "eval" and clip["partition"] == "not_jittered"
+    ]
+    logger.info(
+        f"Restricting to eval split, not_jittered partition: "
+        f"{len(eval_clips):,}/{len(clips):,} clips."
+    )
     report_eer_by_coverage(eval_clips, aligned_scores, bonafide_scores)
 
 
