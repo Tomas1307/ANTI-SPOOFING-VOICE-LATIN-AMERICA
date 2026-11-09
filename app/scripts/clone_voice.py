@@ -24,6 +24,7 @@ from loguru import logger
 
 from app.pipeline.omnivoice_attack.settings import settings as omnivoice_settings
 from app.pipeline.omnivoice_attack.utils.cloner import Cloner
+from app.pipeline.omnivoice_attack.utils.reference_transcriber import transcribe_audio
 from app.scripts.voice_demo.schemas.clone_request import CloneRequest
 from app.scripts.voice_demo.settings import settings
 from app.scripts.voice_demo.utils.audio_conversion import to_mono_wav
@@ -65,6 +66,8 @@ def build_clone_request(
     speaker_name: str,
     text: str,
     reference_text: str,
+    ref_start_seconds: float,
+    ref_duration_seconds: float,
     output_path: Path | None,
     references_dir: Path,
     output_dir: Path,
@@ -74,8 +77,10 @@ def build_clone_request(
     Args:
         speaker_name: Speaker identifier as passed on the command line.
         text: Spanish text to synthesise.
-        reference_text: Transcript of the reference audio, or "" to let
-            OmniVoice auto-transcribe it internally.
+        reference_text: Transcript of the reference audio, or "" to
+            transcribe the cropped reference with Parakeet.
+        ref_start_seconds: Offset into the reference audio to start the crop at.
+        ref_duration_seconds: Cropped reference audio duration in seconds.
         output_path: Explicit output path, or None to auto-generate one
             under ``output_dir``.
         references_dir: Directory holding reference audio files.
@@ -94,6 +99,8 @@ def build_clone_request(
         speaker_name=speaker_name,
         reference_audio_path=reference_audio_path,
         reference_text=reference_text,
+        ref_start_seconds=ref_start_seconds,
+        ref_duration_seconds=ref_duration_seconds,
         text=text,
         output_path=output_path,
     )
@@ -109,22 +116,27 @@ def clone_voice(request: CloneRequest) -> Path:
         The output WAV path that was written.
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
+        logger.info(
+            f"Cropping reference audio to {request.ref_duration_seconds:.1f}s "
+            f"starting at {request.ref_start_seconds:.1f}s..."
+        )
         wav_reference_path = to_mono_wav(
             source_path=request.reference_audio_path,
             destination_path=Path(tmp_dir) / "reference.wav",
             sample_rate=settings.REFERENCE_WAV_SAMPLE_RATE,
+            start_seconds=request.ref_start_seconds,
+            duration_seconds=request.ref_duration_seconds,
         )
+
+        reference_text = request.reference_text
+        if not reference_text:
+            logger.info("No --ref-text given; transcribing the reference with Parakeet...")
+            reference_text = transcribe_audio(wav_reference_path)
+            logger.info(f"Parakeet transcript: \"{reference_text}\"")
 
         cloner = Cloner()
         logger.info("Loading OmniVoice model...")
         cloner.load(device=omnivoice_settings.DEVICE)
-
-        if not request.reference_text:
-            logger.warning(
-                "No --ref-text given; OmniVoice will auto-transcribe the "
-                "reference audio internally, which may align prosody less "
-                "precisely. Pass --ref-text for best results."
-            )
 
         logger.info(f"Synthesising: \"{request.text}\"")
         request.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -132,7 +144,7 @@ def clone_voice(request: CloneRequest) -> Path:
             text=request.text,
             reference_audio_path=wav_reference_path,
             output_path=request.output_path,
-            reference_text=request.reference_text,
+            reference_text=reference_text,
         )
 
         cloner.cleanup()
@@ -158,7 +170,19 @@ def main() -> None:
         "--ref-text",
         default="",
         help="Transcript of what the speaker says in the reference audio "
-        "(improves cloning quality; omit to let OmniVoice auto-transcribe)",
+        "(omit to auto-transcribe the cropped reference with Parakeet)",
+    )
+    parser.add_argument(
+        "--ref-start",
+        type=float,
+        default=0.0,
+        help="Offset in seconds into the reference audio to start the crop at (default: 0.0)",
+    )
+    parser.add_argument(
+        "--ref-duration",
+        type=float,
+        default=10.0,
+        help="Cropped reference audio duration in seconds (default: 10.0, OmniVoice's recommended max)",
     )
     parser.add_argument(
         "--output",
@@ -173,6 +197,8 @@ def main() -> None:
             speaker_name=args.speaker,
             text=args.text,
             reference_text=args.ref_text,
+            ref_start_seconds=args.ref_start,
+            ref_duration_seconds=args.ref_duration,
             output_path=args.output,
             references_dir=settings.REFERENCES_DIR,
             output_dir=settings.OUTPUT_DIR,

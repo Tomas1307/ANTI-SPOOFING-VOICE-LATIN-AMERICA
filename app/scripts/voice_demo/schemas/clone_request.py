@@ -25,6 +25,15 @@ class CloneRequest(BaseModel):
 
     speaker_name: str = Field(..., description="Speaker identifier matched from REFERENCES_DIR")
     reference_audio_path: Path = Field(..., description="Resolved reference audio file path")
-    reference_text: str = Field(default="", description="Transcript of the reference audio")
+    reference_text: str = Field(
+        default="",
+        description="Transcript of the reference audio, or '' to transcribe it with Parakeet",
+    )
+    ref_start_seconds: float = Field(
+        default=0.0, description="Offset into the reference audio to start the crop at"
+    )
+    ref_duration_seconds: float = Field(
+        default=10.0, description="Cropped reference audio duration in seconds"
+    )
     text: str = Field(..., min_length=1, description="Spanish text to synthesise")
     output_path: Path = Field(..., description="Destination WAV path for the synthesised audio")
