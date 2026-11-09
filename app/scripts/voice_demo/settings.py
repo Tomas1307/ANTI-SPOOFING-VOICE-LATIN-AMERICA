@@ -4,14 +4,14 @@ Configuration settings for the standalone voice-cloning demo script.
 This is a thin, pipeline-scoped settings module (not part of any attack
 pipeline) for the `clone_voice.py` CLI: given a reference speaker file
 under ``REFERENCES_DIR`` and arbitrary Spanish text, it reuses the
-existing OpenVoice ``Cloner`` (app/pipeline/openvoice_attack/utils/cloner.py)
+existing OmniVoice ``Cloner`` (app/pipeline/omnivoice_attack/utils/cloner.py)
 to synthesise speech in that speaker's voice.
 
 Global application settings belong elsewhere; this module only holds the
 parameters specific to this demo script.
 """
-import torch
 from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 
@@ -24,9 +24,9 @@ class VoiceDemoSettings(BaseModel):
             passed on the command line is matched case-insensitively
             against the file stem.
         OUTPUT_DIR: Directory where synthesised WAV files are written.
-        SAMPLE_RATE: Output sample rate in Hz.
-        DEVICE: Compute device for model inference, forwarded to the
-            underlying OpenVoice Cloner.
+        REFERENCE_WAV_SAMPLE_RATE: Sample rate used when transcoding the
+            raw reference container (mp4/m4a) to WAV before it reaches
+            the cloner.
     """
 
     REFERENCES_DIR: Path = Field(
@@ -37,14 +37,11 @@ class VoiceDemoSettings(BaseModel):
         default=Path("data/voice_demo_output"),
         description="Output directory for synthesised WAV files",
     )
-    SAMPLE_RATE: int = Field(
-        default=16000,
-        description="Target output sample rate in Hz",
+    REFERENCE_WAV_SAMPLE_RATE: int = Field(
+        default=24000,
+        description="Sample rate for the transcoded mono WAV reference file",
     )
-    DEVICE: str = Field(
-        default="cuda:0" if torch.cuda.is_available() else "cpu",
-        description="Compute device for model inference",
-    )
+
     class Config:
         """Pydantic model configuration."""
 

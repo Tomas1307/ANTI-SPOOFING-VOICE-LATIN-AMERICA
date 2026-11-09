@@ -14,11 +14,17 @@ class CloneRequest(BaseModel):
             command line (e.g. ``"ruben"``, ``"mery"``).
         reference_audio_path: Resolved path to the speaker's original
             reference audio file under ``REFERENCES_DIR``.
+        reference_text: Transcript of what the speaker says in
+            ``reference_audio_path``. OmniVoice's diffusion conditioning
+            uses this to align content prosody with the target voice; if
+            empty, OmniVoice falls back to its internal Whisper
+            auto-transcription.
         text: Spanish text to synthesise in the speaker's voice.
         output_path: Destination WAV path for the synthesised audio.
     """
 
     speaker_name: str = Field(..., description="Speaker identifier matched from REFERENCES_DIR")
     reference_audio_path: Path = Field(..., description="Resolved reference audio file path")
+    reference_text: str = Field(default="", description="Transcript of the reference audio")
     text: str = Field(..., min_length=1, description="Spanish text to synthesise")
     output_path: Path = Field(..., description="Destination WAV path for the synthesised audio")

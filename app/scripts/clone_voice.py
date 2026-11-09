@@ -1,18 +1,19 @@
 """
 Standalone CLI to clone a reference speaker's voice onto arbitrary text.
 
-This is a thin wrapper around the existing OpenVoice ``Cloner``
-(app/pipeline/openvoice_attack/utils/cloner.py), the same cloning unit
+This is a thin wrapper around the existing OmniVoice ``Cloner``
+(app/pipeline/omnivoice_attack/utils/cloner.py), the same cloning unit
 used by the full attack pipeline. It takes one reference audio file from
 ``tesis/references`` (matched by speaker name, case-insensitively) and
 one text string, and writes the synthesised clone to a WAV file.
 
-Must be run on ml-server03 (GPU) with the openvoice_attack venv activated,
-NOT on the local Windows machine -- see CLAUDE.md's two-machine workflow.
+Must be run on ml-server03 (GPU) with the omnivoice_attack venv
+activated, NOT on the local Windows machine -- see CLAUDE.md's
+two-machine workflow.
 
 Usage:
     python -m app.scripts.clone_voice ruben "Hola como estan, esta es la presentacion de la tesis de tomas"
-    python -m app.scripts.clone_voice mery "Otro texto cualquiera" --output data/voice_demo_output/mery_test.wav
+    python -m app.scripts.clone_voice mery "Otro texto cualquiera" --ref-text "Lo que mery dice en el audio de referencia"
 """
 import argparse
 import sys
@@ -21,7 +22,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from app.pipeline.openvoice_attack.utils.cloner import Cloner
+from app.pipeline.omnivoice_attack.settings import settings as omnivoice_settings
+from app.pipeline.omnivoice_attack.utils.cloner import Cloner
 from app.scripts.voice_demo.schemas.clone_request import CloneRequest
 from app.scripts.voice_demo.settings import settings
 from app.scripts.voice_demo.utils.audio_conversion import to_mono_wav
@@ -62,6 +64,7 @@ def resolve_reference_audio(speaker_name: str, references_dir: Path) -> Path:
 def build_clone_request(
     speaker_name: str,
     text: str,
+    reference_text: str,
     output_path: Path | None,
     references_dir: Path,
     output_dir: Path,
@@ -71,6 +74,8 @@ def build_clone_request(
     Args:
         speaker_name: Speaker identifier as passed on the command line.
         text: Spanish text to synthesise.
+        reference_text: Transcript of the reference audio, or "" to let
+            OmniVoice auto-transcribe it internally.
         output_path: Explicit output path, or None to auto-generate one
             under ``output_dir``.
         references_dir: Directory holding reference audio files.
@@ -88,13 +93,14 @@ def build_clone_request(
     return CloneRequest(
         speaker_name=speaker_name,
         reference_audio_path=reference_audio_path,
+        reference_text=reference_text,
         text=text,
         output_path=output_path,
     )
 
 
 def clone_voice(request: CloneRequest) -> Path:
-    """Run the OpenVoice cloner end-to-end for one request.
+    """Run the OmniVoice cloner end-to-end for one request.
 
     Args:
         request: Validated clone request.
@@ -106,18 +112,19 @@ def clone_voice(request: CloneRequest) -> Path:
         wav_reference_path = to_mono_wav(
             source_path=request.reference_audio_path,
             destination_path=Path(tmp_dir) / "reference.wav",
-            sample_rate=settings.SAMPLE_RATE,
+            sample_rate=settings.REFERENCE_WAV_SAMPLE_RATE,
         )
 
         cloner = Cloner()
-        logger.info(f"Loading OpenVoice on {settings.DEVICE}...")
-        cloner.load(device=settings.DEVICE)
+        logger.info("Loading OmniVoice model...")
+        cloner.load(device=omnivoice_settings.DEVICE)
 
-        logger.info(f"Extracting tone color embedding for '{request.speaker_name}'...")
-        cloner.prepare_speaker(
-            speaker_id=request.speaker_name,
-            reference_audio_path=wav_reference_path,
-        )
+        if not request.reference_text:
+            logger.warning(
+                "No --ref-text given; OmniVoice will auto-transcribe the "
+                "reference audio internally, which may align prosody less "
+                "precisely. Pass --ref-text for best results."
+            )
 
         logger.info(f"Synthesising: \"{request.text}\"")
         request.output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,6 +132,7 @@ def clone_voice(request: CloneRequest) -> Path:
             text=request.text,
             reference_audio_path=wav_reference_path,
             output_path=request.output_path,
+            reference_text=request.reference_text,
         )
 
         cloner.cleanup()
@@ -139,13 +147,19 @@ def clone_voice(request: CloneRequest) -> Path:
 def main() -> None:
     """Parse CLI arguments and run the clone."""
     parser = argparse.ArgumentParser(
-        description="Clone a reference speaker's voice onto arbitrary Spanish text using OpenVoice."
+        description="Clone a reference speaker's voice onto arbitrary Spanish text using OmniVoice."
     )
     parser.add_argument(
         "speaker",
         help="Speaker name matching a file stem under tesis/references (e.g. ruben, mery)",
     )
     parser.add_argument("text", help="Spanish text to synthesise in the speaker's voice")
+    parser.add_argument(
+        "--ref-text",
+        default="",
+        help="Transcript of what the speaker says in the reference audio "
+        "(improves cloning quality; omit to let OmniVoice auto-transcribe)",
+    )
     parser.add_argument(
         "--output",
         type=Path,
@@ -158,6 +172,7 @@ def main() -> None:
         request = build_clone_request(
             speaker_name=args.speaker,
             text=args.text,
+            reference_text=args.ref_text,
             output_path=args.output,
             references_dir=settings.REFERENCES_DIR,
             output_dir=settings.OUTPUT_DIR,
