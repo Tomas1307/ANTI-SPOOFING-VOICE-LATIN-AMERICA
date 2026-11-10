@@ -10,6 +10,7 @@ single ~10 s recording, which serves as both the OmniVoice reference clip
 and the bonafide host utterance, so the cloned replacement words share the
 speaker's prosody with the sentence they are spliced into.
 """
+import difflib
 from pathlib import Path
 from typing import List, Tuple
 
@@ -30,30 +31,67 @@ from app.utils.parakeet_transcriber import ParakeetTranscriber
 from app.utils.word_timestamp import WordTimestamp
 
 
-def find_phrase_span(words: List[WordTimestamp], phrase_tokens: List[str]) -> Tuple[int, int]:
+def find_phrase_span(
+    words: List[WordTimestamp],
+    phrase_tokens: List[str],
+    fuzzy: bool = False,
+    fuzzy_threshold: float = 0.75,
+) -> Tuple[int, int]:
     """Locate a contiguous phrase inside a Parakeet word-timestamp list.
 
     Matches ``phrase_tokens`` against ``words`` in order, using the same
     accent/punctuation normalisation as the production splice engine, so
     a manually chosen phrase (e.g. ``["300", "mil"]``) can be mapped onto
-    exact timestamps.
+    exact timestamps. Exact matches always win; ``fuzzy`` only widens the
+    search when no exact match exists.
 
     Args:
         words: Word-level timestamps from Parakeet, in utterance order.
         phrase_tokens: The words to locate, in order.
+        fuzzy: When True and no exact match exists, accept the best
+            character-similarity match above ``fuzzy_threshold`` instead.
+            Parakeet's SentencePiece tokenizer (8192 tokens) frequently
+            mis-renders short proper nouns and acronyms it never saw as a
+            whole token during training (observed: "BBVA" -> "BBUA",
+            "Bancolombia" -> "Bancolomb") even when the underlying audio
+            is fine; without this, a run that nails the audio can still be
+            discarded purely because the transcript of it is slightly off.
+            Should stay False for matching against the host's own
+            recording, since that transcript has been exact and
+            reproducible across repeated runs.
+        fuzzy_threshold: Minimum ``difflib.SequenceMatcher`` ratio (over
+            the normalised, space-joined phrase) to accept a fuzzy match.
 
     Returns:
         A (start_index, end_index) tuple, both inclusive, into ``words``.
 
     Raises:
-        ValueError: If no contiguous match for ``phrase_tokens`` is found.
+        ValueError: If no match (exact, or fuzzy above threshold) is found.
     """
     target = [_normalize_word(t) for t in phrase_tokens]
     n = len(target)
+
+    best_idx = None
+    best_ratio = 0.0
+    target_str = " ".join(target)
     for i in range(len(words) - n + 1):
         window = [_normalize_word(words[i + j].word) for j in range(n)]
         if window == target:
             return i, i + n - 1
+        if fuzzy:
+            ratio = difflib.SequenceMatcher(None, " ".join(window), target_str).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_idx = i
+
+    if fuzzy and best_idx is not None and best_ratio >= fuzzy_threshold:
+        matched_words = [words[best_idx + j].word for j in range(n)]
+        logger.info(
+            f"Fuzzy-matched {phrase_tokens!r} to {matched_words!r} "
+            f"(similarity={best_ratio:.2f})"
+        )
+        return best_idx, best_idx + n - 1
+
     raise ValueError(
         f"Phrase {phrase_tokens} not found in transcript: "
         f"{[w.word for w in words]}"
@@ -133,10 +171,17 @@ class LiveDemoBuilder:
                 f"for all of {self.request.replacement_phrases!r}."
             )
 
+        eligible, worst_case_cf, _ = best["rank_key"]
         logger.info(
-            f"Best candidate: \"{best['text']}\" | worst-case effective crossfade = "
-            f"{best['score']:.1f}ms"
+            f"Best candidate: \"{best['text']}\" | eligible={eligible} | "
+            f"worst-case effective crossfade = {worst_case_cf:.1f}ms"
         )
+        if not eligible:
+            logger.warning(
+                "No candidate met the production stretch-ratio gate "
+                f"(MAX_STRETCH_RATIO={partial_spoof_settings.MAX_STRETCH_RATIO}); "
+                "using the least-bad one. Consider raising --tries."
+            )
         for d in best["details"]:
             logger.info(f"Splice detail: {d}")
 
@@ -237,7 +282,7 @@ class LiveDemoBuilder:
                 zip(host_spans, self.request.replacement_phrases)
             ):
                 try:
-                    c_start_idx, c_end_idx = find_phrase_span(candidate_words, repl)
+                    c_start_idx, c_end_idx = find_phrase_span(candidate_words, repl, fuzzy=True)
                 except ValueError:
                     logger.warning(
                         f"Try {attempt}: replacement phrase {repl} not found in "
@@ -286,15 +331,24 @@ class LiveDemoBuilder:
                 )
                 continue
 
+            max_ratio = partial_spoof_settings.MAX_STRETCH_RATIO
+            eligible = all(
+                (1.0 / max_ratio) <= d["duration_ratio"] <= max_ratio for d in details
+            )
             worst_case_cf = min(d["effective_crossfade_ms"] for d in details)
+            worst_stretch_penalty = max(abs(np.log(d["duration_ratio"])) for d in details)
+            rank_key = (eligible, worst_case_cf, -worst_stretch_penalty)
+
             logger.info(
-                f"Try {attempt}: \"{candidate_text}\" | worst-case effective crossfade = "
-                f"{worst_case_cf:.1f}ms"
+                f"Try {attempt}: \"{candidate_text}\" | eligible={eligible} "
+                f"(duration ratios: {[round(d['duration_ratio'], 3) for d in details]}, "
+                f"gate: {1/max_ratio:.2f}-{max_ratio:.2f}) | "
+                f"worst-case effective crossfade = {worst_case_cf:.1f}ms"
             )
 
-            if best is None or worst_case_cf > best["score"]:
+            if best is None or rank_key > best["rank_key"]:
                 best = {
-                    "score": worst_case_cf,
+                    "rank_key": rank_key,
                     "audio": candidate_audio,
                     "text": candidate_text,
                     "spoof_audio": spoof_audio,
