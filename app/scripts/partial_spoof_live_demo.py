@@ -48,6 +48,11 @@ def main() -> None:
         "--output", type=Path, default=None,
         help="Output directory (default: data/voice_demo_output/partial_spoof_live_demo)",
     )
+    parser.add_argument(
+        "--tries", type=int, default=1,
+        help="Number of independent OmniVoice renders to generate, keeping the one "
+        "with the most silence around the replacement phrase (default: 1)",
+    )
     args = parser.parse_args()
 
     output_dir = args.output or (settings.OUTPUT_DIR / "partial_spoof_live_demo")
@@ -56,6 +61,7 @@ def main() -> None:
         target_phrase=args.target,
         replacement_phrase=args.replacement,
         output_dir=output_dir,
+        tries=args.tries,
     )
 
     builder = LiveDemoBuilder(request)

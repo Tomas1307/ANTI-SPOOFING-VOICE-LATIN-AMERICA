@@ -22,6 +22,12 @@ class LiveDemoRequest(BaseModel):
             ``["un", "millon"]``).
         output_dir: Destination directory for ``crudo.wav``, ``mitigado.wav``,
             and the intermediate reference/cloned audio.
+        tries: Number of independent OmniVoice renders of the replacement
+            sentence to generate. OmniVoice exposes no deterministic
+            sampling seed, so repeated calls with the same text produce
+            different prosody; each candidate is scored by how much
+            silence flanks the replacement phrase and the best one is
+            used for the final splice. 1 disables the search.
     """
 
     host_audio_path: Path = Field(..., description="Path to the single host/reference recording")
@@ -30,3 +36,4 @@ class LiveDemoRequest(BaseModel):
         ..., min_length=1, description="Words that replace target_phrase in the clone"
     )
     output_dir: Path = Field(..., description="Destination directory for the demo outputs")
+    tries: int = Field(default=1, ge=1, description="Number of OmniVoice renders to try, keeping the best")

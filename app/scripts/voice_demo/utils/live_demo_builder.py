@@ -21,7 +21,12 @@ from loguru import logger
 from app.pipeline.omnivoice_attack.settings import settings as omnivoice_settings
 from app.pipeline.omnivoice_attack.utils.cloner import Cloner
 from app.pipeline.partial_spoof.settings import settings as partial_spoof_settings
-from app.pipeline.partial_spoof.utils.splice_engine import _normalize_word, splice_words
+from app.pipeline.partial_spoof.utils.splice_engine import (
+    _normalize_word,
+    _silent_run_backward,
+    _silent_run_forward,
+    splice_words,
+)
 from app.scripts.voice_demo.schemas.live_demo_request import LiveDemoRequest
 from app.scripts.voice_demo.settings import settings as voice_demo_settings
 from app.scripts.voice_demo.utils.audio_conversion import to_mono_wav
@@ -114,33 +119,30 @@ class LiveDemoBuilder:
         cloner = Cloner()
         logger.info("Loading OmniVoice model...")
         cloner.load(device=omnivoice_settings.DEVICE)
-        cloned_raw_path = out_dir / "cloned_raw.wav"
-        cloner.clone_single(
-            text=synth_text,
-            reference_audio_path=host_wav_24k,
-            output_path=cloned_raw_path,
-            reference_text=host_text,
-        )
+
+        best = self._generate_best_candidate(cloner, synth_text, host_wav_24k, host_text, out_dir)
         cloner.cleanup()
 
-        cloned_wav_16k = to_mono_wav(
-            cloned_raw_path, out_dir / "cloned_16k.wav", sample_rate=partial_spoof_settings.SAMPLE_RATE
+        if best is None:
+            raise RuntimeError(
+                f"None of {self.request.tries} OmniVoice render(s) contained the "
+                f"replacement phrase {self.request.replacement_phrase!r}."
+            )
+
+        logger.info(
+            f"Best candidate: \"{best['text']}\" with "
+            f"{best['score'] * 1000 / partial_spoof_settings.SAMPLE_RATE:.1f}ms "
+            f"total flanking silence around the replacement phrase"
         )
 
-        logger.info("Transcribing cloned replacement with Parakeet...")
-        cloned_text, cloned_words = self.transcriber.transcribe_with_timestamps(cloned_wav_16k)
-        logger.info(f"Cloned transcript: \"{cloned_text}\"")
-
-        cloned_start_idx, cloned_end_idx = find_phrase_span(
-            cloned_words, self.request.replacement_phrase
-        )
-        cloned_phrase_start_s = cloned_words[cloned_start_idx].start
-        cloned_phrase_end_s = cloned_words[cloned_end_idx].end
+        cloned_wav_16k = out_dir / "cloned_16k.wav"
+        sf.write(str(cloned_wav_16k), best["audio"], partial_spoof_settings.SAMPLE_RATE)
+        cloned_phrase_start_s = best["phrase_start_s"]
+        cloned_phrase_end_s = best["phrase_end_s"]
 
         host_audio, _ = librosa.load(str(host_wav_16k), sr=partial_spoof_settings.SAMPLE_RATE)
-        cloned_audio, _ = librosa.load(str(cloned_wav_16k), sr=partial_spoof_settings.SAMPLE_RATE)
         host_audio = host_audio.astype(np.float32)
-        cloned_audio = cloned_audio.astype(np.float32)
+        cloned_audio = best["audio"]
 
         crudo_path = out_dir / "crudo.wav"
         self._build_crudo(
@@ -160,6 +162,102 @@ class LiveDemoBuilder:
             "crudo": str(crudo_path),
             "mitigado": str(mitigado_path),
         }
+
+    def _generate_best_candidate(
+        self,
+        cloner: Cloner,
+        synth_text: str,
+        host_wav_24k: Path,
+        host_text: str,
+        out_dir: Path,
+    ) -> dict | None:
+        """Render the replacement sentence up to ``request.tries`` times and
+        keep the one with the most silence flanking the replacement phrase.
+
+        OmniVoice exposes no deterministic sampling seed (``Cloner.clone_single``'s
+        ``seed`` argument is accepted only for interface compatibility), so
+        repeated calls with the same text produce different prosody. The
+        production splice engine only gets a clean crossfade when the cloned
+        word already has silence on both sides in the generated audio; since
+        this demo cannot pick a different, better-behaved word (the content
+        is fixed by the script), the closest equivalent is to pick the best
+        of several independent renders instead.
+
+        Args:
+            cloner: Loaded OmniVoice Cloner instance.
+            synth_text: Full replacement sentence to synthesise.
+            host_wav_24k: OmniVoice reference audio (24 kHz mono).
+            host_text: Reference transcript for OmniVoice's conditioning.
+            out_dir: Directory to write per-candidate intermediate files to.
+
+        Returns:
+            A dict with ``score`` (total flanking-silence samples), ``audio``
+            (16 kHz mono waveform), ``text`` (transcript), ``phrase_start_s``,
+            and ``phrase_end_s``, or None if no candidate contained the
+            replacement phrase.
+        """
+        sr = partial_spoof_settings.SAMPLE_RATE
+        best: dict | None = None
+
+        for attempt in range(self.request.tries):
+            candidate_raw = out_dir / f"cloned_candidate_{attempt}_raw.wav"
+            cloner.clone_single(
+                text=synth_text,
+                reference_audio_path=host_wav_24k,
+                output_path=candidate_raw,
+                reference_text=host_text,
+            )
+            candidate_16k_path = to_mono_wav(
+                candidate_raw, out_dir / f"cloned_candidate_{attempt}_16k.wav", sample_rate=sr
+            )
+
+            candidate_text, candidate_words = self.transcriber.transcribe_with_timestamps(
+                candidate_16k_path
+            )
+
+            try:
+                c_start_idx, c_end_idx = find_phrase_span(
+                    candidate_words, self.request.replacement_phrase
+                )
+            except ValueError:
+                logger.warning(
+                    f"Try {attempt}: replacement phrase not found in "
+                    f"\"{candidate_text}\", skipping this render."
+                )
+                continue
+
+            phrase_start_s = candidate_words[c_start_idx].start
+            phrase_end_s = candidate_words[c_end_idx].end
+
+            candidate_audio, _ = librosa.load(str(candidate_16k_path), sr=sr)
+            candidate_audio = candidate_audio.astype(np.float32)
+
+            silence_left = _silent_run_backward(
+                candidate_audio, int(phrase_start_s * sr), sr,
+                max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
+                silence_threshold=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
+            )
+            silence_right = _silent_run_forward(
+                candidate_audio, int(phrase_end_s * sr), sr,
+                max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
+                silence_threshold=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
+            )
+            score = silence_left + silence_right
+            logger.info(
+                f"Try {attempt}: \"{candidate_text}\" | flanking silence = "
+                f"{silence_left * 1000 / sr:.1f}ms + {silence_right * 1000 / sr:.1f}ms"
+            )
+
+            if best is None or score > best["score"]:
+                best = {
+                    "score": score,
+                    "audio": candidate_audio,
+                    "text": candidate_text,
+                    "phrase_start_s": phrase_start_s,
+                    "phrase_end_s": phrase_end_s,
+                }
+
+        return best
 
     def _build_crudo(
         self,
