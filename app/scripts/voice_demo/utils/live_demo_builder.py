@@ -74,7 +74,7 @@ def find_phrase_span(
     words: List[WordTimestamp],
     phrase_tokens: List[str],
     fuzzy: bool = False,
-    fuzzy_threshold: float = 0.75,
+    fuzzy_threshold: float = 0.55,
 ) -> Tuple[int, int]:
     """Locate a contiguous phrase inside a Parakeet word-timestamp list.
 
@@ -92,9 +92,15 @@ def find_phrase_span(
             Parakeet's SentencePiece tokenizer (8192 tokens) frequently
             mis-renders short proper nouns and acronyms it never saw as a
             whole token during training (observed: "BBVA" -> "BBUA",
-            "Bancolombia" -> "Bancolomb") even when the underlying audio
-            is fine; without this, a run that nails the audio can still be
-            discarded purely because the transcript of it is slightly off.
+            "Bancolombia" -> "Bancolomb", "Nequi" -> "Neki"/"Aneki" --
+            Spanish "qu" is pronounced /k/, so the tokenizer's phonetic
+            guess is reasonable even though the spelling is wrong) even
+            when the underlying audio is fine; without this, a run that
+            nails the audio can still be discarded purely because the
+            transcript of it is slightly off. 0.55 was picked from real
+            mis-transcriptions clustering at 0.6-0.9 similarity, well
+            above the ~0.25-0.3 scored by renders that were genuinely
+            garbled.
             Should stay False for matching against the host's own
             recording, since that transcript has been exact and
             reproducible across repeated runs.
