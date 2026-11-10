@@ -30,6 +30,44 @@ from app.scripts.voice_demo.utils.audio_conversion import to_mono_wav
 from app.utils.parakeet_transcriber import ParakeetTranscriber
 from app.utils.word_timestamp import WordTimestamp
 
+SPANISH_NUMBER_WORDS = {
+    "cero": "0", "un": "1", "uno": "1", "una": "1", "dos": "2", "tres": "3",
+    "cuatro": "4", "cinco": "5", "seis": "6", "siete": "7", "ocho": "8",
+    "nueve": "9", "diez": "10", "once": "11", "doce": "12", "trece": "13",
+    "catorce": "14", "quince": "15", "veinte": "20", "treinta": "30",
+    "cuarenta": "40", "cincuenta": "50", "sesenta": "60", "setenta": "70",
+    "ochenta": "80", "noventa": "90", "cien": "100", "ciento": "100",
+}
+DIGIT_TO_WORDS: dict = {}
+for _word, _digit in SPANISH_NUMBER_WORDS.items():
+    DIGIT_TO_WORDS.setdefault(_digit, set()).add(_word)
+
+
+def _token_variants(normalized_token: str) -> set:
+    """Expand a normalized token to every spelling Parakeet might use for it.
+
+    Parakeet inconsistently renders small numbers as digits or as spelled-out
+    words between otherwise-identical runs of the same TTS text (observed:
+    "cinco" <-> "5", "trescientos" <-> "300"), with no way to predict which
+    form a given render will use. Without this, a candidate whose audio is
+    fine gets discarded purely because its transcript spells the number
+    differently than the one used when the phrase was first chosen.
+
+    Args:
+        normalized_token: A single token already passed through
+            ``_normalize_word``.
+
+    Returns:
+        A set containing ``normalized_token`` plus its digit/word
+        equivalents, if it is a recognised small number.
+    """
+    variants = {normalized_token}
+    if normalized_token in SPANISH_NUMBER_WORDS:
+        variants.add(SPANISH_NUMBER_WORDS[normalized_token])
+    if normalized_token in DIGIT_TO_WORDS:
+        variants |= DIGIT_TO_WORDS[normalized_token]
+    return variants
+
 
 def find_phrase_span(
     words: List[WordTimestamp],
@@ -76,7 +114,7 @@ def find_phrase_span(
     target_str = " ".join(target)
     for i in range(len(words) - n + 1):
         window = [_normalize_word(words[i + j].word) for j in range(n)]
-        if window == target:
+        if all(target[j] in _token_variants(window[j]) for j in range(n)):
             return i, i + n - 1
         if fuzzy:
             ratio = difflib.SequenceMatcher(None, " ".join(window), target_str).ratio()
