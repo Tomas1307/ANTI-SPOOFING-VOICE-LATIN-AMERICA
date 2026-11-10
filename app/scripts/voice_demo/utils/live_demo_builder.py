@@ -22,12 +22,7 @@ from app.pipeline.omnivoice_attack.settings import settings as omnivoice_setting
 from app.pipeline.omnivoice_attack.utils.cloner import Cloner
 from app.pipeline.partial_spoof.settings import settings as partial_spoof_settings
 from app.pipeline.partial_spoof.steps.step_05b_apply_boundary_jitter import BoundaryJitterApplier
-from app.pipeline.partial_spoof.utils.splice_engine import (
-    _normalize_word,
-    _silent_run_backward,
-    _silent_run_forward,
-    splice_words,
-)
+from app.pipeline.partial_spoof.utils.splice_engine import _normalize_word, splice_words
 from app.scripts.voice_demo.schemas.live_demo_request import LiveDemoRequest
 from app.scripts.voice_demo.settings import settings as voice_demo_settings
 from app.scripts.voice_demo.utils.audio_conversion import to_mono_wav
@@ -120,76 +115,34 @@ class LiveDemoBuilder:
         synth_text = " ".join(synth_words)
         logger.info(f"Replacement sentence to clone: \"{synth_text}\"")
 
+        host_audio, _ = librosa.load(str(host_wav_16k), sr=sr)
+        host_audio = host_audio.astype(np.float32)
+
         cloner = Cloner()
         logger.info("Loading OmniVoice model...")
         cloner.load(device=omnivoice_settings.DEVICE)
 
-        best = self._generate_best_candidate(cloner, synth_text, host_wav_24k, host_text, out_dir)
+        best = self._generate_best_candidate(
+            cloner, synth_text, host_wav_24k, host_text, host_audio, host_words, host_spans, out_dir
+        )
         cloner.cleanup()
 
         if best is None:
             raise RuntimeError(
-                f"None of {self.request.tries} OmniVoice render(s) contained all of "
-                f"{self.request.replacement_phrases!r}."
+                f"None of {self.request.tries} OmniVoice render(s) produced a usable splice "
+                f"for all of {self.request.replacement_phrases!r}."
             )
 
         logger.info(
-            f"Best candidate: \"{best['text']}\" with "
-            f"{best['score'] * 1000 / sr:.1f}ms total flanking silence across "
-            f"{len(self.request.replacement_phrases)} swap(s)"
+            f"Best candidate: \"{best['text']}\" | worst-case effective crossfade = "
+            f"{best['score']:.1f}ms"
         )
+        for d in best["details"]:
+            logger.info(f"Splice detail: {d}")
 
         cloned_wav_16k = out_dir / "cloned_16k.wav"
         sf.write(str(cloned_wav_16k), best["audio"], sr)
-        cloned_words = best["words"]
-
-        host_audio, _ = librosa.load(str(host_wav_16k), sr=sr)
-        host_audio = host_audio.astype(np.float32)
-        cloned_audio = best["audio"]
-
-        bonafide_words_local = []
-        cloned_words_local = []
-        for i, ((h_start_idx, h_end_idx), repl) in enumerate(
-            zip(host_spans, self.request.replacement_phrases)
-        ):
-            placeholder = f"__TARGET_{i}__"
-            c_start_idx, c_end_idx = find_phrase_span(cloned_words, repl)
-            bonafide_words_local.append({
-                "word": placeholder,
-                "start": host_words[h_start_idx].start,
-                "end": host_words[h_end_idx].end,
-            })
-            cloned_words_local.append({
-                "word": placeholder,
-                "start": cloned_words[c_start_idx].start,
-                "end": cloned_words[c_end_idx].end,
-            })
-
-        spoof_audio, details = splice_words(
-            bonafide_audio=host_audio,
-            cloned_audio=cloned_audio,
-            bonafide_words=bonafide_words_local,
-            cloned_words=cloned_words_local,
-            selected_indices=list(range(len(bonafide_words_local))),
-            sample_rate=sr,
-            crossfade_min_ms=partial_spoof_settings.CROSSFADE_MIN_MS,
-            crossfade_max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
-            splice_seed=partial_spoof_settings.RANDOM_SEED,
-            valley_search_ms=partial_spoof_settings.VALLEY_SEARCH_MS,
-            energy_refine_radius_s=partial_spoof_settings.ENERGY_REFINE_RADIUS_S,
-            energy_refine_silence_rms=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
-            loudness_match_enabled=partial_spoof_settings.LOUDNESS_MATCH_ENABLED,
-            loudness_reference_mode=partial_spoof_settings.LOUDNESS_REFERENCE_MODE,
-            loudness_voiced_frame_ms=partial_spoof_settings.LOUDNESS_VOICED_FRAME_MS,
-            loudness_voiced_gate_fraction=partial_spoof_settings.LOUDNESS_VOICED_GATE_FRACTION,
-        )
-        if len(details) < len(bonafide_words_local):
-            logger.warning(
-                f"Only {len(details)}/{len(bonafide_words_local)} swaps spliced "
-                "successfully; see splice_engine warnings above."
-            )
-        for d in details:
-            logger.info(f"Splice detail: {d}")
+        spoof_audio = best["spoof_audio"]
 
         original_path = out_dir / "original.wav"
         sf.write(str(original_path), host_audio, sr)
@@ -215,32 +168,46 @@ class LiveDemoBuilder:
         synth_text: str,
         host_wav_24k: Path,
         host_text: str,
+        host_audio: np.ndarray,
+        host_words: List[WordTimestamp],
+        host_spans: List[Tuple[int, int]],
         out_dir: Path,
     ) -> dict | None:
         """Render the replacement sentence up to ``request.tries`` times and
-        keep the one with the most silence flanking every replacement phrase.
+        keep the one the REAL splice engine handles best.
 
         OmniVoice exposes no deterministic sampling seed (``Cloner.clone_single``'s
         ``seed`` argument is accepted only for interface compatibility), so
-        repeated calls with the same text produce different prosody. The
-        production splice engine only gets a clean crossfade when the cloned
-        word already has silence on both sides in the generated audio; since
-        this demo cannot pick a different, better-behaved word (the content
-        is fixed by the script), the closest equivalent is to pick the best
-        of several independent renders instead.
+        repeated calls with the same text produce different prosody. A naive
+        pre-screen based on raw silence around the replacement phrase is
+        unreliable: ``splice_words`` refines each boundary by acoustic energy
+        (``ENERGY_REFINE_RADIUS_S``) BEFORE computing the crossfade, and that
+        refinement can shift the cut into material a raw-boundary check
+        thought was silent. Running the actual production splice on every
+        candidate and comparing the real ``effective_crossfade_ms`` it
+        achieves is the only measure that matches what will actually be
+        heard, so each candidate is fully spliced here and scored by its
+        worst-case (minimum) effective crossfade across all swaps -- a
+        candidate that nails one swap and fails the other is not "better"
+        than one that does acceptably on both.
 
         Args:
             cloner: Loaded OmniVoice Cloner instance.
             synth_text: Full replacement sentence to synthesise.
             host_wav_24k: OmniVoice reference audio (24 kHz mono).
             host_text: Reference transcript for OmniVoice's conditioning.
+            host_audio: Host waveform at the processing sample rate.
+            host_words: Host word-level timestamps.
+            host_spans: (start_index, end_index) into ``host_words`` for
+                each entry of ``request.target_phrases``.
             out_dir: Directory to write per-candidate intermediate files to.
 
         Returns:
-            A dict with ``score`` (total flanking-silence samples across all
-            replacement phrases), ``audio`` (16 kHz mono waveform), ``text``
-            (transcript), and ``words`` (Parakeet word timestamps), or None
-            if no candidate contained every replacement phrase.
+            A dict with ``score`` (worst-case effective_crossfade_ms across
+            swaps), ``audio`` (16 kHz mono cloned waveform), ``text``
+            (cloned transcript), ``spoof_audio`` (the spliced result), and
+            ``details`` (per-swap splice metadata), or None if no candidate
+            produced a usable splice for every swap.
         """
         sr = partial_spoof_settings.SAMPLE_RATE
         best: dict | None = None
@@ -263,47 +230,75 @@ class LiveDemoBuilder:
             candidate_audio, _ = librosa.load(str(candidate_16k_path), sr=sr)
             candidate_audio = candidate_audio.astype(np.float32)
 
-            total_score = 0
+            bonafide_words_local = []
+            cloned_words_local = []
             all_found = True
-            for repl_phrase in self.request.replacement_phrases:
+            for i, ((h_start_idx, h_end_idx), repl) in enumerate(
+                zip(host_spans, self.request.replacement_phrases)
+            ):
                 try:
-                    c_start_idx, c_end_idx = find_phrase_span(candidate_words, repl_phrase)
+                    c_start_idx, c_end_idx = find_phrase_span(candidate_words, repl)
                 except ValueError:
                     logger.warning(
-                        f"Try {attempt}: replacement phrase {repl_phrase} not found in "
+                        f"Try {attempt}: replacement phrase {repl} not found in "
                         f"\"{candidate_text}\", skipping this render."
                     )
                     all_found = False
                     break
-
-                phrase_start_s = candidate_words[c_start_idx].start
-                phrase_end_s = candidate_words[c_end_idx].end
-                silence_left = _silent_run_backward(
-                    candidate_audio, int(phrase_start_s * sr), sr,
-                    max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
-                    silence_threshold=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
-                )
-                silence_right = _silent_run_forward(
-                    candidate_audio, int(phrase_end_s * sr), sr,
-                    max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
-                    silence_threshold=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
-                )
-                total_score += silence_left + silence_right
+                placeholder = f"__TARGET_{i}__"
+                bonafide_words_local.append({
+                    "word": placeholder,
+                    "start": host_words[h_start_idx].start,
+                    "end": host_words[h_end_idx].end,
+                })
+                cloned_words_local.append({
+                    "word": placeholder,
+                    "start": candidate_words[c_start_idx].start,
+                    "end": candidate_words[c_end_idx].end,
+                })
 
             if not all_found:
                 continue
 
-            logger.info(
-                f"Try {attempt}: \"{candidate_text}\" | total flanking silence = "
-                f"{total_score * 1000 / sr:.1f}ms"
+            spoof_audio, details = splice_words(
+                bonafide_audio=host_audio,
+                cloned_audio=candidate_audio,
+                bonafide_words=bonafide_words_local,
+                cloned_words=cloned_words_local,
+                selected_indices=list(range(len(bonafide_words_local))),
+                sample_rate=sr,
+                crossfade_min_ms=partial_spoof_settings.CROSSFADE_MIN_MS,
+                crossfade_max_ms=partial_spoof_settings.CROSSFADE_MAX_MS,
+                splice_seed=partial_spoof_settings.RANDOM_SEED,
+                valley_search_ms=partial_spoof_settings.VALLEY_SEARCH_MS,
+                energy_refine_radius_s=partial_spoof_settings.ENERGY_REFINE_RADIUS_S,
+                energy_refine_silence_rms=partial_spoof_settings.ENERGY_REFINE_SILENCE_RMS,
+                loudness_match_enabled=partial_spoof_settings.LOUDNESS_MATCH_ENABLED,
+                loudness_reference_mode=partial_spoof_settings.LOUDNESS_REFERENCE_MODE,
+                loudness_voiced_frame_ms=partial_spoof_settings.LOUDNESS_VOICED_FRAME_MS,
+                loudness_voiced_gate_fraction=partial_spoof_settings.LOUDNESS_VOICED_GATE_FRACTION,
             )
 
-            if best is None or total_score > best["score"]:
+            if len(details) < len(bonafide_words_local):
+                logger.warning(
+                    f"Try {attempt}: only {len(details)}/{len(bonafide_words_local)} "
+                    "swaps spliced successfully, skipping this render."
+                )
+                continue
+
+            worst_case_cf = min(d["effective_crossfade_ms"] for d in details)
+            logger.info(
+                f"Try {attempt}: \"{candidate_text}\" | worst-case effective crossfade = "
+                f"{worst_case_cf:.1f}ms"
+            )
+
+            if best is None or worst_case_cf > best["score"]:
                 best = {
-                    "score": total_score,
+                    "score": worst_case_cf,
                     "audio": candidate_audio,
                     "text": candidate_text,
-                    "words": candidate_words,
+                    "spoof_audio": spoof_audio,
+                    "details": details,
                 }
 
         return best
