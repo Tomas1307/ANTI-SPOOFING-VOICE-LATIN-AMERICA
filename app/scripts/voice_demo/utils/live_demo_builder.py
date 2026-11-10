@@ -17,6 +17,7 @@ from typing import List, Tuple
 import librosa
 import numpy as np
 import soundfile as sf
+import torch
 from loguru import logger
 
 from app.pipeline.omnivoice_attack.settings import settings as omnivoice_settings
@@ -296,6 +297,18 @@ class LiveDemoBuilder:
         best: dict | None = None
 
         for attempt in range(self.request.tries):
+            # Cloner.clone_single() accepts no seed OmniVoice itself will
+            # honour (see its docstring), and OmniVoiceGenerationConfig
+            # exposes no seed/generator field either -- identical (text,
+            # reference) inputs were observed to produce byte-identical
+            # audio across separate process runs. Forcing torch's global
+            # RNG forward here is the only lever available to make
+            # successive tries actually explore different renders instead
+            # of re-cloning the same output `request.tries` times.
+            torch.manual_seed(partial_spoof_settings.RANDOM_SEED + attempt)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(partial_spoof_settings.RANDOM_SEED + attempt)
+
             candidate_raw = out_dir / f"cloned_candidate_{attempt}_raw.wav"
             cloner.clone_single(
                 text=synth_text,
