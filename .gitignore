@@ -1,13 +1,66 @@
+# --- Environments and secrets ---
 venv/
-data/
 envs/
+.env
+*.env
+
+# --- Data, models and large artifacts ---
+data/
 pretrained_models/
-__pycache__/
+runs/
+speech_tts_finetuned/
+zenodo_parts/
 *.safetensors
 *.pt
 *.pth
 *.bin
-runs/
-speech_tts_finetuned/
 *.zip
 *.gz
+*.tar
+
+# --- Python ---
+__pycache__/
+*.pyc
+
+# --- Audio and media (never versioned: voices of real people) ---
+*.wav
+*.flac
+*.mp3
+*.m4a
+*.mp4
+*.ogg
+
+# --- Office documents and slide decks ---
+*.pptx
+*.docx
+*.xlsx
+~$*
+
+# --- Manuscripts (thesis and paper are published elsewhere) ---
+tesis/
+IEEE/
+
+# --- Presentations and internal working notes ---
+presentation/
+presentation.html
+docs/thesis-presentation/
+docs/icai-presentation/
+docs/thesis-wiki/
+docs/session_*.md
+docs/research_notes_tutor_tasks.md
+docs/presentation_removed_slides.md
+docs/*.pdf
+debug/
+splice_*.png
+splice_*.html
+investigation.md
+partial_spoof_inv_*.md
+NEXT_SESSION_PROMPT.md
+extract_samples_putty.sh
+generate_stacked_demos.py
+
+# --- Local tooling ---
+.claude/
+.mcp.json
+.playwright-mcp/
+CLAUDE.md
