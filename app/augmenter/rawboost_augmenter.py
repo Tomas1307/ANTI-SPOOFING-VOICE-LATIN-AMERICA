@@ -1,6 +1,11 @@
 """
 RawBoost Augmentation.
 
+IMPORTANT: This module is TRAINING-TIME only. It is NOT called by the offline
+augmentation pipeline (``app/scripts/augmentation_pipeline.py``). RawBoost is
+applied on-the-fly during model training so that it does not inflate the corpus
+size on disk and remains composable with the trainer's data-loading loop.
+
 Wraps the official RawBoost algorithm (Tak et al., 2022) implemented in
 ``app.augmenter.rawboost_reference``: linear-and-non-linear convolutive noise
 (LnL), impulsive signal-dependent additive noise (ISD), and stationary

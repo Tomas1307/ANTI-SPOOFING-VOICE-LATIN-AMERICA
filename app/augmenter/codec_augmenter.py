@@ -9,7 +9,7 @@ skipped. Loudness normalization is NOT done here; it is applied uniformly by the
 orchestrator on write so loudness cannot leak augmentation type.
 """
 import random
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -50,12 +50,17 @@ class CodecAugmenter(BaseAugmenter):
         self.available_codecs: List[str] = [
             name for name in config.codec_set if probe.get(name, False)
         ]
-        skipped = [name for name in config.codec_set if not probe.get(name, False)]
+        self.skipped_codecs: List[str] = [
+            name for name in config.codec_set if not probe.get(name, False)
+        ]
+        self.codec_errors: Dict[str, str] = codec_backend.get_codec_errors()
 
         print("CodecAugmenter initialized:")
         print(f"  - Enabled codecs: {self.available_codecs}")
-        if skipped:
-            print(f"  - Skipped (unavailable in ffmpeg build): {skipped}")
+        for name in self.skipped_codecs:
+            encoder = self.registry[name].encoder if name in self.registry else name
+            reason = self.codec_errors.get(encoder, "unknown failure")
+            print(f"  - SKIPPED {name} (encoder {encoder}): {reason}")
 
     def augment(
         self,

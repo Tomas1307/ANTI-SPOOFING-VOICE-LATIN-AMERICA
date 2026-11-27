@@ -145,7 +145,7 @@ class OutputFormatter:
 
         la_dir = self.output_dir / "LA"
         for split in ["train", "dev", "eval"]:
-            (la_dir / f"ASVspoof2019_LA_{split}" / "flac").mkdir(parents=True, exist_ok=True)
+            (la_dir / settings.LA_SPLIT_DIR_TEMPLATE.format(split=split) / "flac").mkdir(parents=True, exist_ok=True)
 
         tier_id_settings = (
             TIER_ID_SETTINGS_JITTER if settings.ENABLE_BOUNDARY_JITTER else TIER_ID_SETTINGS
@@ -203,7 +203,7 @@ class OutputFormatter:
             try:
                 audio, sr = librosa.load(str(audio_path), sr=settings.SAMPLE_RATE)
                 flac_path = (
-                    la_dir / f"ASVspoof2019_LA_{split}" / "flac" / f"{audio_id}.flac"
+                    la_dir / settings.LA_SPLIT_DIR_TEMPLATE.format(split=split) / "flac" / f"{audio_id}.flac"
                 )
                 sf.write(str(flac_path), audio, sr, format="FLAC", subtype="PCM_16")
             except Exception as exc:
@@ -234,8 +234,8 @@ class OutputFormatter:
 
         protocol_files = {}
         for split, entries in protocols.items():
-            protocol_filename = f"ASVspoof2019.LA.cm.{split}.trl.txt"
-            protocol_path = la_dir / f"ASVspoof2019_LA_{split}" / protocol_filename
+            protocol_filename = settings.PROTOCOL_FILENAME_TEMPLATE.format(split=split)
+            protocol_path = la_dir / settings.LA_SPLIT_DIR_TEMPLATE.format(split=split) / protocol_filename
             with open(protocol_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(entries))
             protocol_files[split] = protocol_path
