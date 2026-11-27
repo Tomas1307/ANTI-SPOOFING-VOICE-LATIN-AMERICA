@@ -291,6 +291,19 @@ class PartialSpoofSettings(BaseModel):
     TEST_SPLIT_NAME: str = Field(default="test", description="Directory name for test split")
 
     # === Output Format Configuration (Step 7) ===
+    LA_SPLIT_DIR_TEMPLATE: str = Field(
+        default="ASVspoof2019_LA_{split}",
+        description="Per-split directory name template under the LA/ output "
+                    "root, following the ASVspoof2019 LA naming convention "
+                    "for drop-in compatibility with existing anti-spoofing "
+                    "training code. Override to brand future corpus runs "
+                    "differently, e.g. 'MARSA_LA_{split}'."
+    )
+    PROTOCOL_FILENAME_TEMPLATE: str = Field(
+        default="ASVspoof2019.LA.cm.{split}.trl.txt",
+        description="Protocol filename template written inside each split "
+                    "directory, following the ASVspoof2019 LA convention."
+    )
     AUDIO_ID_START_W1: int = Field(
         default=12000000,
         description="Starting audio ID for W1 tier (12000000-12999999 range)",

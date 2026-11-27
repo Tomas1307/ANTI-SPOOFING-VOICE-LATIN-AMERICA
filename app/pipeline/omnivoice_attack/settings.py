@@ -211,6 +211,19 @@ class OmniVoiceAttackSettings(BaseModel):
         description="Directory name for test split"
     )
 
+    LA_SPLIT_DIR_TEMPLATE: str = Field(
+        default="ASVspoof2019_LA_{split}",
+        description="Per-split directory name template under the LA/ output "
+                    "root, following the ASVspoof2019 LA naming convention "
+                    "for drop-in compatibility with existing anti-spoofing "
+                    "training code. Override to brand future corpus runs "
+                    "differently, e.g. 'MARSA_LA_{split}'."
+    )
+    PROTOCOL_FILENAME_TEMPLATE: str = Field(
+        default="ASVspoof2019.LA.cm.{split}.trl.txt",
+        description="Protocol filename template written inside each split "
+                    "directory, following the ASVspoof2019 LA convention."
+    )
     OMNIVOICE_SYSTEM_ID: str = Field(
         default="OMNIVOICE",
         description="Attack identifier for ASVspoof2019 protocol files"

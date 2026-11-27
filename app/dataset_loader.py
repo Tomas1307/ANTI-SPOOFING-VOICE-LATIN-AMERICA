@@ -1,403 +1,421 @@
 """
 Dataset Loader
 
-Handles loading of original voice files, MUSAN noise files, and RIR files
-for the augmentation pipeline. Provides organized access to all required
-audio resources.
+Handles loading of original voice files for the augmentation pipeline and
+provides organized access to the required audio resources.
 
-Supports bonafide/spoof separation for balanced augmentation.
+Discovery for every split (train/dev/eval) goes through a single code path so
+that a change to the accepted-extension set or to the directory-layout logic
+cannot be applied to one split and forgotten on another. Every regular file
+encountered is either ingested or explicitly accounted for in a
+DatasetDiscoveryReport, so files can never be dropped silently.
 """
 
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
-import pandas as pd
+from typing import Dict, List, Optional
+
+from app.schemas.dataset_discovery_report import DatasetDiscoveryReport
 
 
 class DatasetLoader:
     """
-    Loader for voice dataset and augmentation resources.
-    
-    Provides methods to load:
-    - Original voice files from partition_dataset_by_speaker (separated by bonafide/spoof)
-    - MUSAN noise files (noise, speech, music)
-    - RIR files (small, medium, large rooms)
-    
+    Loader for the speaker-partitioned voice dataset.
+
+    Supports two directory layouts:
+    1. Split-first: ``voices_root/<split>/<speaker_id>/files`` (preferred)
+    2. Speaker-first: ``voices_root/<speaker_id>/<split>/files`` (legacy)
+
     Attributes:
-        voices_root: Path to partition_dataset_by_speaker directory.
-        musan_root: Path to MUSAN dataset directory.
-        rir_root: Path to RIR dataset directory.
+        voices_root: Path to the partitioned dataset root.
+        musan_root: Path to the MUSAN noise dataset.
+        rir_root: Path to the RIR dataset.
+        reports: Discovery report per split name, populated on each load.
     """
-    
+
+    AUDIO_EXTENSIONS = (".wav", ".flac", ".mp3")
+    SPLIT_NAMES = ("train", "dev", "eval")
+    BONAFIDE_PREFIX = "bonafide_"
+    SPOOF_PREFIX = "spoof_"
+
     def __init__(
         self,
-        voices_root: str = "data/partition_dataset_by_speaker",
+        voices_root: str = "data/marsa_speaker_disjoint_partition",
         musan_root: str = "data/noise_dataset/musan",
         rir_root: str = "data/noise_dataset/RIR"
     ):
         """
         Initialize dataset loader.
-        
+
         Args:
             voices_root: Root directory for original voice files.
-            musan_root: Root directory for MUSAN noise dataset.
+            musan_root: Root directory for the MUSAN noise dataset.
             rir_root: Root directory for RIR files.
+
+        Raises:
+            FileNotFoundError: If voices_root does not exist.
         """
         self.voices_root = Path(voices_root)
         self.musan_root = Path(musan_root)
         self.rir_root = Path(rir_root)
-        
+        self.reports: Dict[str, DatasetDiscoveryReport] = {}
+        self._cache: Dict[str, List[Dict[str, str]]] = {}
+
         self._validate_paths()
-    
-    def _validate_paths(self):
-        """Validate that all required paths exist."""
+
+    def _validate_paths(self) -> None:
+        """
+        Validate that all required paths exist.
+
+        Raises:
+            FileNotFoundError: If the voices root is missing.
+        """
         if not self.voices_root.exists():
             raise FileNotFoundError(f"Voices root not found: {self.voices_root}")
-        
+
         if not self.musan_root.exists():
             print(f"Warning: MUSAN root not found: {self.musan_root}")
-        
+
         if not self.rir_root.exists():
             print(f"Warning: RIR root not found: {self.rir_root}")
-    
-    def _get_audio_files_recursive(self, directory: str):
-        """Get all audio files recursively."""
-        audio_files = []
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.lower().endswith(('.wav', '.flac')):
-                    audio_files.append(os.path.join(root, file))
-        return sorted(audio_files)
-    
-    def load_train_files(self) -> List[Dict[str, str]]:
-        """
-        Load all training audio files from partition_dataset_by_speaker.
 
-        Supports two directory structures:
-        1. Split-first: voices_root/train/speaker_id/files (preferred)
-        2. Speaker-first: voices_root/speaker_id/train/files (legacy)
+    def _scan_directory(
+        self,
+        directory: Path,
+        skipped: Dict[str, int]
+    ) -> List[str]:
+        """
+        Collect audio files under a directory, accounting for every skip.
+
+        Args:
+            directory: Directory to walk recursively.
+            skipped: Mutable tally of ignored files keyed by lowercase
+                extension; updated in place.
 
         Returns:
-            List of dictionaries containing file metadata:
-            - filepath: Full path to audio file
-            - speaker_id: Speaker identifier
-            - split: 'train'
-            - filename: Original filename
-            - file_type: 'bonafide' or 'spoof'
+            Sorted list of absolute paths to accepted audio files.
         """
-        train_files = []
+        audio_files: List[str] = []
 
-        # Check for split-first structure (voices_root/train/speaker_id/)
-        train_dir = self.voices_root / "train"
+        for root, _dirs, files in os.walk(directory):
+            for filename in files:
+                if filename.lower().endswith(self.AUDIO_EXTENSIONS):
+                    audio_files.append(os.path.join(root, filename))
+                else:
+                    extension = os.path.splitext(filename)[1].lower() or "<none>"
+                    skipped[extension] = skipped.get(extension, 0) + 1
 
-        if train_dir.exists() and train_dir.is_dir():
-            # Split-first structure
-            speakers = [d for d in train_dir.iterdir() if d.is_dir()]
-            print(f"\nLoading train files from {len(speakers)} speakers (split-first structure)...")
+        return sorted(audio_files)
 
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                audio_files = self._get_audio_files_recursive(str(speaker_dir))
+    def _classify(self, filename: str) -> Optional[str]:
+        """
+        Classify a filename as bonafide or spoof by its prefix.
 
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+        Args:
+            filename: Basename of the audio file.
 
-                    train_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "train",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
-        else:
-            # Speaker-first structure (legacy)
-            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-            print(f"\nLoading train files from {len(speakers)} speakers (speaker-first structure)...")
+        Returns:
+            'bonafide', 'spoof', or None when the name matches neither
+            prefix convention.
+        """
+        if filename.startswith(self.BONAFIDE_PREFIX):
+            return "bonafide"
+        if filename.startswith(self.SPOOF_PREFIX):
+            return "spoof"
+        return None
 
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                speaker_train_dir = speaker_dir / "train"
+    def _attack_id(self, filename: str, file_type: str) -> str:
+        """
+        Extract the attack-system identifier from a partition filename.
 
-                if not speaker_train_dir.exists():
-                    print(f"Warning: No train directory for speaker {speaker_id}")
-                    continue
+        Partition filenames encode the generating system as the token after
+        the ``spoof_`` prefix: ``spoof_fishgram_esm_00030_0001.flac`` yields
+        ``fishgram`` and the partial-spoof variant
+        ``spoof_omnivoice-psw2_esm_00030_0001.flac`` yields
+        ``omnivoice-psw2``. Bonafide files carry no system and yield ``-``,
+        matching the ASVspoof convention for the system column.
 
-                audio_files = self._get_audio_files_recursive(str(speaker_train_dir))
+        Args:
+            filename: Basename of the audio file.
+            file_type: 'bonafide' or 'spoof' as returned by _classify.
 
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
+        Returns:
+            The attack-system identifier, '-' for bonafide, or 'unknown'
+            when a spoof filename does not follow the naming convention.
+        """
+        if file_type == "bonafide":
+            return "-"
+        parts = filename.split("_")
+        if len(parts) >= 2 and parts[0] == "spoof" and parts[1]:
+            return parts[1]
+        return "unknown"
 
-                    train_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "train",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
+    def _resolve_speaker_dirs(self, split: str) -> tuple:
+        """
+        Resolve the speaker directories and their audio roots for a split.
 
-        print(f"Loaded {len(train_files)} training files")
+        Args:
+            split: One of 'train', 'dev', or 'eval'.
 
-        return train_files
-    
+        Returns:
+            Tuple of (structure_name, list of (speaker_id, audio_root) pairs).
+            Speakers are sorted by identifier so that discovery order is
+            deterministic across runs and machines, which the seeded
+            augmentation depends on for reproducibility.
+        """
+        split_dir = self.voices_root / split
+
+        if split_dir.is_dir():
+            speaker_dirs = sorted(
+                (d for d in split_dir.iterdir() if d.is_dir()),
+                key=lambda d: d.name
+            )
+            return "split-first", [(d.name, d) for d in speaker_dirs]
+
+        speaker_dirs = sorted(
+            (d for d in self.voices_root.iterdir() if d.is_dir()),
+            key=lambda d: d.name
+        )
+        pairs = [
+            (d.name, d / split) for d in speaker_dirs if (d / split).is_dir()
+        ]
+        return "speaker-first", pairs
+
+    def _discover_split_files(self, split: str) -> List[Dict[str, str]]:
+        """
+        Discover every audio file belonging to one split.
+
+        This is the single discovery path shared by all splits. It records a
+        DatasetDiscoveryReport in ``self.reports[split]`` and prints a warning
+        whenever files on disk were ignored, so that a mismatch between files
+        present and files ingested can never pass unnoticed. Results are
+        memoized per split because a single run queries each split several
+        times and walking the partition is I/O bound.
+
+        Args:
+            split: One of 'train', 'dev', or 'eval'.
+
+        Returns:
+            List of dictionaries with keys ``filepath``, ``speaker_id``,
+            ``split``, ``filename`` and ``file_type``.
+
+        Raises:
+            ValueError: If split is not a recognized split name.
+        """
+        if split not in self.SPLIT_NAMES:
+            raise ValueError(
+                f"Unknown split '{split}'; expected one of {self.SPLIT_NAMES}"
+            )
+
+        if split in self._cache:
+            return self._cache[split]
+
+        structure, speaker_pairs = self._resolve_speaker_dirs(split)
+        print(
+            f"\nLoading {split} files from {len(speaker_pairs)} speakers "
+            f"({structure} structure)..."
+        )
+
+        discovered: List[Dict[str, str]] = []
+        skipped: Dict[str, int] = {}
+        unknown_prefix = 0
+
+        for speaker_id, audio_root in speaker_pairs:
+            for audio_file in self._scan_directory(audio_root, skipped):
+                filename = Path(audio_file).name
+                file_type = self._classify(filename)
+
+                if file_type is None:
+                    unknown_prefix += 1
+                    file_type = "spoof"
+
+                discovered.append({
+                    "filepath": audio_file,
+                    "speaker_id": speaker_id,
+                    "split": split,
+                    "filename": filename,
+                    "file_type": file_type,
+                    "attack_id": self._attack_id(filename, file_type)
+                })
+
+        report = DatasetDiscoveryReport(
+            split=split,
+            structure=structure,
+            speaker_count=len(speaker_pairs),
+            audio_file_count=len(discovered),
+            bonafide_count=sum(
+                1 for f in discovered if f["file_type"] == "bonafide"
+            ),
+            spoof_count=sum(1 for f in discovered if f["file_type"] == "spoof"),
+            unknown_prefix_count=unknown_prefix,
+            skipped_by_extension=skipped
+        )
+        self.reports[split] = report
+
+        print(f"Loaded {report.audio_file_count} {split} files")
+
+        if report.skipped_total:
+            print(
+                f"WARNING: {report.skipped_total} file(s) under {split} were "
+                f"ignored because their extension is not in "
+                f"{list(self.AUDIO_EXTENSIONS)}: {report.skipped_by_extension}"
+            )
+        if report.unknown_prefix_count:
+            print(
+                f"WARNING: {report.unknown_prefix_count} {split} file(s) match "
+                f"neither '{self.BONAFIDE_PREFIX}' nor '{self.SPOOF_PREFIX}' "
+                f"and were classified as spoof by default."
+            )
+
+        self._cache[split] = discovered
+        return discovered
+
+    def load_train_files(self) -> List[Dict[str, str]]:
+        """
+        Load all training audio files.
+
+        Returns:
+            List of file metadata dictionaries for the train split.
+        """
+        return self._discover_split_files("train")
+
+    def load_dev_files(self) -> List[Dict[str, str]]:
+        """
+        Load all dev (validation) audio files.
+
+        Returns:
+            List of file metadata dictionaries for the dev split.
+        """
+        return self._discover_split_files("dev")
+
+    def load_eval_files(self) -> List[Dict[str, str]]:
+        """
+        Load all eval (test) audio files.
+
+        Returns:
+            List of file metadata dictionaries for the eval split.
+        """
+        return self._discover_split_files("eval")
+
     def load_bonafide_train_files(self) -> List[Dict[str, str]]:
         """
         Load only bonafide training files.
-        
+
         Returns:
             List of bonafide file metadata dictionaries.
         """
-        all_files = self.load_train_files()
-        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
-        
-        print(f"Filtered {len(bonafide_files)} bonafide training files")
-        
-        return bonafide_files
-    
+        return self._filter_by_type(self.load_train_files(), "bonafide", "train")
+
     def load_spoof_train_files(self) -> List[Dict[str, str]]:
         """
         Load only spoof training files.
-        
+
         Returns:
             List of spoof file metadata dictionaries.
         """
-        all_files = self.load_train_files()
-        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
-        
-        print(f"Filtered {len(spoof_files)} spoof training files")
-        
-        return spoof_files
-    
-    def load_val_files(self) -> List[Dict[str, str]]:
+        return self._filter_by_type(self.load_train_files(), "spoof", "train")
+
+    def load_bonafide_dev_files(self) -> List[Dict[str, str]]:
         """
-        Load all validation audio files.
+        Load only bonafide dev files.
 
-        Supports two directory structures:
-        1. Split-first: voices_root/val/speaker_id/files (preferred)
-        2. Speaker-first: voices_root/speaker_id/val/files (legacy)
-
-        Returns:
-            List of dictionaries containing file metadata.
-        """
-        val_files = []
-
-        # Check for split-first structure (voices_root/val/speaker_id/)
-        val_dir = self.voices_root / "val"
-
-        if val_dir.exists() and val_dir.is_dir():
-            # Split-first structure
-            speakers = [d for d in val_dir.iterdir() if d.is_dir()]
-            print(f"\nLoading validation files from {len(speakers)} speakers (split-first structure)...")
-
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                audio_files = self._get_audio_files_recursive(str(speaker_dir))
-
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-
-                    val_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "val",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
-        else:
-            # Speaker-first structure (legacy)
-            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-            print(f"\nLoading validation files from {len(speakers)} speakers (speaker-first structure)...")
-
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                speaker_val_dir = speaker_dir / "val"
-
-                if not speaker_val_dir.exists():
-                    continue
-
-                audio_files = self._get_audio_files_recursive(str(speaker_val_dir))
-
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-
-                    val_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "val",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
-
-        print(f"Loaded {len(val_files)} validation files")
-
-        return val_files
-    
-    def load_bonafide_val_files(self) -> List[Dict[str, str]]:
-        """
-        Load only bonafide validation files.
-        
         Returns:
             List of bonafide file metadata dictionaries.
         """
-        all_files = self.load_val_files()
-        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
-        
-        print(f"Filtered {len(bonafide_files)} bonafide validation files")
-        
-        return bonafide_files
-    
-    def load_spoof_val_files(self) -> List[Dict[str, str]]:
+        return self._filter_by_type(self.load_dev_files(), "bonafide", "dev")
+
+    def load_spoof_dev_files(self) -> List[Dict[str, str]]:
         """
-        Load only spoof validation files.
-        
+        Load only spoof dev files.
+
         Returns:
             List of spoof file metadata dictionaries.
         """
-        all_files = self.load_val_files()
-        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
-        
-        print(f"Filtered {len(spoof_files)} spoof validation files")
-        
-        return spoof_files
-    
-    def load_test_files(self) -> List[Dict[str, str]]:
+        return self._filter_by_type(self.load_dev_files(), "spoof", "dev")
+
+    def load_bonafide_eval_files(self) -> List[Dict[str, str]]:
         """
-        Load all test audio files.
+        Load only bonafide eval files.
 
-        Supports two directory structures:
-        1. Split-first: voices_root/test/speaker_id/files (preferred)
-        2. Speaker-first: voices_root/speaker_id/test/files (legacy)
-
-        Returns:
-            List of dictionaries containing file metadata.
-        """
-        test_files = []
-
-        # Check for split-first structure (voices_root/test/speaker_id/)
-        test_dir = self.voices_root / "test"
-
-        if test_dir.exists() and test_dir.is_dir():
-            # Split-first structure
-            speakers = [d for d in test_dir.iterdir() if d.is_dir()]
-            print(f"\nLoading test files from {len(speakers)} speakers (split-first structure)...")
-
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                audio_files = self._get_audio_files_recursive(str(speaker_dir))
-
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-
-                    test_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "test",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
-        else:
-            # Speaker-first structure (legacy)
-            speakers = [d for d in self.voices_root.iterdir() if d.is_dir()]
-            print(f"\nLoading test files from {len(speakers)} speakers (speaker-first structure)...")
-
-            for speaker_dir in speakers:
-                speaker_id = speaker_dir.name
-                speaker_test_dir = speaker_dir / "test"
-
-                if not speaker_test_dir.exists():
-                    continue
-
-                audio_files = self._get_audio_files_recursive(str(speaker_test_dir))
-
-                for audio_file in audio_files:
-                    filename = Path(audio_file).name
-                    file_type = "bonafide" if filename.startswith("bonafide_") else "spoof"
-
-                    test_files.append({
-                        "filepath": audio_file,
-                        "speaker_id": speaker_id,
-                        "split": "test",
-                        "filename": filename,
-                        "file_type": file_type
-                    })
-
-        print(f"Loaded {len(test_files)} test files")
-
-        return test_files
-    
-    def load_bonafide_test_files(self) -> List[Dict[str, str]]:
-        """
-        Load only bonafide test files.
-        
         Returns:
             List of bonafide file metadata dictionaries.
         """
-        all_files = self.load_test_files()
-        bonafide_files = [f for f in all_files if f["file_type"] == "bonafide"]
-        
-        print(f"Filtered {len(bonafide_files)} bonafide test files")
-        
-        return bonafide_files
-    
-    def load_spoof_test_files(self) -> List[Dict[str, str]]:
+        return self._filter_by_type(self.load_eval_files(), "bonafide", "eval")
+
+    def load_spoof_eval_files(self) -> List[Dict[str, str]]:
         """
-        Load only spoof test files.
-        
+        Load only spoof eval files.
+
         Returns:
             List of spoof file metadata dictionaries.
         """
-        all_files = self.load_test_files()
-        spoof_files = [f for f in all_files if f["file_type"] == "spoof"]
-        
-        print(f"Filtered {len(spoof_files)} spoof test files")
-        
-        return spoof_files
-    
-    def get_dataset_statistics(self) -> Dict[str, any]:
+        return self._filter_by_type(self.load_eval_files(), "spoof", "eval")
+
+    def _filter_by_type(
+        self,
+        files: List[Dict[str, str]],
+        file_type: str,
+        split: str
+    ) -> List[Dict[str, str]]:
         """
-        Get statistics about the loaded dataset including bonafide/spoof breakdown.
-        
+        Filter discovered files by class.
+
+        Args:
+            files: Discovered file metadata dictionaries.
+            file_type: Either 'bonafide' or 'spoof'.
+            split: Split name, used only for the progress message.
+
         Returns:
-            Dictionary with counts for each split and file type.
+            The subset of files matching file_type.
         """
-        train_files = self.load_train_files()
-        
-        train_bonafide = len([f for f in train_files if f["file_type"] == "bonafide"])
-        train_spoof = len([f for f in train_files if f["file_type"] == "spoof"])
-        
-        return {
-            "train": {
-                "total": len(train_files),
-                "bonafide": train_bonafide,
-                "spoof": train_spoof
-            },
-            "total": len(train_files)
-        }
-    
-    def print_summary(self):
-        """Print comprehensive dataset summary with bonafide/spoof breakdown."""
-        print("\n" + "="*70)
+        selected = [f for f in files if f["file_type"] == file_type]
+        print(f"Filtered {len(selected)} {file_type} {split} files")
+        return selected
+
+    def get_dataset_statistics(self) -> Dict[str, Dict[str, int]]:
+        """
+        Get per-split counts for the whole partition.
+
+        Returns:
+            Mapping of split name to a dictionary with 'total', 'bonafide'
+            and 'spoof' counts.
+        """
+        statistics: Dict[str, Dict[str, int]] = {}
+
+        for split in self.SPLIT_NAMES:
+            files = self._discover_split_files(split)
+            statistics[split] = {
+                "total": len(files),
+                "bonafide": sum(
+                    1 for f in files if f["file_type"] == "bonafide"
+                ),
+                "spoof": sum(1 for f in files if f["file_type"] == "spoof")
+            }
+
+        return statistics
+
+    def print_summary(self) -> None:
+        """Print a dataset summary with the bonafide/spoof breakdown."""
+        print("\n" + "=" * 70)
         print("DATASET SUMMARY")
-        print("="*70)
-        
-        stats = self.get_dataset_statistics()
-        
-        print(f"\nFile counts:")
-        print(f"  Train:  {stats['train']['total']:,} total")
-        print(f"    - Bonafide: {stats['train']['bonafide']:,} ({stats['train']['bonafide']/stats['train']['total']*100:.1f}%)")
-        print(f"    - Spoof:    {stats['train']['spoof']:,} ({stats['train']['spoof']/stats['train']['total']*100:.1f}%)")
-        print("="*70 + "\n")
+        print("=" * 70)
 
+        statistics = self.get_dataset_statistics()
 
-if __name__ == "__main__":
-    loader = DatasetLoader(
-        voices_root="data/partition_dataset_by_speaker",
-        musan_root="data/noise_dataset/musan",
-        rir_root="data/noise_dataset/RIR"
-    )
-    
-    loader.print_summary()
+        for split, counts in statistics.items():
+            total = counts["total"]
+            if total == 0:
+                print(f"\n  {split.upper()}: empty")
+                continue
+
+            print(f"\n  {split.upper()}: {total:,} total")
+            print(
+                f"    - Bonafide: {counts['bonafide']:,} "
+                f"({counts['bonafide'] / total * 100:.1f}%)"
+            )
+            print(
+                f"    - Spoof:    {counts['spoof']:,} "
+                f"({counts['spoof'] / total * 100:.1f}%)"
+            )
+
+        print("=" * 70 + "\n")

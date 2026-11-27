@@ -72,7 +72,7 @@ def test_run_batch_mocked():
         class FakePipeline:
             def __init__(self, **kwargs):
                 self.min_factor = kwargs["min_factor"]
-                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}_balanced_5050"
+                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}"
                 self.output_dir.mkdir(parents=True, exist_ok=True)
                 self.log_path = self.output_dir / f"{self.min_factor}.txt"
 
@@ -92,7 +92,6 @@ def test_run_batch_mocked():
         ):
             results = run_batch(
                 factors=["2x", "3x"],
-                target_ratio=0.50,
                 output=tmp_dir,
                 seed=42,
             )
@@ -105,7 +104,7 @@ def test_run_batch_mocked():
 
         # Log files exist
         for factor in ["2x", "3x"]:
-            log_file = Path(tmp_dir) / f"augmented_{factor}_balanced_5050" / f"{factor}.txt"
+            log_file = Path(tmp_dir) / f"augmented_{factor}" / f"{factor}.txt"
             assert log_file.exists(), f"Log file missing: {log_file}"
             content = log_file.read_text()
             assert f"Fake run for {factor}" in content, f"Log content wrong for {factor}"
@@ -132,7 +131,7 @@ def test_run_batch_partial_failure():
         class FakePipeline:
             def __init__(self, **kwargs):
                 self.min_factor = kwargs["min_factor"]
-                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}_balanced_5050"
+                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}"
                 self.output_dir.mkdir(parents=True, exist_ok=True)
                 self.log_path = self.output_dir / f"{self.min_factor}.txt"
 
@@ -153,7 +152,6 @@ def test_run_batch_partial_failure():
         ):
             results = run_batch(
                 factors=["2x", "3x", "5x"],
-                target_ratio=0.50,
                 output=tmp_dir,
                 seed=42,
             )
@@ -182,7 +180,7 @@ def test_log_file_naming():
         class FakePipeline:
             def __init__(self, **kwargs):
                 self.min_factor = kwargs["min_factor"]
-                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}_balanced_5050"
+                self.output_dir = Path(tmp_dir) / f"augmented_{self.min_factor}"
                 self.output_dir.mkdir(parents=True, exist_ok=True)
                 self.log_path = self.output_dir / f"{self.min_factor}.txt"
 
@@ -201,12 +199,11 @@ def test_log_file_naming():
         ):
             run_batch(
                 factors=["10x"],
-                target_ratio=0.50,
                 output=tmp_dir,
                 seed=42,
             )
 
-        expected = Path(tmp_dir) / "augmented_10x_balanced_5050" / "10x.txt"
+        expected = Path(tmp_dir) / "augmented_10x" / "10x.txt"
         assert expected.exists(), f"Expected log at {expected}"
         print("  [OK] Log file naming: {min_factor}.txt")
 

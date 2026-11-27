@@ -182,121 +182,10 @@ def verify_clean_data_availability():
     return all_passed, total_stats
 
 
-def verify_augmentation_factors():
-    """Verify augmentation factor calculation logic."""
-    print("\n" + "="*70)
-    print("3. AUGMENTATION FACTORS VERIFICATION")
-    print("="*70)
-
-    import math
-
-    # Test cases with expected outcomes
-    test_cases = [
-        {
-            "name": "50/50 balance with 3x",
-            "n_bonafide": 80,
-            "n_spoof": 176,
-            "target_ratio": 0.50,
-            "min_factor": 3
-        },
-        {
-            "name": "60/40 balance with 5x",
-            "n_bonafide": 80,
-            "n_spoof": 176,
-            "target_ratio": 0.60,
-            "min_factor": 5
-        },
-        {
-            "name": "70/30 balance with 3x",
-            "n_bonafide": 80,
-            "n_spoof": 176,
-            "target_ratio": 0.70,
-            "min_factor": 3
-        }
-    ]
-
-    all_passed = True
-
-    for case in test_cases:
-        n_bonafide = case["n_bonafide"]
-        n_spoof = case["n_spoof"]
-        target_ratio = case["target_ratio"]
-        min_factor = case["min_factor"]
-        n_total = n_bonafide + n_spoof
-
-        # Calculate factors (same logic as augmentation_calculator.py)
-        total_target_minimum = n_total * min_factor
-        bonafide_target = total_target_minimum * target_ratio
-        spoof_target = total_target_minimum * (1 - target_ratio)
-
-        bonafide_factor_raw = bonafide_target / n_bonafide
-        spoof_factor_raw = spoof_target / n_spoof
-
-        bonafide_factor = max(1, math.ceil(bonafide_factor_raw))
-        spoof_factor = max(1, math.ceil(spoof_factor_raw))
-
-        # Calculate actual totals
-        total_bonafide = n_bonafide * bonafide_factor
-        total_spoof = n_spoof * spoof_factor
-        total_files = total_bonafide + total_spoof
-
-        bonafide_pct = (total_bonafide / total_files) * 100
-        spoof_pct = (total_spoof / total_files) * 100
-
-        # Calculate actual factor achieved
-        actual_factor = total_files / n_total
-
-        # Check clean data ratio (originals / total)
-        clean_ratio = n_total / total_files * 100
-
-        print(f"\nTest: {case['name']}")
-        print(f"  Input: {n_bonafide} bonafide, {n_spoof} spoof")
-        print(f"  Target: {target_ratio*100:.0f}/{(1-target_ratio)*100:.0f}, min {min_factor}x")
-        print(f"  Calculated factors: bonafide={bonafide_factor}x, spoof={spoof_factor}x")
-        print(f"  Result: {total_bonafide} bonafide ({bonafide_pct:.1f}%), {total_spoof} spoof ({spoof_pct:.1f}%)")
-        print(f"  Total: {total_files} files ({actual_factor:.2f}x augmentation)")
-        print(f"  Clean data ratio: {clean_ratio:.1f}%")
-
-        # Verify constraints
-        deviation = abs(bonafide_pct - target_ratio * 100)
-
-        checks = []
-
-        # Check 1: Achieved ratio close to target (within 10%)
-        if deviation <= 10:
-            checks.append(("[PASS]", f"Ratio deviation {deviation:.1f}% <= 10%"))
-        else:
-            checks.append(("[FAIL]", f"Ratio deviation {deviation:.1f}% > 10%"))
-            all_passed = False
-
-        # Check 2: Factors >= 1
-        if bonafide_factor >= 1 and spoof_factor >= 1:
-            checks.append(("[PASS]", "All factors >= 1"))
-        else:
-            checks.append(("[FAIL]", "Some factors < 1"))
-            all_passed = False
-
-        # Check 3: Clean ratio (should maintain at least some clean data)
-        if clean_ratio >= 10:  # At least 10% clean
-            checks.append(("[PASS]", f"Clean ratio {clean_ratio:.1f}% >= 10%"))
-        else:
-            checks.append(("[WARN]", f"Clean ratio {clean_ratio:.1f}% < 10%"))
-
-        for status, msg in checks:
-            print(f"  {status} {msg}")
-
-    if all_passed:
-        print(f"\n  [OK] AUGMENTATION FACTORS VERIFIED - Logic is correct!")
-    else:
-        print(f"\n  [ERROR] AUGMENTATION FACTORS FAILED - Issues found!")
-
-    return all_passed
-
-
 def verify_file_naming_convention():
     """Verify file naming follows expected patterns."""
     print("\n" + "="*70)
-    print("4. FILE NAMING CONVENTION VERIFICATION")
+    print("3. FILE NAMING CONVENTION VERIFICATION")
     print("="*70)
 
     splits = ["train", "val", "test"]
@@ -369,7 +258,6 @@ def main():
     # Run all verifications
     results["speaker_independence"] = verify_speaker_independence()
     results["clean_data"], stats = verify_clean_data_availability()
-    results["augmentation_factors"] = verify_augmentation_factors()
     results["naming_convention"] = verify_file_naming_convention()
 
     # Final summary
