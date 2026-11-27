@@ -271,4 +271,4 @@ The code in this repository is released under the **Apache License
 
 ## Contact
 
-Corresponding author: `[EMAIL_PENDING]`
+Corresponding author: t.acosta@uniandes.edu.co and rf.manrique@uniandes.edu.co
