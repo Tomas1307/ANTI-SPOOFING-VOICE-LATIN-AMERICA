@@ -19,7 +19,7 @@ generated audio itself, the corpus is deposited separately (below).
 The corpus, protocol files, frame-level labels, and per-sample
 metadata are openly available on Zenodo:
 
-- **Zenodo record:** `[ZENODO_DOI_PENDING]`
+- **Zenodo record:** https://doi.org/10.5281/zenodo.23873176
 
 The Zenodo record's own description links back to this repository as
 the code that produced it.
