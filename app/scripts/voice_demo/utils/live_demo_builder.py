@@ -216,17 +216,10 @@ class LiveDemoBuilder:
                 f"for all of {self.request.replacement_phrases!r}."
             )
 
-        eligible, worst_case_cf, _ = best["rank_key"]
         logger.info(
-            f"Best candidate: \"{best['text']}\" | eligible={eligible} | "
-            f"worst-case effective crossfade = {worst_case_cf:.1f}ms"
+            f"Best candidate: \"{best['text']}\" | worst-case effective crossfade = "
+            f"{best['score']:.1f}ms"
         )
-        if not eligible:
-            logger.warning(
-                "No candidate met the production stretch-ratio gate "
-                f"(MAX_STRETCH_RATIO={partial_spoof_settings.MAX_STRETCH_RATIO}); "
-                "using the least-bad one. Consider raising --tries."
-            )
         for d in best["details"]:
             logger.info(f"Splice detail: {d}")
 
@@ -388,24 +381,27 @@ class LiveDemoBuilder:
                 )
                 continue
 
-            max_ratio = partial_spoof_settings.MAX_STRETCH_RATIO
-            eligible = all(
-                (1.0 / max_ratio) <= d["duration_ratio"] <= max_ratio for d in details
-            )
+            # Duration mismatch alone is not an audible defect here: the
+            # engine never time-stretches (see splice_words' docstring --
+            # the cloned word is inserted at its native length and the
+            # total clip grows or shrinks by the difference), so a 1.4x
+            # ratio just makes that word marginally longer, not pitched or
+            # sped up. The only thing that actually sounds wrong is a hard
+            # cut, so ranking purely by crossfade quality is the right
+            # metric for THIS demo (unlike the production corpus, which
+            # also gates on duration_ratio for dataset-composition reasons
+            # unrelated to this script's goal).
             worst_case_cf = min(d["effective_crossfade_ms"] for d in details)
-            worst_stretch_penalty = max(abs(np.log(d["duration_ratio"])) for d in details)
-            rank_key = (eligible, worst_case_cf, -worst_stretch_penalty)
 
             logger.info(
-                f"Try {attempt}: \"{candidate_text}\" | eligible={eligible} "
-                f"(duration ratios: {[round(d['duration_ratio'], 3) for d in details]}, "
-                f"gate: {1/max_ratio:.2f}-{max_ratio:.2f}) | "
+                f"Try {attempt}: \"{candidate_text}\" | "
+                f"duration ratios: {[round(d['duration_ratio'], 3) for d in details]} | "
                 f"worst-case effective crossfade = {worst_case_cf:.1f}ms"
             )
 
-            if best is None or rank_key > best["rank_key"]:
+            if best is None or worst_case_cf > best["score"]:
                 best = {
-                    "rank_key": rank_key,
+                    "score": worst_case_cf,
                     "audio": candidate_audio,
                     "text": candidate_text,
                     "spoof_audio": spoof_audio,

@@ -156,7 +156,9 @@ class AugmentationPipeline:
         min_factor: str = "3x",
         loudness_target_dbfs: float = -23.0,
         loudness_peak_ceiling: float = 0.99,
-        seed: int = 42
+        seed: int = 42,
+        la_split_dir_template: str = "ASVspoof2019_LA_{split}",
+        protocol_file_prefix: str = "ASVspoof2019.LA.cm"
     ):
         """
         Initialize augmentation pipeline.
@@ -171,6 +173,14 @@ class AugmentationPipeline:
             loudness_target_dbfs: Target RMS level applied to every emitted clip
             loudness_peak_ceiling: Peak ceiling applied after loudness normalization
             seed: Random seed for reproducibility
+            la_split_dir_template: Per-split directory name template under the
+                LA/ output root, following the ASVspoof2019 LA naming
+                convention for drop-in compatibility with existing
+                anti-spoofing training code. Override to brand future runs
+                differently, e.g. "MARSA_LA_{split}".
+            protocol_file_prefix: Prefix for protocol filenames, following
+                the ASVspoof2019 LA convention
+                ("<prefix>.<split>.{trn,trl}.txt").
         """
         self.voices_root = Path(voices_root)
         self.musan_root = Path(musan_root)
@@ -180,6 +190,8 @@ class AugmentationPipeline:
         self.loudness_target_dbfs = loudness_target_dbfs
         self.loudness_peak_ceiling = loudness_peak_ceiling
         self.seed = seed
+        self.la_split_dir_template = la_split_dir_template
+        self.protocol_file_prefix = protocol_file_prefix
 
         random.seed(seed)
         np.random.seed(seed)
@@ -401,7 +413,7 @@ class AugmentationPipeline:
         """
         audio_id = self._generate_audio_id(split)
 
-        flac_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}" / "flac"
+        flac_dir = self.output_dir / "LA" / self.la_split_dir_template.format(split=split) / "flac"
         flac_dir.mkdir(parents=True, exist_ok=True)
 
         audio_path = flac_dir / f"{audio_id}.flac"
@@ -530,16 +542,16 @@ class AugmentationPipeline:
         self.logger.info("\nWriting protocol and metadata files...")
 
         protocol_map = {
-            'train': 'ASVspoof2019.LA.cm.train.trn.txt',
-            'dev': 'ASVspoof2019.LA.cm.dev.trl.txt',
-            'eval': 'ASVspoof2019.LA.cm.eval.trl.txt'
+            'train': f'{self.protocol_file_prefix}.train.trn.txt',
+            'dev': f'{self.protocol_file_prefix}.dev.trl.txt',
+            'eval': f'{self.protocol_file_prefix}.eval.trl.txt'
         }
 
         for split, filename in protocol_map.items():
             if not self.protocol_entries[split]:
                 continue
 
-            protocol_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}"
+            protocol_dir = self.output_dir / "LA" / self.la_split_dir_template.format(split=split)
             entries = sorted(self.protocol_entries[split], key=lambda e: e[1])
 
             protocol_path = protocol_dir / filename
@@ -733,7 +745,7 @@ class AugmentationPipeline:
         # superseded audio into the released directory. Refuse to run over a
         # dirty output; the operator archives it first (mv, never rm).
         for split in ('train', 'dev', 'eval'):
-            flac_dir = self.output_dir / "LA" / f"ASVspoof2019_LA_{split}" / "flac"
+            flac_dir = self.output_dir / "LA" / self.la_split_dir_template.format(split=split) / "flac"
             if flac_dir.exists():
                 leftover = sum(1 for _ in flac_dir.glob("*.flac"))
                 if leftover:

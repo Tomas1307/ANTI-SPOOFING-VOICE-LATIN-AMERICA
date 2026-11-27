@@ -112,16 +112,16 @@ See [`SELECTION_STRATEGY.md`](./SELECTION_STRATEGY.md) for detailed methodology 
 
 | Accent | HABLA Existing | CV Addition | Final Total |
 |--------|----------------|-------------|-------------|
-| Argentina | 4,906 | - | 4,906 |
+| Argentina | 5,460 | - | 5,460 |
 | Chile | 4,089 | +1,361 | 5,450 |
 | Colombia | 4,604 | +846 | 5,450 |
-| Peru | 4,123 | - | 4,123 |
+| Peru | 5,446 | - | 5,446 |
 | Venezuela | 3,217 | +2,233* | 5,450 |
 | **Mexico** | 0 | **+5,450** | **5,450** |
 | **Spain** | 0 | **+5,450** | **5,450** |
 | **TOTAL** | **22,816** | **+15,340** | **38,156** |
 
-*Note: Venezuela only has 4 CV samples available, significant shortfall addressed in thesis discussion.
+*Note: Common Voice has a single eligible Venezuelan speaker (4 recordings), so Venezuela ends at 3,221 recordings instead of 5,450. This shortfall is addressed in the thesis discussion.
 
 ## Requirements
 
@@ -190,12 +190,21 @@ python app/pipeline/select_mozilla_speakers/01_extract_habla_embeddings.py
 - `data/mozilla_speaker_selection/cv_speaker_embeddings.npy` (3,299, 192)
 - `data/mozilla_speaker_selection/cv_speaker_metadata.json`
 
-**Samples by Accent:**
-- Colombia: 26,501
-- Chile: 6,312
-- Venezuela: 4 (critical limitation!)
-- Mexico: 140,857
-- Spain: 96,274
+**Samples and speakers by accent (verified on ml-server03, 2026-11-14):**
+
+| Accent | Recordings passing the clip-level filter | Candidate speakers |
+|--------|------------------------------------------|--------------------|
+| Colombia | 26,501 | 1,001 |
+| Chile | 6,312 | 197 |
+| Venezuela | 4 | 1 |
+| Mexico | 140,857 | 1,025 |
+| Spain | 96,274 | 1,075 |
+| **Total** | **269,948** | **3,299** |
+
+The gender/age/accent filter (`is_valid_sample`) is applied per recording
+(per row of `validated.tsv`), not per speaker. A speaker is a candidate if at
+least one of their recordings passes it. Step 4 does not reuse this
+recording-level filter (see Step 4 below).
 
 **Runtime:** ~10-15 minutes (GPU) + extraction time (one-time, ~5-10 min)
 
@@ -229,7 +238,8 @@ python app/pipeline/select_mozilla_speakers/02_extract_cv_embeddings.py
 - Mean: 0.4067
 - Median: 0.4179
 - Max: 0.6915
-- Pass rate: 100%
+- Pass rate: 100%. No candidate was rejected in any accent, so the filter acted
+  as a safeguard only.
 
 **Runtime:** ~1-2 minutes
 
@@ -260,14 +270,34 @@ python app/pipeline/select_mozilla_speakers/03_filter_by_similarity.py
 - `data/mozilla_speaker_selection/selected_15340.tsv` (TSV subset of validated.tsv)
 - `data/mozilla_speaker_selection/selection_stats.json`
 
+**Sampling pool (verified on ml-server03, 2026-11-14):** Step 4 re-reads
+`validated.tsv` and keeps every row whose `client_id` is in
+`filtered_speakers.json` (`step_04_balanced_sampling.py`, lines 222-228)
+without re-applying `is_valid_sample`. The pool is therefore all validated
+recordings of the 3,299 candidates, which comes to **271,477** recordings,
+not the 269,948 reported by Step 2. The accent of each recording is taken from
+its speaker's metadata (line 137), not from the recording's own tag. The
+corpus was released with this behavior, and the code is intentionally left
+unchanged so the selection stays reproducible.
+
 **Actual Results:**
-- Total samples selected: 13,111 (shortfall due to Venezuela: 4 vs 2,233)
-- Unique speakers: 1,405
-- Spain: 528 speakers (231 female, 297 male)
-- Mexico: 406 speakers (139 female, 267 male)
-- Colombia: 326 speakers
-- Chile: 144 speakers
-- Venezuela: 1 speaker (only 4 samples available)
+
+| Accent | Candidate speakers | Selected speakers | Speakers not sampled | Pool (recordings) | Selected recordings | Recordings not sampled | Selected with empty gender |
+|--------|--------------------|-------------------|----------------------|-------------------|---------------------|------------------------|----------------------------|
+| Spain | 1,075 | 528 (231 F / 297 M) | 547 | 96,847 | 5,450 | 91,397 | 0 |
+| Mexico | 1,025 | 406 (139 F / 267 M) | 619 | 141,445 | 5,450 | 135,995 | 22 |
+| Colombia | 1,001 | 326 | 675 | 26,767 | 846 | 25,921 | 8 |
+| Chile | 197 | 144 | 53 | 6,414 | 1,361 | 5,053 | 22 |
+| Venezuela | 1 | 1 | 0 | 4 | 4 | 0 | 0 |
+| **Total** | **3,299** | **1,405** | **1,894** | **271,477** | **13,111** | **258,366** | **52** |
+
+- Total recordings selected is 13,111, short of 15,340 because Venezuela has
+  4 of its 2,233 target.
+- Raw gender values in `selected_15340.tsv` are 7,497 `male_masculine`,
+  5,562 `female_feminine` and 52 empty. The 52 empty-gender recordings
+  (0.40%) include every recording with an empty age tag. `selection_stats.json`
+  labels them "Unknown". Spain has none because female-priority sampling only
+  draws recordings whose gender string contains "male" or "female".
 
 **Runtime:** ~1-2 minutes
 
@@ -451,8 +481,8 @@ cat data/mozilla_speaker_selection/selection_stats.json
 ## Known Limitations & Discussion Points
 
 ### 1. Venezuela Data Scarcity
-**Issue**: Only 4 CV samples available vs. target of 2,233
-- **Impact**: Final dataset has 23 Venezuela speakers (3,217 HABLA + 4 CV) instead of target 5,450
+**Issue**: Common Voice has a single eligible Venezuelan speaker with 4 recordings, against a target of 2,233 recordings. That speaker passed the similarity filter like every other candidate, so the shortfall comes from the source data and not from the filter.
+- **Impact**: The final dataset has 23 Venezuelan speakers (22 HABLA + 1 CV) and 3,221 recordings (3,217 HABLA + 4 CV), instead of the 5,450-recording target
 - **Thesis Discussion**: Explains geographic limitations in open-source speech corpora
 
 ### 2. Spain Gender Imbalance
@@ -466,7 +496,7 @@ cat data/mozilla_speaker_selection/selection_stats.json
 - Verified across all pipeline steps
 
 ### 4. Argentina & Peru Not Augmented
-- Already well-represented in HABLA (4,906 and 4,123 samples)
+- Already well-represented in HABLA (5,460 and 5,446 samples)
 - Focus on under-represented accents and new accents (Mexico, Spain)
 
 ## Thesis Documentation

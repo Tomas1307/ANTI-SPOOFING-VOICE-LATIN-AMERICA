@@ -91,6 +91,33 @@ GPU note: every generation, augmentation, and training script expects
 exactly one visible CUDA device. Set `CUDA_VISIBLE_DEVICES` before
 running anything that touches a GPU.
 
+### Codec augmentation: ffmpeg dependency
+
+The codec-degradation family of the acoustic-augmentation layer (AMR-NB
+and AAC specifically) requires an ffmpeg build with
+`libopencore_amrnb` encoding support and a working AAC/`mpegts`
+round-trip, which a stock system ffmpeg typically lacks. A script to
+fetch and checksum-verify the exact static ffmpeg build (version
+7.0.2) used to generate the released corpus is included:
+
+```bash
+bash scripts/setup_ffmpeg.sh
+export MARSA_FFMPEG_BINARY="$(pwd)/tools/ffmpeg-7.0.2-amd64-static/ffmpeg"
+```
+
+`MARSA_FFMPEG_BINARY` is read by `app/augmenter/codec_backend.py`; if
+unset, it falls back to whatever `ffmpeg` is on the system `PATH`,
+which will silently skip AMR-NB and AAC rather than fail loudly. Set
+it explicitly before running the augmentation pipeline.
+
+### Reproducibility: pinned seeds
+
+Every attack pipeline's `settings.py` pins a `RANDOM_SEED` default
+(the value used to produce the released corpus), rather than leaving
+it unset or randomized at import time. The partial-spoof pipeline's
+word-selection and splice-parameter sampling are pinned the same way
+in `app/pipeline/partial_spoof/settings.py`.
+
 ## Reproducing the corpus
 
 The pipeline runs in this order. Each stage reads the previous stage's
@@ -188,16 +215,59 @@ in the paper's Data Records section.
 
 ## License
 
-The MARSA corpus is released under **Creative Commons Attribution 4.0
-International (CC BY 4.0)**, consistent with the license of the
-upstream HABLA corpus it derives from. The bonafide recordings
-originate, in part, from Mozilla Common Voice (CC0); Mozilla's own
-data-stewardship guidance asks that Common Voice audio not be mirrored
-independently of this derivative use, which this release respects by
-distributing it only as part of the processed MARSA corpus, not as a
-standalone re-export.
+MARSA uses a **mixed license across its tiers**, not a single license
+for the whole corpus:
 
-The code in this repository is released under `[CODE_LICENSE_PENDING]`.
+- **Bonafide corpus: Creative Commons Attribution-ShareAlike 4.0
+  International (CC BY-SA 4.0)**. Most of the bonafide pool (the
+  Argentine, Peruvian, Venezuelan, and part of the Colombian and
+  Chilean speakers) traces to five Google-released corpora hosted on
+  OpenSLR, whose own publication and LICENSE files state CC BY-SA 4.0.
+  The upstream HABLA paper describes this material as plain CC BY 4.0,
+  but that downstream relicensing cannot override the ShareAlike
+  obligation the original OpenSLR license imposes, so MARSA's bonafide
+  release is CC BY-SA 4.0 rather than CC BY 4.0. The remainder of the
+  bonafide pool comes from Mozilla Common Voice (CC0), which may
+  freely be incorporated into this more restrictive license.
+- **Four of the six full-spoof/partial-spoof systems** (Qwen3-TTS,
+  OpenVoice, Chatterbox, OmniVoice): these four TTS systems are
+  licensed Apache 2.0 or MIT with no restriction of their own, but
+  their output is nonetheless released under **Creative Commons
+  Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)**, matching
+  the bonafide corpus they clone from. Whether the ShareAlike
+  obligation of a CC BY-SA bonafide recording actually propagates to
+  voice-cloned synthetic output is legally unsettled (see the paper's
+  Ethics Declaration for the detailed analysis); MARSA takes the
+  conservative position of applying it anyway rather than relying on
+  an unresolved legal theory. For the partial-spoof tier specifically,
+  this is not even a close call: spliced samples embed verbatim
+  segments of the original bonafide recording, which is Adapted
+  Material under CC BY-SA 4.0 regardless of how the voice-cloning
+  question is resolved.
+- **FishGram and OuteTTS full-spoof and partial-spoof audio:
+  Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+  International (CC BY-NC-SA 4.0)**. Both systems' own model licenses
+  (Fish-Speech's `s1-mini` checkpoint: CC-BY-NC-SA-4.0; OuteTTS:
+  OuteAI's CC-BY-NC-SA-4.0 terms layered on the Llama 3.2 Community
+  License) restrict commercial use, and MARSA cannot grant more
+  permission than its own sources hold. This is a conservative
+  reading: neither upstream license states explicitly whether its
+  non-commercial clause binds the model's generated output as well as
+  the model itself.
+
+Every sample's generating system is recorded in its protocol entry, so
+the non-commercial subset can be filtered out programmatically if you
+need a fully commercial-use corpus; see the paper's Usage Notes for
+the exact system list.
+
+The bonafide recordings originate, in part, from Mozilla Common Voice
+(CC0); Mozilla's own data-stewardship guidance asks that Common Voice
+audio not be mirrored independently of this derivative use, which this
+release respects by distributing it only as part of the processed
+MARSA corpus, not as a standalone re-export.
+
+The code in this repository is released under the **Apache License
+2.0**; see `LICENSE`.
 
 ## Contact
 
